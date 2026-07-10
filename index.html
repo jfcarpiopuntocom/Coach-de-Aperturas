@@ -1,0 +1,3711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Coach de Aperturas y Defensas</title>
+<meta property="og:title" content="Coach de Aperturas y Defensas">
+<meta property="og:description" content="Un tablero, un despertar de cien años, y una apertura que aún no tiene nombre para ti.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#050705">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SISTEMA DE DISEÑO
+   - Grilla en múltiplos de --u (4px) => "pixel gigante" retro.
+   - Paleta restringida a DOS colores (+ negro de fondo): verde
+     para blancas / texto primario, naranja para negras / acentos.
+   - Flujo estrictamente vertical y en orden de prioridad:
+     tablero -> apertura -> consejo -> contexto (opcional) -> lore.
+   ============================================================ */
+:root{
+  --u: 4px;
+  --bg:        #050705;
+  --bg-panel:  #080c08;
+  --green:     #39ff14;
+  --green-dim: #6fcf5a;
+  --orange:    #ff7f00;
+  --orange-dim:#c98a4a;
+  --sq-a:      #0c110c;
+  --sq-b:      #060906;
+  --font-term: 'VT323', monospace;
+  --font-pix:  'Press Start 2P', monospace;
+}
+
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{
+  margin:0; padding:0; background:var(--bg); color:var(--green);
+  font-family:var(--font-term); overflow-x:hidden;
+}
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
+  background:repeating-linear-gradient(
+    to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) calc(var(--u)*0.5),
+    rgba(0,0,0,0.18) calc(var(--u)*0.5), rgba(0,0,0,0.18) var(--u)
+  );
+  mix-blend-mode:multiply;
+}
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:51;
+  box-shadow:inset 0 0 calc(var(--u)*20) rgba(0,0,0,0.85);
+}
+
+/* ---------- HERO: mínimo, sin instrucciones, sin lore ---------- */
+header.hero{
+  text-align:center; padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*3);
+}
+.title-ascii{
+  font-family:var(--font-pix); font-size:calc(var(--u)*3.4);
+  line-height:1.9; color:var(--green);
+  text-shadow:0 0 calc(var(--u)*2) var(--green);
+  letter-spacing:1px;
+}
+.title-ascii .side-w, .title-ascii .side-b{ font-family:var(--font-term); }
+.title-ascii .side-w{ color:var(--green); }
+.title-ascii .side-b{ color:var(--orange); }
+.tagline{
+  margin-top:calc(var(--u)*2); font-size:calc(var(--u)*4); color:var(--green-dim);
+  letter-spacing:0.5px;
+}
+
+/* ---------- Contenedor general: tablero al centro, info a los lados ---------- */
+.wrap{
+  max-width:1460px; margin:0 auto; padding:0 calc(var(--u)*6) calc(var(--u)*8);
+  display:grid; grid-template-columns:1fr; gap:calc(var(--u)*7);
+}
+.col-left, .col-right{ display:flex; flex-direction:column; gap:calc(var(--u)*6); min-width:0; }
+.col-center{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*5); min-width:0; }
+.col-center > section{ width:100%; }
+
+@media (min-width:900px){
+  .wrap{
+    grid-template-columns: minmax(280px,1fr) minmax(400px,640px) minmax(280px,1fr);
+    align-items:start; gap:calc(var(--u)*9);
+  }
+  .col-left{ grid-column:1; grid-row:1; }
+  .col-center{ grid-column:2; grid-row:1; }
+  .col-right{ grid-column:3; grid-row:1; }
+}
+
+/* ---------- 1. TABLERO ---------- */
+#stage{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*4); }
+
+.levels{ display:flex; gap:var(--u); width:100%; justify-content:center; flex-wrap:wrap; }
+button{
+  font-family:var(--font-term); font-size:calc(var(--u)*4.2);
+  background:var(--bg-panel); color:var(--green);
+  border:calc(var(--u)*0.5) solid var(--green-dim); padding:calc(var(--u)*1.5) calc(var(--u)*3);
+  cursor:pointer; letter-spacing:0.5px;
+}
+button:hover{ border-color:var(--green); }
+button.active{ background:var(--green); color:#000; border-color:var(--green); }
+button.warn{ border-color:var(--orange); color:var(--orange); }
+button.warn:hover{ background:var(--orange); color:#000; }
+button:disabled{ opacity:0.35; cursor:default; }
+
+#board{
+  display:grid; grid-template-columns:repeat(8, 1fr);
+  width:min(92vw, 640px); aspect-ratio:1/1;
+  border:calc(var(--u)*0.75) solid var(--green-dim);
+  box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
+}
+.sq{
+  position:relative; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-term); font-size:calc(var(--u)*8);
+  user-select:none; cursor:pointer; overflow:hidden;
+}
+.sq.light{ background:var(--sq-a); }
+.sq.dark{ background:var(--sq-b); }
+.sq .pc.w{ color:var(--green); text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.7); }
+.sq .pc.b{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1.5) rgba(255,127,0,0.7); }
+.sq .dot{ color:var(--green-dim); font-size:calc(var(--u)*4); }
+.sq.selected{ outline:calc(var(--u)*0.75) solid var(--orange); outline-offset:-2px; }
+.sq.legal::after{
+  content:""; position:absolute; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5);
+  background:var(--orange); opacity:0.85;
+}
+.sq.legal.capture::after{
+  width:80%; height:80%; background:transparent; border:calc(var(--u)*1) solid var(--orange);
+}
+.sq.last{ box-shadow:inset 0 0 0 calc(var(--u)*1) var(--green-dim); }
+.coord{ position:absolute; font-size:calc(var(--u)*2); color:var(--green-dim); font-family:var(--font-term); }
+.coord.file{ bottom:1px; right:2px; }
+.coord.rank{ top:1px; left:2px; }
+
+@keyframes fx-dissolve-kf{
+  0%{ opacity:1; filter:blur(0); transform:scale(1); }
+  100%{ opacity:0; filter:blur(3px); transform:scale(0.15); }
+}
+@keyframes fx-shatter-kf{
+  0%{ opacity:1; transform:rotate(0) translate(0,0); }
+  25%{ transform:rotate(-12deg) translate(-3px,-2px); }
+  50%{ transform:rotate(10deg) translate(3px,2px); opacity:0.7; }
+  75%{ transform:rotate(-16deg) translate(-4px,3px); opacity:0.35; }
+  100%{ opacity:0; transform:rotate(25deg) translate(8px,8px) scale(0.3); }
+}
+@keyframes fx-flash-kf{
+  0%{ filter:invert(0); opacity:1; }
+  30%{ filter:invert(1); opacity:1; }
+  60%{ filter:invert(0); opacity:1; }
+  100%{ filter:invert(0); opacity:0; transform:scale(0.5); }
+}
+.sq.fx-dissolve .pc{ animation: fx-dissolve-kf 0.38s ease-out forwards; }
+.sq.fx-shatter .pc{ animation: fx-shatter-kf 0.38s steps(6) forwards; }
+.sq.fx-flash .pc{ animation: fx-flash-kf 0.38s ease-in forwards; }
+
+#status-bar{
+  width:100%; text-align:center; font-size:calc(var(--u)*4.5);
+  color:var(--green-dim); min-height:calc(var(--u)*6);
+}
+#status-bar.thinking{ color:var(--orange); }
+#status-bar.check{ color:var(--orange); font-weight:bold; }
+
+.game-controls{ display:flex; gap:var(--u); flex-wrap:wrap; justify-content:center; }
+
+#moves-log{
+  width:100%; background:var(--bg-panel); border:1px solid var(--green-dim);
+  padding:calc(var(--u)*2); font-size:calc(var(--u)*3.6); max-height:calc(var(--u)*20);
+  overflow-y:auto; line-height:1.6; color:var(--green-dim);
+}
+#moves-log .mv-num{ color:#3d5a3a; margin-right:calc(var(--u)*0.5); }
+#moves-log .mv-you{ color:var(--green); }
+#moves-log .mv-ai{ color:var(--orange); }
+#moves-log .mv-row{ display:inline-block; margin-right:calc(var(--u)*2.5); white-space:nowrap; }
+
+/* ---------- Última jugada de cada bando — el dato que de verdad importa ---------- */
+.last-move-row{ display:flex; gap:calc(var(--u)*2); }
+.lm-box{
+  flex:1; background:var(--bg-panel); border:1px solid var(--green-dim);
+  padding:calc(var(--u)*2); text-align:center; position:relative; overflow:hidden;
+}
+.lm-box.lm-ai{ border-color:var(--orange-dim); }
+.lm-tag{
+  display:block; font-family:var(--font-pix); font-size:calc(var(--u)*2);
+  color:var(--green-dim); letter-spacing:1px; margin-bottom:calc(var(--u)*1);
+}
+.lm-ai .lm-tag{ color:var(--orange-dim); }
+.lm-val{
+  font-family:var(--font-pix); font-size:calc(var(--u)*4); color:var(--green);
+  text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.5); letter-spacing:1px;
+}
+.lm-ai .lm-val{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1.5) rgba(255,127,0,0.5); }
+.lm-box.pulse::after{
+  content:""; position:absolute; inset:0; background:var(--green); opacity:0;
+  animation:lm-pulse 0.5s ease-out;
+}
+.lm-box.lm-ai.pulse::after{ background:var(--orange); }
+@keyframes lm-pulse{ 0%{ opacity:0.35; } 100%{ opacity:0; } }
+
+/* ---------- 2. APERTURA (lo que el humano está jugando) ---------- */
+.opening-card{ text-align:center; }
+.eco-badge{
+  display:inline-block; font-family:var(--font-pix); font-size:calc(var(--u)*2.8);
+  background:var(--green-dim); color:#000; padding:calc(var(--u)*1) calc(var(--u)*2);
+  margin-bottom:calc(var(--u)*2);
+}
+#opening-name{
+  font-size:calc(var(--u)*6.5); color:var(--green); font-weight:bold; line-height:1.25;
+  text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.35);
+}
+#opening-moves{
+  display:inline-block; margin-top:calc(var(--u)*2); font-family:var(--font-pix);
+  font-size:calc(var(--u)*2.6); color:var(--green-dim); letter-spacing:1px;
+}
+
+/* ---------- % de victorias histórico, opcional y discreto ---------- */
+.wp-toggle{
+  display:inline-block; cursor:pointer; font-family:var(--font-term); font-size:0.55em;
+  color:#9fb89a; border:1px dashed #5a6e58; padding:0 calc(var(--u)*1);
+  margin-left:calc(var(--u)*1.5); vertical-align:middle; user-select:none;
+}
+.wp-toggle:hover{ color:#c8e0c4; border-color:#8aa088; }
+.wp-detail{
+  display:none; font-family:var(--font-term); font-size:0.5em; color:#9fb89a;
+  margin-left:calc(var(--u)*1); vertical-align:middle;
+}
+.wp-detail.open{ display:inline; }
+
+/* ---------- 1b. PERISCOPIO — micro-vista espejada/invertida del rival ----------
+   A propósito chico: es un "ojo de cerradura" al tablero del rival, no un
+   segundo tablero completo. Va en línea, al lado del texto, sin agregar scroll. */
+.periscope-card{
+  background:#020402; border:1px solid var(--green-dim); padding:calc(var(--u)*1.5) calc(var(--u)*2);
+  position:relative; overflow:hidden; display:flex; align-items:center; gap:calc(var(--u)*2.5);
+}
+.periscope-label{
+  display:block; font-family:var(--font-pix); font-size:calc(var(--u)*1.8);
+  color:var(--green-dim); letter-spacing:0.5px; line-height:1.6; flex:1;
+}
+#periscope-board{
+  flex:none; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(4,1fr);
+  width:calc(var(--u)*26); height:calc(var(--u)*13);
+  border:1px solid var(--green-dim);
+  filter:brightness(0.9) saturate(0.7);
+}
+.periscope-card::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(57,255,20,0.05) 0px, rgba(57,255,20,0.05) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+.psq{ display:flex; align-items:center; justify-content:center; font-size:calc(var(--u)*2.4); }
+.psq.light{ background:var(--sq-a); }
+.psq.dark{ background:var(--sq-b); }
+#board.flipped{ transform:rotate(180deg); }
+#board.flipped .pc, #board.flipped .dot, #board.flipped .coord{ display:inline-block; transform:rotate(180deg); }
+
+/* ---------- 2b. DEFENSA DE LA IA (lo que responden las negras) ---------- */
+.ai-card{
+  background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--green-dim);
+  padding:calc(var(--u)*3.5); text-align:center;
+}
+.ai-label{
+  display:block; font-family:var(--font-pix); font-size:calc(var(--u)*2.4);
+  color:var(--green-dim); margin-bottom:calc(var(--u)*2); letter-spacing:1px;
+}
+.eco-badge-ai{
+  display:inline-block; font-family:var(--font-pix); font-size:calc(var(--u)*2.6);
+  background:var(--orange); color:#000; padding:calc(var(--u)*0.75) calc(var(--u)*1.75);
+  margin-bottom:calc(var(--u)*1.5);
+}
+#ai-defense-name{
+  font-size:calc(var(--u)*5); color:var(--orange); font-weight:bold; line-height:1.3;
+}
+#ai-defense-tip{
+  margin-top:calc(var(--u)*2); font-size:calc(var(--u)*3.6); color:var(--green-dim); line-height:1.5;
+}
+
+/* ---------- 2c. LOG DE DEFENSAS DE LA IA VISTAS EN LA SESIÓN ---------- */
+.ai-log-card{ padding:0 calc(var(--u)*1); }
+.chip-list{ display:flex; flex-wrap:wrap; gap:calc(var(--u)*1.5); }
+.chip{
+  background:var(--bg-panel); border:1px solid var(--green-dim); color:var(--green-dim);
+  padding:calc(var(--u)*1) calc(var(--u)*2); font-size:calc(var(--u)*3); white-space:nowrap;
+}
+.chip .chip-eco{ color:var(--orange); margin-right:calc(var(--u)*1); }
+.chip-empty{ color:var(--green-dim); font-size:calc(var(--u)*3.4); }
+
+/* ---------- 2d. PREDICTOR DE APERTURAS POSIBLES ---------- */
+.predict-card{
+  background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--green);
+  padding:calc(var(--u)*3.5);
+}
+.predict-count{
+  font-family:var(--font-pix); font-size:calc(var(--u)*3.2); color:var(--green);
+  margin-bottom:calc(var(--u)*2.5); letter-spacing:1px;
+}
+.chip .chip-next{ color:var(--green); margin-left:calc(var(--u)*1.5); font-weight:bold; }
+
+/* ---------- 3. CONSEJO DE VARIANTE ---------- */
+.tip-card{
+  background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--orange);
+  padding:calc(var(--u)*3.5); font-size:calc(var(--u)*4.6); line-height:1.5;
+}
+.tip-card .tip-label{
+  display:block; font-family:var(--font-pix); font-size:calc(var(--u)*2.4);
+  color:var(--orange); margin-bottom:calc(var(--u)*2); letter-spacing:1px;
+}
+
+/* ---------- 4. CONTEXTO (historia / partidas / perfil), oculto por defecto ---------- */
+.context-toggle{
+  width:100%; background:transparent; border:1px dashed var(--green-dim);
+  color:var(--green-dim); font-size:calc(var(--u)*3.6); padding:calc(var(--u)*2);
+}
+.context-toggle:hover{ color:var(--green); border-color:var(--green); }
+.context-box{
+  display:none; font-size:calc(var(--u)*4); line-height:1.5; color:#bdf3b0;
+}
+.context-box.open{ display:block; }
+.context-box h3{
+  font-size:calc(var(--u)*3.6); color:var(--orange); text-transform:uppercase;
+  letter-spacing:1px; margin:calc(var(--u)*3) 0 var(--u);
+}
+.context-box h3:first-child{ margin-top:0; }
+.hist-fact{ border-left:calc(var(--u)*0.75) solid var(--green-dim); padding-left:calc(var(--u)*2); margin:var(--u) 0; }
+.watch-box{ border-left:calc(var(--u)*0.75) solid var(--orange); padding-left:calc(var(--u)*2); margin-top:calc(var(--u)*2); color:var(--orange); }
+
+/* ---------- 5. LORE (al fondo, discreto) ---------- */
+.lore{
+  max-width:560px; margin:calc(var(--u)*8) auto 0; padding:calc(var(--u)*4) calc(var(--u)*3);
+  border-top:1px dashed var(--green-dim);
+}
+.lore-label{
+  font-family:var(--font-pix); font-size:calc(var(--u)*2.2); color:var(--green-dim);
+  letter-spacing:1px; margin-bottom:calc(var(--u)*2);
+}
+.lore-text{
+  font-size:calc(var(--u)*3.6); color:var(--green-dim); line-height:1.6;
+}
+.lore-text .cursor{ display:inline-block; width:calc(var(--u)*2); background:var(--green-dim);
+  animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+
+footer{ text-align:center; color:var(--green-dim); font-size:calc(var(--u)*3.2); padding:calc(var(--u)*4) 0 calc(var(--u)*6); }
+
+@media (min-width:640px){
+  #opening-name{ font-size:calc(var(--u)*7.5); }
+  .sq{ font-size:calc(var(--u)*11); }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="title-ascii"><span class="side-w">○</span> COACH DE APERTURAS Y DEFENSAS <span class="side-b">●</span></div>
+  <div class="tagline">Juega. La apertura se revela sola.</div>
+</header>
+
+<div class="wrap">
+
+  <!-- COLUMNA CENTRAL: el tablero, controles y periscopio -->
+  <div class="col-center">
+    <section id="stage">
+      <div class="levels">
+        <button id="lvl-400" class="lvl-btn" onclick="setLevel(0)">NIVEL 400</button>
+        <button id="lvl-1500" class="lvl-btn active" onclick="setLevel(1)">NIVEL 1500</button>
+        <button id="lvl-2600" class="lvl-btn" onclick="setLevel(2)">NIVEL 2600</button>
+      </div>
+      <div class="levels">
+        <button id="color-w" class="color-btn active" onclick="setHumanColor('w')">JUGAR BLANCAS</button>
+        <button id="color-b" class="color-btn" onclick="setHumanColor('b')">JUGAR NEGRAS</button>
+      </div>
+
+      <div id="board"></div>
+      <div id="status-bar">cargando motor…</div>
+
+      <div class="game-controls">
+        <button id="btn-reroll" onclick="rerollMove()" disabled>OTRA RESPUESTA</button>
+        <button onclick="undoMove()">DESHACER</button>
+        <button class="warn" onclick="resetGame()">REINICIAR</button>
+      </div>
+    </section>
+
+    <section class="opening-card">
+      <div id="eco-badge-wrap"></div>
+      <div id="opening-name">—</div>
+      <div id="opening-moves" style="display:none"></div>
+    </section>
+
+    <section class="ai-card">
+      <span class="ai-label" id="ai-label-turn">Respuesta de las negras (IA)</span>
+      <div id="ai-badge-wrap"></div>
+      <div id="ai-defense-name">Aún no ha respondido — juega tu primera jugada.</div>
+      <div id="ai-defense-tip"></div>
+    </section>
+
+    <!-- PERISCOPIO — recorte del propio tablero, espejado, como lo ve el rival -->
+    <section class="periscope-card">
+      <span class="periscope-label" id="periscope-label">PERISCOPIO<br>su media cancha, espejada</span>
+      <div id="periscope-board"></div>
+    </section>
+  </div>
+
+  <!-- COLUMNA IZQUIERDA: qué apertura es y qué responde la IA -->
+  <div class="col-left">
+    <!-- PREDICTOR — lista viva de aperturas posibles segun cada jugada.
+         Se recalcula tras CADA movimiento: las lineas incompatibles se
+         eliminan y la lista muta. Para ampliar la base, agregar entradas
+         a EXTRA_OPENINGS en el JS (solo eco/name/moves). -->
+    <section class="predict-card">
+      <span class="ai-label">Posibles aperturas desde aqu&iacute;</span>
+      <div id="predict-count" class="predict-count">&mdash;</div>
+      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza y la lista de aperturas posibles ir&aacute; mutando en vivo.</span></div>
+    </section>
+
+    <section class="tip-card">
+      <span class="tip-label">Consejo de la variante</span>
+      <div id="tactic-tip">Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.</div>
+    </section>
+  </div>
+
+  <!-- COLUMNA DERECHA: registro de jugadas, defensas vistas y contexto -->
+  <div class="col-right">
+    <div class="last-move-row">
+      <div class="lm-box lm-you">
+        <span class="lm-tag">TÚ</span>
+        <span class="lm-val" id="lm-you-val">—</span>
+      </div>
+      <div class="lm-box lm-ai">
+        <span class="lm-tag">IA</span>
+        <span class="lm-val" id="lm-ai-val">—</span>
+      </div>
+    </div>
+    <div id="moves-log">aún no hay jugadas.</div>
+
+    <section class="ai-log-card">
+      <span class="ai-label">Defensas de la IA vistas hoy</span>
+      <div id="ai-defense-log" class="chip-list"><span class="chip-empty">Todavía ninguna — juega para descubrirlas.</span></div>
+    </section>
+
+    <button class="context-toggle" onclick="toggleContext()">+ historia, partidas y perfil de jugador</button>
+    <div class="context-box" id="context-box">
+      <h3>Historia</h3>
+      <div id="opening-history">—</div>
+      <h3>Partidas famosas</h3>
+      <div id="opening-games">—</div>
+      <h3>Perfil de jugador</h3>
+      <div id="temperament">Elige una apertura y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí — y qué debes vigilar.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 5. LORE, AL FONDO -->
+<section class="lore">
+  <div class="lore-label">// registro de a bordo</div>
+  <div class="lore-text" id="introText"></div>
+</section>
+
+<footer>chess.js + motor externo/local vía CDN · offline-safe</footer>
+
+<script>
+/* chess.js v0.10.3 — embebido localmente, sin dependencia de CDN externo */
+/*
+ * Copyright (c) 2020, Jeff Hlywa (jhlywa@gmail.com)
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ *----------------------------------------------------------------------------*/
+
+/* minified license below  */
+
+/* @license
+ * Copyright (c) 2018, Jeff Hlywa (jhlywa@gmail.com)
+ * Released under the BSD license
+ * https://github.com/jhlywa/chess.js/blob/master/LICENSE
+ */
+
+var Chess = function(fen) {
+  var BLACK = 'b'
+  var WHITE = 'w'
+
+  var EMPTY = -1
+
+  var PAWN = 'p'
+  var KNIGHT = 'n'
+  var BISHOP = 'b'
+  var ROOK = 'r'
+  var QUEEN = 'q'
+  var KING = 'k'
+
+  var SYMBOLS = 'pnbrqkPNBRQK'
+
+  var DEFAULT_POSITION =
+    'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+
+  var POSSIBLE_RESULTS = ['1-0', '0-1', '1/2-1/2', '*']
+
+  var PAWN_OFFSETS = {
+    b: [16, 32, 17, 15],
+    w: [-16, -32, -17, -15]
+  }
+
+  var PIECE_OFFSETS = {
+    n: [-18, -33, -31, -14, 18, 33, 31, 14],
+    b: [-17, -15, 17, 15],
+    r: [-16, 1, 16, -1],
+    q: [-17, -16, -15, 1, 17, 16, 15, -1],
+    k: [-17, -16, -15, 1, 17, 16, 15, -1]
+  }
+
+  // prettier-ignore
+  var ATTACKS = [
+    20, 0, 0, 0, 0, 0, 0, 24,  0, 0, 0, 0, 0, 0,20, 0,
+     0,20, 0, 0, 0, 0, 0, 24,  0, 0, 0, 0, 0,20, 0, 0,
+     0, 0,20, 0, 0, 0, 0, 24,  0, 0, 0, 0,20, 0, 0, 0,
+     0, 0, 0,20, 0, 0, 0, 24,  0, 0, 0,20, 0, 0, 0, 0,
+     0, 0, 0, 0,20, 0, 0, 24,  0, 0,20, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0,20, 2, 24,  2,20, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 2,53, 56, 53, 2, 0, 0, 0, 0, 0, 0,
+    24,24,24,24,24,24,56,  0, 56,24,24,24,24,24,24, 0,
+     0, 0, 0, 0, 0, 2,53, 56, 53, 2, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0,20, 2, 24,  2,20, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0,20, 0, 0, 24,  0, 0,20, 0, 0, 0, 0, 0,
+     0, 0, 0,20, 0, 0, 0, 24,  0, 0, 0,20, 0, 0, 0, 0,
+     0, 0,20, 0, 0, 0, 0, 24,  0, 0, 0, 0,20, 0, 0, 0,
+     0,20, 0, 0, 0, 0, 0, 24,  0, 0, 0, 0, 0,20, 0, 0,
+    20, 0, 0, 0, 0, 0, 0, 24,  0, 0, 0, 0, 0, 0,20
+  ];
+
+  // prettier-ignore
+  var RAYS = [
+     17,  0,  0,  0,  0,  0,  0, 16,  0,  0,  0,  0,  0,  0, 15, 0,
+      0, 17,  0,  0,  0,  0,  0, 16,  0,  0,  0,  0,  0, 15,  0, 0,
+      0,  0, 17,  0,  0,  0,  0, 16,  0,  0,  0,  0, 15,  0,  0, 0,
+      0,  0,  0, 17,  0,  0,  0, 16,  0,  0,  0, 15,  0,  0,  0, 0,
+      0,  0,  0,  0, 17,  0,  0, 16,  0,  0, 15,  0,  0,  0,  0, 0,
+      0,  0,  0,  0,  0, 17,  0, 16,  0, 15,  0,  0,  0,  0,  0, 0,
+      0,  0,  0,  0,  0,  0, 17, 16, 15,  0,  0,  0,  0,  0,  0, 0,
+      1,  1,  1,  1,  1,  1,  1,  0, -1, -1,  -1,-1, -1, -1, -1, 0,
+      0,  0,  0,  0,  0,  0,-15,-16,-17,  0,  0,  0,  0,  0,  0, 0,
+      0,  0,  0,  0,  0,-15,  0,-16,  0,-17,  0,  0,  0,  0,  0, 0,
+      0,  0,  0,  0,-15,  0,  0,-16,  0,  0,-17,  0,  0,  0,  0, 0,
+      0,  0,  0,-15,  0,  0,  0,-16,  0,  0,  0,-17,  0,  0,  0, 0,
+      0,  0,-15,  0,  0,  0,  0,-16,  0,  0,  0,  0,-17,  0,  0, 0,
+      0,-15,  0,  0,  0,  0,  0,-16,  0,  0,  0,  0,  0,-17,  0, 0,
+    -15,  0,  0,  0,  0,  0,  0,-16,  0,  0,  0,  0,  0,  0,-17
+  ];
+
+  var SHIFTS = { p: 0, n: 1, b: 2, r: 3, q: 4, k: 5 }
+
+  var FLAGS = {
+    NORMAL: 'n',
+    CAPTURE: 'c',
+    BIG_PAWN: 'b',
+    EP_CAPTURE: 'e',
+    PROMOTION: 'p',
+    KSIDE_CASTLE: 'k',
+    QSIDE_CASTLE: 'q'
+  }
+
+  var BITS = {
+    NORMAL: 1,
+    CAPTURE: 2,
+    BIG_PAWN: 4,
+    EP_CAPTURE: 8,
+    PROMOTION: 16,
+    KSIDE_CASTLE: 32,
+    QSIDE_CASTLE: 64
+  }
+
+  var RANK_1 = 7
+  var RANK_2 = 6
+  var RANK_3 = 5
+  var RANK_4 = 4
+  var RANK_5 = 3
+  var RANK_6 = 2
+  var RANK_7 = 1
+  var RANK_8 = 0
+
+  // prettier-ignore
+  var SQUARES = {
+    a8:   0, b8:   1, c8:   2, d8:   3, e8:   4, f8:   5, g8:   6, h8:   7,
+    a7:  16, b7:  17, c7:  18, d7:  19, e7:  20, f7:  21, g7:  22, h7:  23,
+    a6:  32, b6:  33, c6:  34, d6:  35, e6:  36, f6:  37, g6:  38, h6:  39,
+    a5:  48, b5:  49, c5:  50, d5:  51, e5:  52, f5:  53, g5:  54, h5:  55,
+    a4:  64, b4:  65, c4:  66, d4:  67, e4:  68, f4:  69, g4:  70, h4:  71,
+    a3:  80, b3:  81, c3:  82, d3:  83, e3:  84, f3:  85, g3:  86, h3:  87,
+    a2:  96, b2:  97, c2:  98, d2:  99, e2: 100, f2: 101, g2: 102, h2: 103,
+    a1: 112, b1: 113, c1: 114, d1: 115, e1: 116, f1: 117, g1: 118, h1: 119
+  };
+
+  var ROOKS = {
+    w: [
+      { square: SQUARES.a1, flag: BITS.QSIDE_CASTLE },
+      { square: SQUARES.h1, flag: BITS.KSIDE_CASTLE }
+    ],
+    b: [
+      { square: SQUARES.a8, flag: BITS.QSIDE_CASTLE },
+      { square: SQUARES.h8, flag: BITS.KSIDE_CASTLE }
+    ]
+  }
+
+  var board = new Array(128)
+  var kings = { w: EMPTY, b: EMPTY }
+  var turn = WHITE
+  var castling = { w: 0, b: 0 }
+  var ep_square = EMPTY
+  var half_moves = 0
+  var move_number = 1
+  var history = []
+  var header = {}
+
+  /* if the user passes in a fen string, load it, else default to
+   * starting position
+   */
+  if (typeof fen === 'undefined') {
+    load(DEFAULT_POSITION)
+  } else {
+    load(fen)
+  }
+
+  function clear(keep_headers) {
+    if (typeof keep_headers === 'undefined') {
+      keep_headers = false
+    }
+
+    board = new Array(128)
+    kings = { w: EMPTY, b: EMPTY }
+    turn = WHITE
+    castling = { w: 0, b: 0 }
+    ep_square = EMPTY
+    half_moves = 0
+    move_number = 1
+    history = []
+    if (!keep_headers) header = {}
+    update_setup(generate_fen())
+  }
+
+  function reset() {
+    load(DEFAULT_POSITION)
+  }
+
+  function load(fen, keep_headers) {
+    if (typeof keep_headers === 'undefined') {
+      keep_headers = false
+    }
+
+    var tokens = fen.split(/\s+/)
+    var position = tokens[0]
+    var square = 0
+
+    if (!validate_fen(fen).valid) {
+      return false
+    }
+
+    clear(keep_headers)
+
+    for (var i = 0; i < position.length; i++) {
+      var piece = position.charAt(i)
+
+      if (piece === '/') {
+        square += 8
+      } else if (is_digit(piece)) {
+        square += parseInt(piece, 10)
+      } else {
+        var color = piece < 'a' ? WHITE : BLACK
+        put({ type: piece.toLowerCase(), color: color }, algebraic(square))
+        square++
+      }
+    }
+
+    turn = tokens[1]
+
+    if (tokens[2].indexOf('K') > -1) {
+      castling.w |= BITS.KSIDE_CASTLE
+    }
+    if (tokens[2].indexOf('Q') > -1) {
+      castling.w |= BITS.QSIDE_CASTLE
+    }
+    if (tokens[2].indexOf('k') > -1) {
+      castling.b |= BITS.KSIDE_CASTLE
+    }
+    if (tokens[2].indexOf('q') > -1) {
+      castling.b |= BITS.QSIDE_CASTLE
+    }
+
+    ep_square = tokens[3] === '-' ? EMPTY : SQUARES[tokens[3]]
+    half_moves = parseInt(tokens[4], 10)
+    move_number = parseInt(tokens[5], 10)
+
+    update_setup(generate_fen())
+
+    return true
+  }
+
+  /* TODO: this function is pretty much crap - it validates structure but
+   * completely ignores content (e.g. doesn't verify that each side has a king)
+   * ... we should rewrite this, and ditch the silly error_number field while
+   * we're at it
+   */
+  function validate_fen(fen) {
+    var errors = {
+      0: 'No errors.',
+      1: 'FEN string must contain six space-delimited fields.',
+      2: '6th field (move number) must be a positive integer.',
+      3: '5th field (half move counter) must be a non-negative integer.',
+      4: '4th field (en-passant square) is invalid.',
+      5: '3rd field (castling availability) is invalid.',
+      6: '2nd field (side to move) is invalid.',
+      7: "1st field (piece positions) does not contain 8 '/'-delimited rows.",
+      8: '1st field (piece positions) is invalid [consecutive numbers].',
+      9: '1st field (piece positions) is invalid [invalid piece].',
+      10: '1st field (piece positions) is invalid [row too large].',
+      11: 'Illegal en-passant square'
+    }
+
+    /* 1st criterion: 6 space-seperated fields? */
+    var tokens = fen.split(/\s+/)
+    if (tokens.length !== 6) {
+      return { valid: false, error_number: 1, error: errors[1] }
+    }
+
+    /* 2nd criterion: move number field is a integer value > 0? */
+    if (isNaN(tokens[5]) || parseInt(tokens[5], 10) <= 0) {
+      return { valid: false, error_number: 2, error: errors[2] }
+    }
+
+    /* 3rd criterion: half move counter is an integer >= 0? */
+    if (isNaN(tokens[4]) || parseInt(tokens[4], 10) < 0) {
+      return { valid: false, error_number: 3, error: errors[3] }
+    }
+
+    /* 4th criterion: 4th field is a valid e.p.-string? */
+    if (!/^(-|[abcdefgh][36])$/.test(tokens[3])) {
+      return { valid: false, error_number: 4, error: errors[4] }
+    }
+
+    /* 5th criterion: 3th field is a valid castle-string? */
+    if (!/^(KQ?k?q?|Qk?q?|kq?|q|-)$/.test(tokens[2])) {
+      return { valid: false, error_number: 5, error: errors[5] }
+    }
+
+    /* 6th criterion: 2nd field is "w" (white) or "b" (black)? */
+    if (!/^(w|b)$/.test(tokens[1])) {
+      return { valid: false, error_number: 6, error: errors[6] }
+    }
+
+    /* 7th criterion: 1st field contains 8 rows? */
+    var rows = tokens[0].split('/')
+    if (rows.length !== 8) {
+      return { valid: false, error_number: 7, error: errors[7] }
+    }
+
+    /* 8th criterion: every row is valid? */
+    for (var i = 0; i < rows.length; i++) {
+      /* check for right sum of fields AND not two numbers in succession */
+      var sum_fields = 0
+      var previous_was_number = false
+
+      for (var k = 0; k < rows[i].length; k++) {
+        if (!isNaN(rows[i][k])) {
+          if (previous_was_number) {
+            return { valid: false, error_number: 8, error: errors[8] }
+          }
+          sum_fields += parseInt(rows[i][k], 10)
+          previous_was_number = true
+        } else {
+          if (!/^[prnbqkPRNBQK]$/.test(rows[i][k])) {
+            return { valid: false, error_number: 9, error: errors[9] }
+          }
+          sum_fields += 1
+          previous_was_number = false
+        }
+      }
+      if (sum_fields !== 8) {
+        return { valid: false, error_number: 10, error: errors[10] }
+      }
+    }
+
+    if (
+      (tokens[3][1] == '3' && tokens[1] == 'w') ||
+      (tokens[3][1] == '6' && tokens[1] == 'b')
+    ) {
+      return { valid: false, error_number: 11, error: errors[11] }
+    }
+
+    /* everything's okay! */
+    return { valid: true, error_number: 0, error: errors[0] }
+  }
+
+  function generate_fen() {
+    var empty = 0
+    var fen = ''
+
+    for (var i = SQUARES.a8; i <= SQUARES.h1; i++) {
+      if (board[i] == null) {
+        empty++
+      } else {
+        if (empty > 0) {
+          fen += empty
+          empty = 0
+        }
+        var color = board[i].color
+        var piece = board[i].type
+
+        fen += color === WHITE ? piece.toUpperCase() : piece.toLowerCase()
+      }
+
+      if ((i + 1) & 0x88) {
+        if (empty > 0) {
+          fen += empty
+        }
+
+        if (i !== SQUARES.h1) {
+          fen += '/'
+        }
+
+        empty = 0
+        i += 8
+      }
+    }
+
+    var cflags = ''
+    if (castling[WHITE] & BITS.KSIDE_CASTLE) {
+      cflags += 'K'
+    }
+    if (castling[WHITE] & BITS.QSIDE_CASTLE) {
+      cflags += 'Q'
+    }
+    if (castling[BLACK] & BITS.KSIDE_CASTLE) {
+      cflags += 'k'
+    }
+    if (castling[BLACK] & BITS.QSIDE_CASTLE) {
+      cflags += 'q'
+    }
+
+    /* do we have an empty castling flag? */
+    cflags = cflags || '-'
+    var epflags = ep_square === EMPTY ? '-' : algebraic(ep_square)
+
+    return [fen, turn, cflags, epflags, half_moves, move_number].join(' ')
+  }
+
+  function set_header(args) {
+    for (var i = 0; i < args.length; i += 2) {
+      if (typeof args[i] === 'string' && typeof args[i + 1] === 'string') {
+        header[args[i]] = args[i + 1]
+      }
+    }
+    return header
+  }
+
+  /* called when the initial board setup is changed with put() or remove().
+   * modifies the SetUp and FEN properties of the header object.  if the FEN is
+   * equal to the default position, the SetUp and FEN are deleted
+   * the setup is only updated if history.length is zero, ie moves haven't been
+   * made.
+   */
+  function update_setup(fen) {
+    if (history.length > 0) return
+
+    if (fen !== DEFAULT_POSITION) {
+      header['SetUp'] = '1'
+      header['FEN'] = fen
+    } else {
+      delete header['SetUp']
+      delete header['FEN']
+    }
+  }
+
+  function get(square) {
+    var piece = board[SQUARES[square]]
+    return piece ? { type: piece.type, color: piece.color } : null
+  }
+
+  function put(piece, square) {
+    /* check for valid piece object */
+    if (!('type' in piece && 'color' in piece)) {
+      return false
+    }
+
+    /* check for piece */
+    if (SYMBOLS.indexOf(piece.type.toLowerCase()) === -1) {
+      return false
+    }
+
+    /* check for valid square */
+    if (!(square in SQUARES)) {
+      return false
+    }
+
+    var sq = SQUARES[square]
+
+    /* don't let the user place more than one king */
+    if (
+      piece.type == KING &&
+      !(kings[piece.color] == EMPTY || kings[piece.color] == sq)
+    ) {
+      return false
+    }
+
+    board[sq] = { type: piece.type, color: piece.color }
+    if (piece.type === KING) {
+      kings[piece.color] = sq
+    }
+
+    update_setup(generate_fen())
+
+    return true
+  }
+
+  function remove(square) {
+    var piece = get(square)
+    board[SQUARES[square]] = null
+    if (piece && piece.type === KING) {
+      kings[piece.color] = EMPTY
+    }
+
+    update_setup(generate_fen())
+
+    return piece
+  }
+
+  function build_move(board, from, to, flags, promotion) {
+    var move = {
+      color: turn,
+      from: from,
+      to: to,
+      flags: flags,
+      piece: board[from].type
+    }
+
+    if (promotion) {
+      move.flags |= BITS.PROMOTION
+      move.promotion = promotion
+    }
+
+    if (board[to]) {
+      move.captured = board[to].type
+    } else if (flags & BITS.EP_CAPTURE) {
+      move.captured = PAWN
+    }
+    return move
+  }
+
+  function generate_moves(options) {
+    function add_move(board, moves, from, to, flags) {
+      /* if pawn promotion */
+      if (
+        board[from].type === PAWN &&
+        (rank(to) === RANK_8 || rank(to) === RANK_1)
+      ) {
+        var pieces = [QUEEN, ROOK, BISHOP, KNIGHT]
+        for (var i = 0, len = pieces.length; i < len; i++) {
+          moves.push(build_move(board, from, to, flags, pieces[i]))
+        }
+      } else {
+        moves.push(build_move(board, from, to, flags))
+      }
+    }
+
+    var moves = []
+    var us = turn
+    var them = swap_color(us)
+    var second_rank = { b: RANK_7, w: RANK_2 }
+
+    var first_sq = SQUARES.a8
+    var last_sq = SQUARES.h1
+    var single_square = false
+
+    /* do we want legal moves? */
+    var legal =
+      typeof options !== 'undefined' && 'legal' in options
+        ? options.legal
+        : true
+
+    /* are we generating moves for a single square? */
+    if (typeof options !== 'undefined' && 'square' in options) {
+      if (options.square in SQUARES) {
+        first_sq = last_sq = SQUARES[options.square]
+        single_square = true
+      } else {
+        /* invalid square */
+        return []
+      }
+    }
+
+    for (var i = first_sq; i <= last_sq; i++) {
+      /* did we run off the end of the board */
+      if (i & 0x88) {
+        i += 7
+        continue
+      }
+
+      var piece = board[i]
+      if (piece == null || piece.color !== us) {
+        continue
+      }
+
+      if (piece.type === PAWN) {
+        /* single square, non-capturing */
+        var square = i + PAWN_OFFSETS[us][0]
+        if (board[square] == null) {
+          add_move(board, moves, i, square, BITS.NORMAL)
+
+          /* double square */
+          var square = i + PAWN_OFFSETS[us][1]
+          if (second_rank[us] === rank(i) && board[square] == null) {
+            add_move(board, moves, i, square, BITS.BIG_PAWN)
+          }
+        }
+
+        /* pawn captures */
+        for (j = 2; j < 4; j++) {
+          var square = i + PAWN_OFFSETS[us][j]
+          if (square & 0x88) continue
+
+          if (board[square] != null && board[square].color === them) {
+            add_move(board, moves, i, square, BITS.CAPTURE)
+          } else if (square === ep_square) {
+            add_move(board, moves, i, ep_square, BITS.EP_CAPTURE)
+          }
+        }
+      } else {
+        for (var j = 0, len = PIECE_OFFSETS[piece.type].length; j < len; j++) {
+          var offset = PIECE_OFFSETS[piece.type][j]
+          var square = i
+
+          while (true) {
+            square += offset
+            if (square & 0x88) break
+
+            if (board[square] == null) {
+              add_move(board, moves, i, square, BITS.NORMAL)
+            } else {
+              if (board[square].color === us) break
+              add_move(board, moves, i, square, BITS.CAPTURE)
+              break
+            }
+
+            /* break, if knight or king */
+            if (piece.type === 'n' || piece.type === 'k') break
+          }
+        }
+      }
+    }
+
+    /* check for castling if: a) we're generating all moves, or b) we're doing
+     * single square move generation on the king's square
+     */
+    if (!single_square || last_sq === kings[us]) {
+      /* king-side castling */
+      if (castling[us] & BITS.KSIDE_CASTLE) {
+        var castling_from = kings[us]
+        var castling_to = castling_from + 2
+
+        if (
+          board[castling_from + 1] == null &&
+          board[castling_to] == null &&
+          !attacked(them, kings[us]) &&
+          !attacked(them, castling_from + 1) &&
+          !attacked(them, castling_to)
+        ) {
+          add_move(board, moves, kings[us], castling_to, BITS.KSIDE_CASTLE)
+        }
+      }
+
+      /* queen-side castling */
+      if (castling[us] & BITS.QSIDE_CASTLE) {
+        var castling_from = kings[us]
+        var castling_to = castling_from - 2
+
+        if (
+          board[castling_from - 1] == null &&
+          board[castling_from - 2] == null &&
+          board[castling_from - 3] == null &&
+          !attacked(them, kings[us]) &&
+          !attacked(them, castling_from - 1) &&
+          !attacked(them, castling_to)
+        ) {
+          add_move(board, moves, kings[us], castling_to, BITS.QSIDE_CASTLE)
+        }
+      }
+    }
+
+    /* return all pseudo-legal moves (this includes moves that allow the king
+     * to be captured)
+     */
+    if (!legal) {
+      return moves
+    }
+
+    /* filter out illegal moves */
+    var legal_moves = []
+    for (var i = 0, len = moves.length; i < len; i++) {
+      make_move(moves[i])
+      if (!king_attacked(us)) {
+        legal_moves.push(moves[i])
+      }
+      undo_move()
+    }
+
+    return legal_moves
+  }
+
+  /* convert a move from 0x88 coordinates to Standard Algebraic Notation
+   * (SAN)
+   *
+   * @param {boolean} sloppy Use the sloppy SAN generator to work around over
+   * disambiguation bugs in Fritz and Chessbase.  See below:
+   *
+   * r1bqkbnr/ppp2ppp/2n5/1B1pP3/4P3/8/PPPP2PP/RNBQK1NR b KQkq - 2 4
+   * 4. ... Nge7 is overly disambiguated because the knight on c6 is pinned
+   * 4. ... Ne7 is technically the valid SAN
+   */
+  function move_to_san(move, sloppy) {
+    var output = ''
+
+    if (move.flags & BITS.KSIDE_CASTLE) {
+      output = 'O-O'
+    } else if (move.flags & BITS.QSIDE_CASTLE) {
+      output = 'O-O-O'
+    } else {
+      var disambiguator = get_disambiguator(move, sloppy)
+
+      if (move.piece !== PAWN) {
+        output += move.piece.toUpperCase() + disambiguator
+      }
+
+      if (move.flags & (BITS.CAPTURE | BITS.EP_CAPTURE)) {
+        if (move.piece === PAWN) {
+          output += algebraic(move.from)[0]
+        }
+        output += 'x'
+      }
+
+      output += algebraic(move.to)
+
+      if (move.flags & BITS.PROMOTION) {
+        output += '=' + move.promotion.toUpperCase()
+      }
+    }
+
+    make_move(move)
+    if (in_check()) {
+      if (in_checkmate()) {
+        output += '#'
+      } else {
+        output += '+'
+      }
+    }
+    undo_move()
+
+    return output
+  }
+
+  // parses all of the decorators out of a SAN string
+  function stripped_san(move) {
+    return move.replace(/=/, '').replace(/[+#]?[?!]*$/, '')
+  }
+
+  function attacked(color, square) {
+    for (var i = SQUARES.a8; i <= SQUARES.h1; i++) {
+      /* did we run off the end of the board */
+      if (i & 0x88) {
+        i += 7
+        continue
+      }
+
+      /* if empty square or wrong color */
+      if (board[i] == null || board[i].color !== color) continue
+
+      var piece = board[i]
+      var difference = i - square
+      var index = difference + 119
+
+      if (ATTACKS[index] & (1 << SHIFTS[piece.type])) {
+        if (piece.type === PAWN) {
+          if (difference > 0) {
+            if (piece.color === WHITE) return true
+          } else {
+            if (piece.color === BLACK) return true
+          }
+          continue
+        }
+
+        /* if the piece is a knight or a king */
+        if (piece.type === 'n' || piece.type === 'k') return true
+
+        var offset = RAYS[index]
+        var j = i + offset
+
+        var blocked = false
+        while (j !== square) {
+          if (board[j] != null) {
+            blocked = true
+            break
+          }
+          j += offset
+        }
+
+        if (!blocked) return true
+      }
+    }
+
+    return false
+  }
+
+  function king_attacked(color) {
+    return attacked(swap_color(color), kings[color])
+  }
+
+  function in_check() {
+    return king_attacked(turn)
+  }
+
+  function in_checkmate() {
+    return in_check() && generate_moves().length === 0
+  }
+
+  function in_stalemate() {
+    return !in_check() && generate_moves().length === 0
+  }
+
+  function insufficient_material() {
+    var pieces = {}
+    var bishops = []
+    var num_pieces = 0
+    var sq_color = 0
+
+    for (var i = SQUARES.a8; i <= SQUARES.h1; i++) {
+      sq_color = (sq_color + 1) % 2
+      if (i & 0x88) {
+        i += 7
+        continue
+      }
+
+      var piece = board[i]
+      if (piece) {
+        pieces[piece.type] = piece.type in pieces ? pieces[piece.type] + 1 : 1
+        if (piece.type === BISHOP) {
+          bishops.push(sq_color)
+        }
+        num_pieces++
+      }
+    }
+
+    /* k vs. k */
+    if (num_pieces === 2) {
+      return true
+    } else if (
+      /* k vs. kn .... or .... k vs. kb */
+      num_pieces === 3 &&
+      (pieces[BISHOP] === 1 || pieces[KNIGHT] === 1)
+    ) {
+      return true
+    } else if (num_pieces === pieces[BISHOP] + 2) {
+      /* kb vs. kb where any number of bishops are all on the same color */
+      var sum = 0
+      var len = bishops.length
+      for (var i = 0; i < len; i++) {
+        sum += bishops[i]
+      }
+      if (sum === 0 || sum === len) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  function in_threefold_repetition() {
+    /* TODO: while this function is fine for casual use, a better
+     * implementation would use a Zobrist key (instead of FEN). the
+     * Zobrist key would be maintained in the make_move/undo_move functions,
+     * avoiding the costly that we do below.
+     */
+    var moves = []
+    var positions = {}
+    var repetition = false
+
+    while (true) {
+      var move = undo_move()
+      if (!move) break
+      moves.push(move)
+    }
+
+    while (true) {
+      /* remove the last two fields in the FEN string, they're not needed
+       * when checking for draw by rep */
+      var fen = generate_fen()
+        .split(' ')
+        .slice(0, 4)
+        .join(' ')
+
+      /* has the position occurred three or move times */
+      positions[fen] = fen in positions ? positions[fen] + 1 : 1
+      if (positions[fen] >= 3) {
+        repetition = true
+      }
+
+      if (!moves.length) {
+        break
+      }
+      make_move(moves.pop())
+    }
+
+    return repetition
+  }
+
+  function push(move) {
+    history.push({
+      move: move,
+      kings: { b: kings.b, w: kings.w },
+      turn: turn,
+      castling: { b: castling.b, w: castling.w },
+      ep_square: ep_square,
+      half_moves: half_moves,
+      move_number: move_number
+    })
+  }
+
+  function make_move(move) {
+    var us = turn
+    var them = swap_color(us)
+    push(move)
+
+    board[move.to] = board[move.from]
+    board[move.from] = null
+
+    /* if ep capture, remove the captured pawn */
+    if (move.flags & BITS.EP_CAPTURE) {
+      if (turn === BLACK) {
+        board[move.to - 16] = null
+      } else {
+        board[move.to + 16] = null
+      }
+    }
+
+    /* if pawn promotion, replace with new piece */
+    if (move.flags & BITS.PROMOTION) {
+      board[move.to] = { type: move.promotion, color: us }
+    }
+
+    /* if we moved the king */
+    if (board[move.to].type === KING) {
+      kings[board[move.to].color] = move.to
+
+      /* if we castled, move the rook next to the king */
+      if (move.flags & BITS.KSIDE_CASTLE) {
+        var castling_to = move.to - 1
+        var castling_from = move.to + 1
+        board[castling_to] = board[castling_from]
+        board[castling_from] = null
+      } else if (move.flags & BITS.QSIDE_CASTLE) {
+        var castling_to = move.to + 1
+        var castling_from = move.to - 2
+        board[castling_to] = board[castling_from]
+        board[castling_from] = null
+      }
+
+      /* turn off castling */
+      castling[us] = ''
+    }
+
+    /* turn off castling if we move a rook */
+    if (castling[us]) {
+      for (var i = 0, len = ROOKS[us].length; i < len; i++) {
+        if (
+          move.from === ROOKS[us][i].square &&
+          castling[us] & ROOKS[us][i].flag
+        ) {
+          castling[us] ^= ROOKS[us][i].flag
+          break
+        }
+      }
+    }
+
+    /* turn off castling if we capture a rook */
+    if (castling[them]) {
+      for (var i = 0, len = ROOKS[them].length; i < len; i++) {
+        if (
+          move.to === ROOKS[them][i].square &&
+          castling[them] & ROOKS[them][i].flag
+        ) {
+          castling[them] ^= ROOKS[them][i].flag
+          break
+        }
+      }
+    }
+
+    /* if big pawn move, update the en passant square */
+    if (move.flags & BITS.BIG_PAWN) {
+      if (turn === 'b') {
+        ep_square = move.to - 16
+      } else {
+        ep_square = move.to + 16
+      }
+    } else {
+      ep_square = EMPTY
+    }
+
+    /* reset the 50 move counter if a pawn is moved or a piece is captured */
+    if (move.piece === PAWN) {
+      half_moves = 0
+    } else if (move.flags & (BITS.CAPTURE | BITS.EP_CAPTURE)) {
+      half_moves = 0
+    } else {
+      half_moves++
+    }
+
+    if (turn === BLACK) {
+      move_number++
+    }
+    turn = swap_color(turn)
+  }
+
+  function undo_move() {
+    var old = history.pop()
+    if (old == null) {
+      return null
+    }
+
+    var move = old.move
+    kings = old.kings
+    turn = old.turn
+    castling = old.castling
+    ep_square = old.ep_square
+    half_moves = old.half_moves
+    move_number = old.move_number
+
+    var us = turn
+    var them = swap_color(turn)
+
+    board[move.from] = board[move.to]
+    board[move.from].type = move.piece // to undo any promotions
+    board[move.to] = null
+
+    if (move.flags & BITS.CAPTURE) {
+      board[move.to] = { type: move.captured, color: them }
+    } else if (move.flags & BITS.EP_CAPTURE) {
+      var index
+      if (us === BLACK) {
+        index = move.to - 16
+      } else {
+        index = move.to + 16
+      }
+      board[index] = { type: PAWN, color: them }
+    }
+
+    if (move.flags & (BITS.KSIDE_CASTLE | BITS.QSIDE_CASTLE)) {
+      var castling_to, castling_from
+      if (move.flags & BITS.KSIDE_CASTLE) {
+        castling_to = move.to + 1
+        castling_from = move.to - 1
+      } else if (move.flags & BITS.QSIDE_CASTLE) {
+        castling_to = move.to - 2
+        castling_from = move.to + 1
+      }
+
+      board[castling_to] = board[castling_from]
+      board[castling_from] = null
+    }
+
+    return move
+  }
+
+  /* this function is used to uniquely identify ambiguous moves */
+  function get_disambiguator(move, sloppy) {
+    var moves = generate_moves({ legal: !sloppy })
+
+    var from = move.from
+    var to = move.to
+    var piece = move.piece
+
+    var ambiguities = 0
+    var same_rank = 0
+    var same_file = 0
+
+    for (var i = 0, len = moves.length; i < len; i++) {
+      var ambig_from = moves[i].from
+      var ambig_to = moves[i].to
+      var ambig_piece = moves[i].piece
+
+      /* if a move of the same piece type ends on the same to square, we'll
+       * need to add a disambiguator to the algebraic notation
+       */
+      if (piece === ambig_piece && from !== ambig_from && to === ambig_to) {
+        ambiguities++
+
+        if (rank(from) === rank(ambig_from)) {
+          same_rank++
+        }
+
+        if (file(from) === file(ambig_from)) {
+          same_file++
+        }
+      }
+    }
+
+    if (ambiguities > 0) {
+      /* if there exists a similar moving piece on the same rank and file as
+       * the move in question, use the square as the disambiguator
+       */
+      if (same_rank > 0 && same_file > 0) {
+        return algebraic(from)
+      } else if (same_file > 0) {
+        /* if the moving piece rests on the same file, use the rank symbol as the
+         * disambiguator
+         */
+        return algebraic(from).charAt(1)
+      } else {
+        /* else use the file symbol */
+        return algebraic(from).charAt(0)
+      }
+    }
+
+    return ''
+  }
+
+  function ascii() {
+    var s = '   +------------------------+\n'
+    for (var i = SQUARES.a8; i <= SQUARES.h1; i++) {
+      /* display the rank */
+      if (file(i) === 0) {
+        s += ' ' + '87654321'[rank(i)] + ' |'
+      }
+
+      /* empty piece */
+      if (board[i] == null) {
+        s += ' . '
+      } else {
+        var piece = board[i].type
+        var color = board[i].color
+        var symbol = color === WHITE ? piece.toUpperCase() : piece.toLowerCase()
+        s += ' ' + symbol + ' '
+      }
+
+      if ((i + 1) & 0x88) {
+        s += '|\n'
+        i += 8
+      }
+    }
+    s += '   +------------------------+\n'
+    s += '     a  b  c  d  e  f  g  h\n'
+
+    return s
+  }
+
+  // convert a move from Standard Algebraic Notation (SAN) to 0x88 coordinates
+  function move_from_san(move, sloppy) {
+    // strip off any move decorations: e.g Nf3+?!
+    var clean_move = stripped_san(move)
+
+    // if we're using the sloppy parser run a regex to grab piece, to, and from
+    // this should parse invalid SAN like: Pe2-e4, Rc1c4, Qf3xf7
+    if (sloppy) {
+      var matches = clean_move.match(
+        /([pnbrqkPNBRQK])?([a-h][1-8])x?-?([a-h][1-8])([qrbnQRBN])?/
+      )
+      if (matches) {
+        var piece = matches[1]
+        var from = matches[2]
+        var to = matches[3]
+        var promotion = matches[4]
+      }
+    }
+
+    var moves = generate_moves()
+    for (var i = 0, len = moves.length; i < len; i++) {
+      // try the strict parser first, then the sloppy parser if requested
+      // by the user
+      if (
+        clean_move === stripped_san(move_to_san(moves[i])) ||
+        (sloppy && clean_move === stripped_san(move_to_san(moves[i], true)))
+      ) {
+        return moves[i]
+      } else {
+        if (
+          matches &&
+          (!piece || piece.toLowerCase() == moves[i].piece) &&
+          SQUARES[from] == moves[i].from &&
+          SQUARES[to] == moves[i].to &&
+          (!promotion || promotion.toLowerCase() == moves[i].promotion)
+        ) {
+          return moves[i]
+        }
+      }
+    }
+
+    return null
+  }
+
+  /*****************************************************************************
+   * UTILITY FUNCTIONS
+   ****************************************************************************/
+  function rank(i) {
+    return i >> 4
+  }
+
+  function file(i) {
+    return i & 15
+  }
+
+  function algebraic(i) {
+    var f = file(i),
+      r = rank(i)
+    return 'abcdefgh'.substring(f, f + 1) + '87654321'.substring(r, r + 1)
+  }
+
+  function swap_color(c) {
+    return c === WHITE ? BLACK : WHITE
+  }
+
+  function is_digit(c) {
+    return '0123456789'.indexOf(c) !== -1
+  }
+
+  /* pretty = external move object */
+  function make_pretty(ugly_move) {
+    var move = clone(ugly_move)
+    move.san = move_to_san(move, false)
+    move.to = algebraic(move.to)
+    move.from = algebraic(move.from)
+
+    var flags = ''
+
+    for (var flag in BITS) {
+      if (BITS[flag] & move.flags) {
+        flags += FLAGS[flag]
+      }
+    }
+    move.flags = flags
+
+    return move
+  }
+
+  function clone(obj) {
+    var dupe = obj instanceof Array ? [] : {}
+
+    for (var property in obj) {
+      if (typeof property === 'object') {
+        dupe[property] = clone(obj[property])
+      } else {
+        dupe[property] = obj[property]
+      }
+    }
+
+    return dupe
+  }
+
+  function trim(str) {
+    return str.replace(/^\s+|\s+$/g, '')
+  }
+
+  /*****************************************************************************
+   * DEBUGGING UTILITIES
+   ****************************************************************************/
+  function perft(depth) {
+    var moves = generate_moves({ legal: false })
+    var nodes = 0
+    var color = turn
+
+    for (var i = 0, len = moves.length; i < len; i++) {
+      make_move(moves[i])
+      if (!king_attacked(color)) {
+        if (depth - 1 > 0) {
+          var child_nodes = perft(depth - 1)
+          nodes += child_nodes
+        } else {
+          nodes++
+        }
+      }
+      undo_move()
+    }
+
+    return nodes
+  }
+
+  return {
+    /***************************************************************************
+     * PUBLIC CONSTANTS (is there a better way to do this?)
+     **************************************************************************/
+    WHITE: WHITE,
+    BLACK: BLACK,
+    PAWN: PAWN,
+    KNIGHT: KNIGHT,
+    BISHOP: BISHOP,
+    ROOK: ROOK,
+    QUEEN: QUEEN,
+    KING: KING,
+    SQUARES: (function() {
+      /* from the ECMA-262 spec (section 12.6.4):
+       * "The mechanics of enumerating the properties ... is
+       * implementation dependent"
+       * so: for (var sq in SQUARES) { keys.push(sq); } might not be
+       * ordered correctly
+       */
+      var keys = []
+      for (var i = SQUARES.a8; i <= SQUARES.h1; i++) {
+        if (i & 0x88) {
+          i += 7
+          continue
+        }
+        keys.push(algebraic(i))
+      }
+      return keys
+    })(),
+    FLAGS: FLAGS,
+
+    /***************************************************************************
+     * PUBLIC API
+     **************************************************************************/
+    load: function(fen) {
+      return load(fen)
+    },
+
+    reset: function() {
+      return reset()
+    },
+
+    moves: function(options) {
+      /* The internal representation of a chess move is in 0x88 format, and
+       * not meant to be human-readable.  The code below converts the 0x88
+       * square coordinates to algebraic coordinates.  It also prunes an
+       * unnecessary move keys resulting from a verbose call.
+       */
+
+      var ugly_moves = generate_moves(options)
+      var moves = []
+
+      for (var i = 0, len = ugly_moves.length; i < len; i++) {
+        /* does the user want a full move object (most likely not), or just
+         * SAN
+         */
+        if (
+          typeof options !== 'undefined' &&
+          'verbose' in options &&
+          options.verbose
+        ) {
+          moves.push(make_pretty(ugly_moves[i]))
+        } else {
+          moves.push(move_to_san(ugly_moves[i], false))
+        }
+      }
+
+      return moves
+    },
+
+    in_check: function() {
+      return in_check()
+    },
+
+    in_checkmate: function() {
+      return in_checkmate()
+    },
+
+    in_stalemate: function() {
+      return in_stalemate()
+    },
+
+    in_draw: function() {
+      return (
+        half_moves >= 100 ||
+        in_stalemate() ||
+        insufficient_material() ||
+        in_threefold_repetition()
+      )
+    },
+
+    insufficient_material: function() {
+      return insufficient_material()
+    },
+
+    in_threefold_repetition: function() {
+      return in_threefold_repetition()
+    },
+
+    game_over: function() {
+      return (
+        half_moves >= 100 ||
+        in_checkmate() ||
+        in_stalemate() ||
+        insufficient_material() ||
+        in_threefold_repetition()
+      )
+    },
+
+    validate_fen: function(fen) {
+      return validate_fen(fen)
+    },
+
+    fen: function() {
+      return generate_fen()
+    },
+
+    board: function() {
+      var output = [],
+        row = []
+
+      for (var i = SQUARES.a8; i <= SQUARES.h1; i++) {
+        if (board[i] == null) {
+          row.push(null)
+        } else {
+          row.push({ type: board[i].type, color: board[i].color })
+        }
+        if ((i + 1) & 0x88) {
+          output.push(row)
+          row = []
+          i += 8
+        }
+      }
+
+      return output
+    },
+
+    pgn: function(options) {
+      /* using the specification from http://www.chessclub.com/help/PGN-spec
+       * example for html usage: .pgn({ max_width: 72, newline_char: "<br />" })
+       */
+      var newline =
+        typeof options === 'object' && typeof options.newline_char === 'string'
+          ? options.newline_char
+          : '\n'
+      var max_width =
+        typeof options === 'object' && typeof options.max_width === 'number'
+          ? options.max_width
+          : 0
+      var result = []
+      var header_exists = false
+
+      /* add the PGN header headerrmation */
+      for (var i in header) {
+        /* TODO: order of enumerated properties in header object is not
+         * guaranteed, see ECMA-262 spec (section 12.6.4)
+         */
+        result.push('[' + i + ' "' + header[i] + '"]' + newline)
+        header_exists = true
+      }
+
+      if (header_exists && history.length) {
+        result.push(newline)
+      }
+
+      /* pop all of history onto reversed_history */
+      var reversed_history = []
+      while (history.length > 0) {
+        reversed_history.push(undo_move())
+      }
+
+      var moves = []
+      var move_string = ''
+
+      /* build the list of moves.  a move_string looks like: "3. e3 e6" */
+      while (reversed_history.length > 0) {
+        var move = reversed_history.pop()
+
+        /* if the position started with black to move, start PGN with 1. ... */
+        if (!history.length && move.color === 'b') {
+          move_string = move_number + '. ...'
+        } else if (move.color === 'w') {
+          /* store the previous generated move_string if we have one */
+          if (move_string.length) {
+            moves.push(move_string)
+          }
+          move_string = move_number + '.'
+        }
+
+        move_string = move_string + ' ' + move_to_san(move, false)
+        make_move(move)
+      }
+
+      /* are there any other leftover moves? */
+      if (move_string.length) {
+        moves.push(move_string)
+      }
+
+      /* is there a result? */
+      if (typeof header.Result !== 'undefined') {
+        moves.push(header.Result)
+      }
+
+      /* history should be back to what is was before we started generating PGN,
+       * so join together moves
+       */
+      if (max_width === 0) {
+        return result.join('') + moves.join(' ')
+      }
+
+      /* wrap the PGN output at max_width */
+      var current_width = 0
+      for (var i = 0; i < moves.length; i++) {
+        /* if the current move will push past max_width */
+        if (current_width + moves[i].length > max_width && i !== 0) {
+          /* don't end the line with whitespace */
+          if (result[result.length - 1] === ' ') {
+            result.pop()
+          }
+
+          result.push(newline)
+          current_width = 0
+        } else if (i !== 0) {
+          result.push(' ')
+          current_width++
+        }
+        result.push(moves[i])
+        current_width += moves[i].length
+      }
+
+      return result.join('')
+    },
+
+    load_pgn: function(pgn, options) {
+      // allow the user to specify the sloppy move parser to work around over
+      // disambiguation bugs in Fritz and Chessbase
+      var sloppy =
+        typeof options !== 'undefined' && 'sloppy' in options
+          ? options.sloppy
+          : false
+
+      function mask(str) {
+        return str.replace(/\\/g, '\\')
+      }
+
+      function has_keys(object) {
+        for (var key in object) {
+          return true
+        }
+        return false
+      }
+
+      function parse_pgn_header(header, options) {
+        var newline_char =
+          typeof options === 'object' &&
+          typeof options.newline_char === 'string'
+            ? options.newline_char
+            : '\r?\n'
+        var header_obj = {}
+        var headers = header.split(new RegExp(mask(newline_char)))
+        var key = ''
+        var value = ''
+
+        for (var i = 0; i < headers.length; i++) {
+          key = headers[i].replace(/^\[([A-Z][A-Za-z]*)\s.*\]$/, '$1')
+          value = headers[i].replace(/^\[[A-Za-z]+\s"(.*)"\]$/, '$1')
+          if (trim(key).length > 0) {
+            header_obj[key] = value
+          }
+        }
+
+        return header_obj
+      }
+
+      var newline_char =
+        typeof options === 'object' && typeof options.newline_char === 'string'
+          ? options.newline_char
+          : '\r?\n'
+
+      // RegExp to split header. Takes advantage of the fact that header and movetext
+      // will always have a blank line between them (ie, two newline_char's).
+      // With default newline_char, will equal: /^(\[((?:\r?\n)|.)*\])(?:\r?\n){2}/
+      var header_regex = new RegExp(
+        '^(\\[((?:' +
+          mask(newline_char) +
+          ')|.)*\\])' +
+          '(?:' +
+          mask(newline_char) +
+          '){2}'
+      )
+
+      // If no header given, begin with moves.
+      var header_string = header_regex.test(pgn)
+        ? header_regex.exec(pgn)[1]
+        : ''
+
+      // Put the board in the starting position
+      reset()
+
+      /* parse PGN header */
+      var headers = parse_pgn_header(header_string, options)
+      for (var key in headers) {
+        set_header([key, headers[key]])
+      }
+
+      /* load the starting position indicated by [Setup '1'] and
+       * [FEN position] */
+      if (headers['SetUp'] === '1') {
+        if (!('FEN' in headers && load(headers['FEN'], true))) {
+          // second argument to load: don't clear the headers
+          return false
+        }
+      }
+
+      /* delete header to get the moves */
+      var ms = pgn
+        .replace(header_string, '')
+        .replace(new RegExp(mask(newline_char), 'g'), ' ')
+
+      /* delete comments */
+      ms = ms.replace(/(\{[^}]+\})+?/g, '')
+
+      /* delete recursive annotation variations */
+      var rav_regex = /(\([^\(\)]+\))+?/g
+      while (rav_regex.test(ms)) {
+        ms = ms.replace(rav_regex, '')
+      }
+
+      /* delete move numbers */
+      ms = ms.replace(/\d+\.(\.\.)?/g, '')
+
+      /* delete ... indicating black to move */
+      ms = ms.replace(/\.\.\./g, '')
+
+      /* delete numeric annotation glyphs */
+      ms = ms.replace(/\$\d+/g, '')
+
+      /* trim and get array of moves */
+      var moves = trim(ms).split(new RegExp(/\s+/))
+
+      /* delete empty entries */
+      moves = moves
+        .join(',')
+        .replace(/,,+/g, ',')
+        .split(',')
+      var move = ''
+
+      for (var half_move = 0; half_move < moves.length - 1; half_move++) {
+        move = move_from_san(moves[half_move], sloppy)
+
+        /* move not possible! (don't clear the board to examine to show the
+         * latest valid position)
+         */
+        if (move == null) {
+          return false
+        } else {
+          make_move(move)
+        }
+      }
+
+      /* examine last move */
+      move = moves[moves.length - 1]
+      if (POSSIBLE_RESULTS.indexOf(move) > -1) {
+        if (has_keys(header) && typeof header.Result === 'undefined') {
+          set_header(['Result', move])
+        }
+      } else {
+        move = move_from_san(move, sloppy)
+        if (move == null) {
+          return false
+        } else {
+          make_move(move)
+        }
+      }
+      return true
+    },
+
+    header: function() {
+      return set_header(arguments)
+    },
+
+    ascii: function() {
+      return ascii()
+    },
+
+    turn: function() {
+      return turn
+    },
+
+    move: function(move, options) {
+      /* The move function can be called with in the following parameters:
+       *
+       * .move('Nxb7')      <- where 'move' is a case-sensitive SAN string
+       *
+       * .move({ from: 'h7', <- where the 'move' is a move object (additional
+       *         to :'h8',      fields are ignored)
+       *         promotion: 'q',
+       *      })
+       */
+
+      // allow the user to specify the sloppy move parser to work around over
+      // disambiguation bugs in Fritz and Chessbase
+      var sloppy =
+        typeof options !== 'undefined' && 'sloppy' in options
+          ? options.sloppy
+          : false
+
+      var move_obj = null
+
+      if (typeof move === 'string') {
+        move_obj = move_from_san(move, sloppy)
+      } else if (typeof move === 'object') {
+        var moves = generate_moves()
+
+        /* convert the pretty move object to an ugly move object */
+        for (var i = 0, len = moves.length; i < len; i++) {
+          if (
+            move.from === algebraic(moves[i].from) &&
+            move.to === algebraic(moves[i].to) &&
+            (!('promotion' in moves[i]) ||
+              move.promotion === moves[i].promotion)
+          ) {
+            move_obj = moves[i]
+            break
+          }
+        }
+      }
+
+      /* failed to find move */
+      if (!move_obj) {
+        return null
+      }
+
+      /* need to make a copy of move because we can't generate SAN after the
+       * move is made
+       */
+      var pretty_move = make_pretty(move_obj)
+
+      make_move(move_obj)
+
+      return pretty_move
+    },
+
+    undo: function() {
+      var move = undo_move()
+      return move ? make_pretty(move) : null
+    },
+
+    clear: function() {
+      return clear()
+    },
+
+    put: function(piece, square) {
+      return put(piece, square)
+    },
+
+    get: function(square) {
+      return get(square)
+    },
+
+    remove: function(square) {
+      return remove(square)
+    },
+
+    perft: function(depth) {
+      return perft(depth)
+    },
+
+    square_color: function(square) {
+      if (square in SQUARES) {
+        var sq_0x88 = SQUARES[square]
+        return (rank(sq_0x88) + file(sq_0x88)) % 2 === 0 ? 'light' : 'dark'
+      }
+
+      return null
+    },
+
+    history: function(options) {
+      var reversed_history = []
+      var move_history = []
+      var verbose =
+        typeof options !== 'undefined' &&
+        'verbose' in options &&
+        options.verbose
+
+      while (history.length > 0) {
+        reversed_history.push(undo_move())
+      }
+
+      while (reversed_history.length > 0) {
+        var move = reversed_history.pop()
+        if (verbose) {
+          move_history.push(make_pretty(move))
+        } else {
+          move_history.push(move_to_san(move))
+        }
+        make_move(move)
+      }
+
+      return move_history
+    }
+  }
+}
+
+/* export Chess object if using node or any other CommonJS compatible
+ * environment */
+if (typeof exports !== 'undefined') exports.Chess = Chess
+/* export Chess object for any RequireJS compatible environment */
+if (typeof define !== 'undefined')
+  define(function() {
+    return Chess
+  })
+
+</script>
+<script>
+/* ============================================================
+   LORE (sci-fi, discreto, al fondo — no es parte del hero)
+   ============================================================ */
+const INTRO_LINES = [
+  "SISTEMA DE HIBERNACIÓN — REINICIO COMPLETO.",
+  "Los sensores biométricos parpadean antes que tus propios ojos.",
+  "Cien años de crionización se cierran detrás de ti como una escotilla que no recuerdas haber abierto.",
+  "La nave está en silencio. En el puente, alguien dejó un tablero encendido — como si el ajedrez fuera la única señal que sobrevive al tiempo.",
+  "Es tuyo ahora. Blancas empiezan."
+];
+function typeIntro(){
+  const el = document.getElementById('introText');
+  let full = INTRO_LINES.join('<br><br>');
+  el.innerHTML = full + '<span class="cursor">&nbsp;</span>';
+}
+typeIntro();
+
+function toggleContext(){ document.getElementById('context-box').classList.toggle('open'); }
+
+/* ============================================================
+   ESTADO DEL JUEGO
+   ============================================================ */
+const game = new Chess();
+let engineMode = 'loading'; // loading | stockfish | local
+let engine = null;
+let currentLevel = 1;
+let selectedSq = null;
+let legalTargets = [];
+let lastMove = null;
+let candidateMoves = []; // objetos {from,to,promotion} para "otra respuesta"
+let candidateIdx = 0;
+let thinking = false;
+let aiDefenseSeen = new Set();   // claves "eco|name" ya vistas en esta sesión
+let aiDefenseLog = [];           // [{eco,name}] en orden de aparición, para el chip-list
+let humanColor = 'w';            // 'w' o 'b' — de qué lado juega la persona
+function humanTurnMsg(){ return 'Tu turno ('+(humanColor==='w'?'blancas':'negras')+').'; }
+
+const LEVELS = [
+  { label:"400",  skill:0,  depth:2,  movetime:100, randomness:0.55, localDepth:1 },
+  { label:"1500", skill:8,  depth:8,  movetime:400, randomness:0.08, localDepth:1 },
+  { label:"2600", skill:20, depth:15, movetime:900, randomness:0.0,  localDepth:2 }
+];
+
+const FILES = ['a','b','c','d','e','f','g','h'];
+
+/* ============================================================
+   BASE DE APERTURAS — el corazón de la app: detectar por prefijo
+   de jugadas exactamente lo que el usuario está jugando.
+   ============================================================ */
+const OPENINGS = [
+  {eco:"C20", name:"Apertura del Rey", moves:"e4 e5", tag:"solid",
+   history:"El movimiento más antiguo del ajedrez moderno. Domina el centro de inmediato y abre líneas para dama y alfil.",
+   games:"Casi cualquier partida clásica del siglo XIX empieza así — desde Morphy hasta el día de hoy.",
+   tip:"No te apresures a atacar: primero desarrolla caballos antes que alfiles y no muevas la dama temprano."},
+  {eco:"C50", name:"Italiana", moves:"e4 e5 Nf3 Nc6 Bc4", tag:"aggressive",
+   history:"Conocida desde el siglo XVI en Italia. Apunta directo al punto débil f7 desde la primera jugada de alfil.",
+   games:"Greco ya la analizaba en 1620. Revivida modernamente por Kasparov y Carlsen como arma de sorpresa.",
+   tip:"Vigila el clásico sacrificio en f7. Con blancas, considera la línea Giuoco Piano con c3 y d4."},
+  {eco:"C50", name:"Italiana, Giuoco Pianissimo", moves:"e4 e5 Nf3 Nc6 Bc4 Bc5 d3", tag:"solid",
+   history:"La versión más lenta y paciente de la Italiana: blancas evita comprometerse en el centro y maniobra con tiempo.",
+   games:"Vuelta a la élite gracias a Carlsen, que la usó para evitar la preparación informática de sus rivales.",
+   tip:"El reagrupamiento Nbd2-f1-g3 es el plan típico de blancas — es una partida de maniobras, no de cálculo forzado."},
+  {eco:"C53", name:"Italiana, Giuoco Piano", moves:"e4 e5 Nf3 Nc6 Bc4 Bc5", tag:"positional",
+   history:"La rama 'tranquila' de la Italiana, popular otra vez desde que Carlsen la usó para evitar teoría pesada.",
+   games:"Carlsen–Caruana, varias partidas del Mundial 2018 pasaron por aquí.",
+   tip:"El plan típico es d3, c3 y luego Re1 preparando d4 con apoyo total."},
+  {eco:"C57", name:"Italiana, Ataque de los Dos Caballos", moves:"e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5", tag:"aggressive",
+   history:"Blancas ataca f7 de inmediato con el caballo, iniciando de las líneas tácticas más antiguas y estudiadas del ajedrez.",
+   games:"Analizada ya por Polerio hacia 1606; la trampa del 'Hígado Frito' (Fried Liver) sigue apareciendo en partidas de club.",
+   tip:"Si juegas negras y no conoces la teoría exacta tras 4...d5, evita esta línea — un solo error entrega la partida."},
+  {eco:"C51", name:"Gambito Evans", moves:"e4 e5 Nf3 Nc6 Bc4 Bc5 b4", tag:"gambit",
+   history:"Ideado por el capitán galés William Evans en 1827: un peón de flanco por un desarrollo explosivo contra f7.",
+   games:"Kasparov lo revivió sorprendentemente contra Anand en 1995 tras más de un siglo sin uso en élite.",
+   tip:"Si aceptas el gambito con negras, no te aferres al peón extra — devuélvelo a tiempo para completar el desarrollo."},
+  {eco:"C60", name:"Ruy López (Española)", moves:"e4 e5 Nf3 Nc6 Bb5", tag:"positional",
+   history:"Nombrada por el clérigo español Ruy López de Segura (1561). La apertura más estudiada de la historia.",
+   games:"Fischer–Spassky 1972, Kasparov–Karpov, y prácticamente todo GM la ha jugado.",
+   tip:"La tensión en e5 se mantiene mucho tiempo. Aprende primero 3...a6 4.Ba4 Nf6 5.O-O."},
+  {eco:"C67", name:"Ruy López, Defensa Berlinesa", moves:"e4 e5 Nf3 Nc6 Bb5 Nf6", tag:"solid",
+   history:"Negras cede el enroque a cambio de un final sano y sin debilidades — la línea más resistente jamás encontrada contra la Española.",
+   games:"Kramnik la usó para frenar por completo el ataque de Kasparov en el Mundial de Londres 2000, ganándose el apodo 'Muralla de Berlín'.",
+   tip:"No temas perder el enroque: el rey en e8/e7 suele estar seguro en el final que resulta de esta línea."},
+  {eco:"C80", name:"Ruy López Abierta", moves:"e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Nxe4", tag:"aggressive",
+   history:"Negras captura el peón central de inmediato, aceptando una lucha dinámica en vez de la lenta maniobra cerrada habitual.",
+   games:"Repertorio de por vida de Korchnoi e Ivanchuk contra la Ruy López.",
+   tip:"El plan blanco pasa por d4 y Re1, presionando el caballo en e4 — negras debe conocer la retirada exacta a f6 o c5."},
+  {eco:"C89", name:"Ruy López, Ataque Marshall", moves:"e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 O-O c3 d5", tag:"gambit",
+   history:"Frank Marshall preparó este sacrificio de peón en secreto durante años, esperando la ocasión perfecta para sorprender a Capablanca.",
+   games:"Marshall–Capablanca, Nueva York 1918 — Capablanca defendió con precisión y ganó, pero la idea sobrevivió y hoy es teoría de élite.",
+   tip:"Si juegas negras, este gambito exige memorizar líneas concretas de ataque; si no las conoces a fondo, blancas puede evitarlo con 8.a4."},
+  {eco:"C95", name:"Ruy López Cerrada, Breyer", moves:"e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Nb8", tag:"positional",
+   history:"Gyula Breyer propuso retirar el caballo a b8 para reubicarlo mejor en d7 — considerada absurda en su época, hoy es un pilar teórico.",
+   games:"Arma de repertorio de Karpov y, más recientemente, de Carlsen en partidas de máximo nivel.",
+   tip:"El reagrupamiento Nb8-d7-f8-g6 parece lento, pero prepara un juego central y de flanco de dama muy sólido."},
+  {eco:"C68", name:"Ruy López, Variante de Cambio", moves:"e4 e5 Nf3 Nc6 Bb5 a6 Bxc6", tag:"solid",
+   history:"Favorita de Bobby Fischer en los 60: cambia el alfil por el caballo para dañar los peones negros.",
+   games:"Fischer la usó repetidamente contra jugadores soviéticos con gran éxito.",
+   tip:"Blancas buscan un final superior gracias a la mayoría de peones en el flanco de rey."},
+  {eco:"C42", name:"Defensa Rusa (Petrov)", moves:"e4 e5 Nf3 Nf6", tag:"solid",
+   history:"Documentada por Alexander Petrov en 1824. Solidez extrema: negras devuelven el golpe al centro en vez de defender.",
+   games:"Usada por Kramnik y Caruana como refugio anti-Ruy López en Candidatos.",
+   tip:"Cuidado con 3.Nxe5 d6 4.Nf3 Nxe4 — conoce la teoría exacta o pierdes material."},
+  {eco:"C44", name:"Apertura Escocesa", moves:"e4 e5 Nf3 Nc6 d4", tag:"aggressive",
+   history:"Nombrada por una partida por correspondencia entre Edimburgo y Londres en 1824-28.",
+   games:"Kasparov la revivió en los 90 contra Karpov como sorpresa para evitar la Ruy López.",
+   tip:"En la línea del cuatro caballos (4...exd4 5.Nxd4 Nf6), vigila la clavada Bb5 sobre el caballo en c3 más adelante."},
+  {eco:"C44", name:"Gambito Escocés", moves:"e4 e5 Nf3 Nc6 d4 exd4 Bc4", tag:"gambit",
+   history:"En vez de recapturar de inmediato, blancas desarrolla con tiempo apuntando otra vez a f7, en el mismo espíritu que la Italiana.",
+   games:"Popular en ajedrez rápido moderno por generar posiciones agudas con poca teoría memorizada.",
+   tip:"Si negras defiende con ...Bc5, blancas suele responder c3 recuperando el peón con buen desarrollo."},
+  {eco:"C45", name:"Escocesa, Variante Mieses", moves:"e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Qh4", tag:"aggressive",
+   history:"Negras sacan la dama temprano buscando complicaciones inmediatas contra el rey blanco.",
+   games:"Analizada a fondo por computadoras modernas tras ser considerada dudosa durante décadas.",
+   tip:"Blancas deben jugar con precisión Nb5 o Nf3 para no caer en trampas tácticas tempranas."},
+  {eco:"C46", name:"Apertura de los Cuatro Caballos", moves:"e4 e5 Nf3 Nc6 Nc3 Nf6", tag:"solid",
+   history:"Desarrollo simétrico y clásico, muy popular en el siglo XIX y principios del XX por su solidez.",
+   games:"Lasker y Capablanca la jugaron con frecuencia en la era clásica del ajedrez.",
+   tip:"La Variante Española (4.Bb5) suele llevar a finales ligeramente mejores para blancas si negras no es precisa."},
+  {eco:"C48", name:"Cuatro Caballos, Variante Rubinstein", moves:"e4 e5 Nf3 Nc6 Nc3 Nf6 Bb5 Nd4", tag:"aggressive",
+   history:"Akiba Rubinstein introdujo esta contra-clavada activa para desequilibrar una apertura tradicionalmente simétrica.",
+   games:"Analizada extensamente en la era soviética como forma de luchar por la iniciativa con negras.",
+   tip:"El sacrificio de peón tras Nxe5 suele devolverse rápido — no te asustes por quedar momentáneamente abajo en material."},
+  {eco:"C25", name:"Apertura Vienesa", moves:"e4 e5 Nc3", tag:"aggressive",
+   history:"Popular en el siglo XIX vienés, puede transponer al Gambito de Rey con un tempo de más para blancas.",
+   games:"Usada por Steinitz y otros maestros clásicos como alternativa flexible a la Apertura del Rey.",
+   tip:"El Ataque Vienés con f4 recuerda al Gambito de Rey — necesitas la misma agresividad para justificarlo."},
+  {eco:"C29", name:"Gambito Vienés", moves:"e4 e5 Nc3 Nf6 f4", tag:"gambit",
+   history:"Blancas combina la Vienesa con las ideas del Gambito de Rey, atacando el centro negro un tiempo más tarde pero con el caballo ya desarrollado.",
+   games:"Popular en ajedrez de ataque de finales del siglo XIX, hoy vive sobre todo en partidas rápidas.",
+   tip:"Tras 4...d5, el contragolpe central de negras es fuerte — blancas debe responder con precisión 5.fxe5 o arriesga quedar peor."},
+  {eco:"C23", name:"Apertura del Alfil (Bishop's Opening)", moves:"e4 e5 Bc4", tag:"aggressive",
+   history:"Una de las aperturas más antiguas documentadas, popular ya en el siglo XVIII.",
+   games:"Analizada por Philidor y Greco; ocasionalmente revivida por Grandes Maestros modernos como sorpresa.",
+   tip:"Puede transponer a la Italiana o al Gambito de Rey — mantén flexible tu plan de desarrollo."},
+  {eco:"C21", name:"Gambito de Centro", moves:"e4 e5 d4 exd4 Qxd4", tag:"gambit",
+   history:"Blancas sacan la dama muy temprano a cambio de un desarrollo rápido — considerada poco sólida en teoría moderna.",
+   games:"Común en niveles principiantes; rara en ajedrez de torneo serio por la pérdida de tiempos de la dama.",
+   tip:"Negras debe atacar la dama con ...Nc6 y ...Nf6 ganando tiempos de desarrollo gratuitos."},
+  {eco:"C21", name:"Gambito Danés", moves:"e4 e5 d4 exd4 c3", tag:"gambit",
+   history:"Blancas sacrifica dos peones por un desarrollo explosivo, típico del romanticismo del siglo XIX.",
+   games:"Muy popular en exhibiciones y partidas rápidas por su naturaleza de ataque directo.",
+   tip:"Si aceptas ambos peones con negras, prioriza devolver material para completar tu desarrollo con seguridad."},
+  {eco:"C34", name:"Gambito de Rey Aceptado", moves:"e4 e5 f4 exf4", tag:"gambit",
+   history:"El sacrificio de peón más romántico del ajedrez clásico: blancas abre la columna f a cambio del peón central negro.",
+   games:"Dominó los torneos del siglo XIX; hoy sigue viva en ajedrez rápido por su carácter directo y afilado.",
+   tip:"Blancas debe atacar con rapidez antes de que negras consolide el peón de más — el desarrollo vale más que recuperarlo de inmediato."},
+  {eco:"C30", name:"Gambito de Rey", moves:"e4 e5 f4", tag:"gambit",
+   history:"La apertura romántica por excelencia — dominó el siglo XIX antes de que la teoría defensiva la enfriara.",
+   games:"La 'Partida Inmortal' Anderssen–Kieseritzky (1851) se jugó con este gambito.",
+   tip:"El ataque debe ser inmediato: si no recuperas el peón con iniciativa en 10-12 jugadas, sueles quedar peor."},
+  {eco:"C40", name:"Gambito Elefante", moves:"e4 e5 Nf3 d5", tag:"gambit",
+   history:"Negras contraataca el centro inmediatamente, sacrificando un peón por actividad temprana.",
+   games:"Rara en ajedrez serio, pero efectiva como arma sorpresa a nivel de club.",
+   tip:"Blancas debe simplemente tomar el peón central y desarrollar con naturalidad para mantener la ventaja."},
+  {eco:"C40", name:"Gambito Letón", moves:"e4 e5 Nf3 f5", tag:"gambit",
+   history:"Una de las respuestas más arriesgadas a 2.Nf3: negras contraataca de inmediato en el flanco de rey.",
+   games:"Considerada dudosa por la teoría moderna, pero temida en partidas rápidas por su carácter caótico.",
+   tip:"Blancas debe evitar líneas complicadas y simplemente consolidar material con desarrollo natural."},
+  {eco:"C20", name:"Apertura Ponziani", moves:"e4 e5 Nf3 Nc6 c3", tag:"positional",
+   history:"Nombrada por el italiano Domenico Ponziani en el siglo XVIII, prepara d4 con un centro de peones amplio.",
+   games:"Poco vista en élite moderna, pero sólida y efectiva a nivel de club por su carácter poco teórico.",
+   tip:"El golpe central d4 debe llegar rápido, o negras iguala fácilmente con ...d5 o ...Nf6."},
+  {eco:"C41", name:"Defensa Philidor", moves:"e4 e5 Nf3 d6", tag:"solid",
+   history:"Descrita por François-André Danican Philidor en 1749, quien afirmó que los peones son el alma del ajedrez.",
+   games:"Poco vista en élite moderna por su pasividad, aunque sigue siendo sólida a nivel de club.",
+   tip:"El golpe temprano ...exd4 seguido de ...Nf6 evita quedar demasiado pasivo — no dejes la tensión central sin resolver."},
+  {eco:"C43", name:"Petrov, Ataque de los Tres Caballeros", moves:"e4 e5 Nf3 Nf6 Nxe5 d6 Nf3 Nxe4 d4", tag:"positional",
+   history:"Blancas evita las complicaciones agudas de 3.Nxe5 y opta por un desarrollo central sólido, cediendo la simetría inicial.",
+   games:"Refugio habitual de jugadores que prefieren evitar la teoría más forzada de la Petrov clásica.",
+   tip:"El plan blanco es completar el desarrollo con Bd3 y O-O antes de buscar cualquier complicación táctica."},
+
+  {eco:"B00", name:"Defensa Escandinava", moves:"e4 d5", tag:"aggressive",
+   history:"Una de las respuestas más antiguas a 1.e4: negras capturan el peón central de inmediato con la dama.",
+   games:"Popularizada modernamente por Carlsen y Karjakin en partidas rápidas.",
+   tip:"Tras 2.exd5 Qxd5 3.Nc3, la dama pierde tiempos — desarróllala a a5 o d6 y no la muevas de más."},
+  {eco:"B01", name:"Escandinava, Variante 3...Qa5", moves:"e4 d5 exd5 Qxd5 Nc3 Qa5", tag:"solid",
+   history:"La retirada clásica de la dama, evitando ataques de tiempo mientras mantiene presión sobre e5 y la clavada potencial en c3.",
+   games:"Repertorio de club desde hace más de un siglo, todavía vigente en niveles amateur y semi-profesionales.",
+   tip:"El desarrollo natural con ...Nf6, ...c6 y ...Bf5 suele bastar — no compliques la posición prematuramente."},
+  {eco:"B01", name:"Escandinava, línea moderna 3...Qd6", moves:"e4 d5 exd5 Qxd5 Nc3 Qd6", tag:"solid",
+   history:"La dama se refugia en d6 en vez de a5, evitando ataques de tiempo. Muy en boga desde 2010.",
+   games:"Carlsen la ha usado varias veces en partidas de exhibición y rápidas.",
+   tip:"El plan negro es ...Nf6, ...a6, ...c6 y desarrollo tranquilo — casi como una Caro-Kann con un tiempo de menos."},
+  {eco:"B02", name:"Defensa Alekhine", moves:"e4 Nf6", tag:"hypermodern",
+   history:"Alexander Alekhine la introdujo en 1921: negras invita a blancas a construir un centro grande para atacarlo después.",
+   games:"El propio Alekhine la usó para vencer a rivales que no supieron manejar el centro extendido.",
+   tip:"No te asustes si blancas gana mucho espacio con e5, c4 y f4 — el contragolpe ...d6 o ...c5 llega justo a tiempo si conoces la teoría."},
+  {eco:"B03", name:"Alekhine, Variante de los Cuatro Peones", moves:"e4 Nf6 e5 Nd5 d4 d6 c4 Nb6 f4", tag:"aggressive",
+   history:"Blancas lleva al extremo la idea de ocupar el centro con cuatro peones, la respuesta más ambiciosa a la Alekhine.",
+   games:"Considerada teóricamente arriesgada para blancas si negras encuentra el golpe correcto contra el centro sobre-extendido.",
+   tip:"El centro blanco es enorme pero frágil — negras debe golpearlo con ...Bg4, ...dxe5 o ...c5 en el momento exacto."},
+  {eco:"B04", name:"Alekhine, Variante Moderna", moves:"e4 Nf6 e5 Nd5 d4 d6 Nf3", tag:"hypermodern",
+   history:"El desarrollo más flexible de blancas contra la Alekhine, sin comprometerse al centro de cuatro peones.",
+   games:"Preferida hoy por jugadores de élite que quieren evitar dar demasiadas dianas tácticas.",
+   tip:"Blancas completa el desarrollo con Be2 y O-O antes de decidir cualquier expansión central adicional."},
+  {eco:"B06", name:"Defensa Moderna", moves:"e4 g6", tag:"hypermodern",
+   history:"Negras fianchetta el alfil de rey antes de definir la estructura central, con máxima flexibilidad de transposición.",
+   games:"Usada por jugadores de repertorio universal que buscan evitar teoría forzada desde la primera jugada.",
+   tip:"Puede transponer a la Pirc, a la India de Rey o quedarse independiente — no definas el centro hasta ver el plan blanco."},
+  {eco:"B06", name:"Defensa Pirc", moves:"e4 d6", tag:"hypermodern",
+   history:"Nombrada por el maestro esloveno Vasja Pirc. Negras ceden el centro para golpearlo después con piezas.",
+   games:"Fischer la jugó ocasionalmente; hoy es popular en ajedrez rápido.",
+   tip:"El fianchetto ...g6 y ...Bg7 debe completarse antes de decidir dónde golpear el centro."},
+  {eco:"B09", name:"Pirc, Ataque Austríaco", moves:"e4 d6 d4 Nf6 Nc3 g6 f4", tag:"aggressive",
+   history:"Blancas responde a la flexibilidad de la Pirc con el plan más directo posible: un gran centro de peones y ataque en el flanco de rey.",
+   games:"Arma temida a nivel de club por su sencillez y potencia si negras no conoce la teoría defensiva exacta.",
+   tip:"Negras debe golpear el centro rápido con ...c5 o ...Nc6-...e5 antes de que el avance f4-f5 se vuelva imparable."},
+  {eco:"B00", name:"Defensa Owen (1...b6)", moves:"e4 b6", tag:"hypermodern",
+   history:"Negras fianchetta el alfil de dama de inmediato, cediendo el centro para presionarlo a distancia.",
+   games:"Poco común en élite, aunque algunos GM la han usado como arma de sorpresa de bajo riesgo.",
+   tip:"El alfil en b7 presiona toda la diagonal — no lo cambies por el caballo blanco sin una buena razón concreta."},
+  {eco:"A00", name:"Defensa St. George (1...a6)", moves:"e4 a6", tag:"solid",
+   history:"Nombrada tras la victoria de Tony Miles sobre el campeón mundial Karpov en 1980 usando esta rareza.",
+   games:"Miles–Karpov, Skara 1980, sigue siendo la referencia histórica de esta apertura poco convencional.",
+   tip:"Es más una elección psicológica que estratégica — solo tiene sentido si buscas sacar a tu rival de su teoría preparada."},
+
+  {eco:"B10", name:"Defensa Caro-Kann", moves:"e4 c6", tag:"solid",
+   history:"Nombrada por los analistas Horatio Caro y Marcus Kann (1886). Estructura sólida, sin debilidades.",
+   games:"Arma predilecta de Karpov, Capablanca y Carlsen contra rivales agresivos.",
+   tip:"El alfil de casillas claras debe salir ANTES de jugar e6, o quedará encerrado toda la partida."},
+  {eco:"B10", name:"Caro-Kann, Variante de los Dos Caballos", moves:"e4 c6 Nc3 d5 Nf3", tag:"solid",
+   history:"Blancas desarrolla ambos caballos antes de decidir la estructura central, manteniendo máxima flexibilidad.",
+   games:"Sistema práctico usado por jugadores que prefieren evitar la teoría pesada del Ataque Panov.",
+   tip:"Puede transponer a casi cualquier otra línea de la Caro-Kann — no te comprometas a un plan hasta ver la respuesta negra."},
+  {eco:"B12", name:"Caro-Kann, Variante de Avance", moves:"e4 c6 d4 d5 e5", tag:"positional",
+   history:"Blancas ganan espacio permanente. Popular por su bajo riesgo.",
+   games:"Muy usada por Short y en repertorios de club por su simplicidad.",
+   tip:"Negras deben golpear la base de la cadena con ...c5 en el momento justo."},
+  {eco:"B13", name:"Caro-Kann, Ataque Panov-Botvinnik", moves:"e4 c6 d4 d5 exd5 cxd5 c4", tag:"aggressive",
+   history:"Blancas transponen a una estructura de peones colgantes tipo Gambito de Dama, buscando actividad de piezas.",
+   games:"Botvinnik y Fischer la usaron para dar más dinamismo a posiciones tradicionalmente tranquilas.",
+   tip:"Negras deben desarrollar rápido y considerar ...Nf6 y ...e6 para neutralizar la presión sobre d5."},
+  {eco:"B15", name:"Caro-Kann, Variante Principal", moves:"e4 c6 d4 d5 Nc3 dxe4 Nxe4 Nd7", tag:"solid",
+   history:"Un desarrollo flexible que prepara ...Ngf6 sin exponer el caballo a Ne5 con tempo.",
+   games:"Muy jugada por Karpov y Anand en niveles de máxima exigencia.",
+   tip:"El plan típico continúa con ...Ngf6, ...e6 y desarrollo tranquilo antes de decidir dónde ubicar el rey."},
+  {eco:"B18", name:"Caro-Kann Clásica", moves:"e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5", tag:"solid",
+   history:"La línea más clásica y sólida de la Caro-Kann, con el alfil ya desarrollado antes de cerrar la estructura.",
+   games:"Botvinnik y Petrosian la usaron para neutralizar el ataque blanco con mínimo riesgo.",
+   tip:"Cambia damas si se presenta la oportunidad — el final suele favorecer la estructura sana de negras."},
+
+  {eco:"C00", name:"Defensa Francesa", moves:"e4 e6", tag:"solid",
+   history:"Documentada desde una partida por correspondencia París–Londres en 1834-36.",
+   games:"Botvinnik, Korchnoi y Uhlmann la hicieron temible; Carlsen la usa como sorpresa ocasional.",
+   tip:"El alfil de casillas claras queda encerrado tras ...e6 — cámbialo vía ...b6 y ...Ba6."},
+  {eco:"C01", name:"Francesa, Variante de Cambio", moves:"e4 e6 d4 d5 exd5 exd5", tag:"solid",
+   history:"Blancas simplifica de inmediato la estructura, buscando una posición simétrica y de bajo riesgo.",
+   games:"Considerada inofensiva en élite, pero práctica para jugadores que no quieren estudiar teoría profunda.",
+   tip:"Blancas necesita un plan activo (Bd3, Ne2-f4 o el ataque minoritario) o la partida se vuelve completamente igualada."},
+  {eco:"C02", name:"Francesa, Variante de Avance", moves:"e4 e6 d4 d5 e5", tag:"positional",
+   history:"Blancas gana espacio central permanente, encerrando el alfil de casillas claras negro tras las rejas de su propia cadena de peones.",
+   games:"Nimzowitsch la defendió teóricamente en los años 1920 como modelo de juego contra una cadena de peones.",
+   tip:"El contragolpe ...c5 contra la base de la cadena en d4 es, casi siempre, el plan correcto para negras."},
+  {eco:"C03", name:"Francesa, Variante Tarrasch", moves:"e4 e6 d4 d5 Nd2", tag:"positional",
+   history:"Nombrada por Siegbert Tarrasch, evita la clavada del Winawer manteniendo el caballo flexible en d2.",
+   games:"Arma favorita de Kasparov contra la Francesa durante los años 80 y 90.",
+   tip:"Negras deben decidir pronto entre ...c5 (activo) o ...Nf6 (sólido) — cada uno lleva a estructuras muy distintas."},
+  {eco:"C11", name:"Francesa Clásica", moves:"e4 e6 d4 d5 Nc3 Nf6", tag:"solid",
+   history:"El desarrollo natural de la Francesa, evitando las complicaciones extremas del Winawer.",
+   games:"Repertorio de Korchnoi y Uhlmann durante décadas de competencia soviética y occidental.",
+   tip:"El plan burgués (Nf3, Bd3, O-O) de blancas es lento pero sólido — no te apresures buscando complicaciones si juegas blancas."},
+  {eco:"C15", name:"Francesa, Variante Winawer", moves:"e4 e6 d4 d5 Nc3 Bb4", tag:"aggressive",
+   history:"La línea más aguda de la Francesa: negras clava el caballo aceptando peones doblados a cambio de actividad.",
+   games:"Botvinnik y Korchnoi la hicieron temible; genera algunas de las posiciones más desequilibradas del ajedrez clásico.",
+   tip:"Tras 4.e5, el golpe ...c5 contra la base de la cadena de peones es casi siempre necesario."},
+
+  {eco:"B20", name:"Defensa Siciliana", moves:"e4 c5", tag:"aggressive",
+   history:"La respuesta estadísticamente más exitosa contra 1.e4. Lucha asimétrica por el centro desde la jugada 1.",
+   games:"Fischer, Kasparov y casi todo campeón moderno la usaron como arma principal con negras.",
+   tip:"Es la apertura más teórica que existe. Elige UNA variante y apréndela a fondo antes de abarcar todo el sistema."},
+  {eco:"B90", name:"Siciliana Najdorf", moves:"e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6", tag:"aggressive",
+   history:"Bautizada por Miguel Najdorf, refugiado polaco en Argentina. La variante más analizada del ajedrez moderno.",
+   games:"Kasparov la convirtió en su arma personal durante 20 años. Fischer también la usó extensamente.",
+   tip:"6...e5 y 6...e6 son los dos caminos principales — decide tu estilo antes de memorizar líneas."},
+  {eco:"B90", name:"Najdorf, Ataque Inglés", moves:"e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Be3", tag:"aggressive",
+   history:"Blancas evita las líneas más forzadas del Ataque Rauzer o Fischer-Sozin y opta por un desarrollo sólido con expansión posterior en el flanco de dama.",
+   games:"Sistema muy usado por Fischer y, en la era moderna, por Nakamura y Firouzja.",
+   tip:"El avance g4 suele llegar tarde o temprano — negras debe decidir si golpear en el centro con ...d5 antes de que gane espacio."},
+  {eco:"B70", name:"Siciliana Dragón", moves:"e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6", tag:"aggressive",
+   history:"El fianchetto de rey le da nombre por la forma de 'dragón' de la cadena de peones.",
+   games:"Famosa por el Ataque Yugoslavo — carreras de mate en flancos opuestos.",
+   tip:"Si no conoces las líneas de memoria, evita el Ataque Yugoslavo con negras."},
+  {eco:"B32", name:"Siciliana Acelerada Dragón", moves:"e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 g6", tag:"hypermodern",
+   history:"Combina la idea del Dragón con un tempo ahorrado al no jugar ...d6 primero.",
+   games:"Arma de Kasparov y Carlsen para evitar el peligroso Ataque Yugoslavo del Dragón clásico.",
+   tip:"El Ataque Maroczy con c4 es la principal prueba blanca — negras deben golpear con ...d5 en el momento correcto."},
+  {eco:"B33", name:"Siciliana Sveshnikov", moves:"e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 Nf6 Nc3 e5", tag:"aggressive",
+   history:"Considerada dudosa en los 70 por debilitar d5, hoy es pilar del ajedrez de élite.",
+   games:"Repertorio habitual de Carlsen y Vachier-Lagrave con negras.",
+   tip:"El peón débil en d5 se compensa con actividad de piezas — no temas dejarlo si tienes iniciativa."},
+  {eco:"B32", name:"Siciliana Kalashnikov", moves:"e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e5 Nb5 d6", tag:"aggressive",
+   history:"Hermana moderna de la Sveshnikov, con el caballo negro todavía en g8, lo que cambia sutilmente el orden de jugadas y las opciones tácticas.",
+   games:"Popularizada por jugadores rusos de fines de los 90; hoy es repertorio habitual en ajedrez rápido de élite.",
+   tip:"El plan negro gira en torno a ...Be7, ...Nf6 y ...O-O, aceptando la casilla débil en d5 a cambio de piezas activas."},
+  {eco:"B32", name:"Siciliana Löwenthal", moves:"e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e5 Nb5 a6", tag:"aggressive",
+   history:"Una de las primeras exploraciones de ...e5 temprano en la Siciliana, analizada ya por Löwenthal en el siglo XIX.",
+   games:"Precursora directa de las modernas Sveshnikov y Kalashnikov.",
+   tip:"Tras 6.Nd6+, negras entrega el enroque pero obtiene el par de alfiles y buen juego dinámico."},
+  {eco:"B41", name:"Siciliana Kan", moves:"e4 c5 Nf3 e6 d4 cxd4 Nxd4 a6", tag:"solid",
+   history:"Nombrada por el maestro soviético Ilya Kan. Negras retrasan el desarrollo de piezas para mantener máxima flexibilidad.",
+   games:"Repertorio habitual de Anand y Kasparov contra 1.e4 cuando buscaban evitar teoría forzada.",
+   tip:"El plan típico es ...b5, ...Bb7 y ...Qc7 apuntando a la diagonal larga y al enroque blanco."},
+  {eco:"B44", name:"Siciliana Taimanov", moves:"e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6", tag:"positional",
+   history:"Popularizada por el soviético Mark Taimanov en los años 50, combina flexibilidad con control central.",
+   games:"Usada extensamente por Kasparov y, más recientemente, por Caruana.",
+   tip:"Negras suelen enrocar tarde o ni enrocar — el rey en el centro puede estar seguro si el centro está cerrado."},
+  {eco:"B27", name:"Siciliana, Variante Kan-Acelerada", moves:"e4 c5 Nf3 g6", tag:"hypermodern",
+   history:"Fianchetto temprano de rey que evita las líneas más forzadas de la Siciliana clásica.",
+   games:"Explorada por jugadores de repertorio flexible en ajedrez rápido moderno.",
+   tip:"Cuidado con el Ataque Maroczy (c4) si blancas fija el centro — necesitas un plan claro contra él."},
+  {eco:"B80", name:"Siciliana Scheveningen", moves:"e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6", tag:"positional",
+   history:"Nombrada por el torneo de Scheveningen (Países Bajos) de 1923. Estructura de peones pequeña y flexible.",
+   games:"Kasparov la usó en su match con Karpov de 1985 como parte de su repertorio principal.",
+   tip:"El Ataque Keres (g4) es el gran peligro — conoce cómo responder antes de entrar a esta estructura."},
+  {eco:"B22", name:"Siciliana Alapin", moves:"e4 c5 c3", tag:"solid",
+   history:"Arma anti-Siciliana que evita toda la teoría pesada, jugando c3 para preparar d4 con una base de peones sólida.",
+   games:"Popular en niveles de club y también usada ocasionalmente por Grandes Maestros para ahorrar preparación.",
+   tip:"Negras suelen responder ...Nf6 atacando e4, o ...d5 golpeando el centro de inmediato."},
+  {eco:"B21", name:"Siciliana, Gambito Smith-Morra", moves:"e4 c5 d4 cxd4 c3", tag:"gambit",
+   history:"Blancas sacrifica un peón por desarrollo rápido y ataque directo contra el rey negro.",
+   games:"Arma popular en blitz y bullet online por su ataque directo, poco jugada en clásico de élite.",
+   tip:"Si niegas el gambito, no te compliques: aceptar y devolver el peón después suele ser la vía más segura."},
+  {eco:"B23", name:"Siciliana Cerrada", moves:"e4 c5 Nc3", tag:"positional",
+   history:"Blancas evitan la apertura de la columna c y juegan un plan lento tipo Ataque Grand Prix o desarrollo natural.",
+   games:"Usada históricamente por jugadores que preferían estructuras cerradas frente a la Siciliana abierta.",
+   tip:"El Ataque Grand Prix (f4 luego f5) es agresivo pero debilita el rey blanco si no llega a tiempo."},
+  {eco:"B23", name:"Siciliana, Ataque Grand Prix", moves:"e4 c5 Nc3 Nc6 f4", tag:"aggressive",
+   history:"Sistema anti-Siciliana directo: blancas apunta al flanco de rey negro sin entrar en la teoría abierta de 3.d4.",
+   games:"Muy popular en niveles de club por su bajo requisito teórico y alto potencial de ataque.",
+   tip:"El plan típico es f5, Bc4-b3, Qe1-h4 — un asalto directo que exige que negras defienda con precisión y contragolpe en el centro."},
+  {eco:"B30", name:"Siciliana Rossolimo", moves:"e4 c5 Nf3 Nc6 Bb5", tag:"positional",
+   history:"Sistema anti-Siciliana que evita por completo la teoría abierta, dañando la estructura de peones negra a cambio del par de alfiles.",
+   games:"Arma predilecta de Carlsen y Nakamura para sacar a los especialistas de la Siciliana de su terreno teórico preferido.",
+   tip:"Si blancas cambia en c6, el plan típico es O-O, Re1 y c3 presionando la debilidad de peones doblados en c6/c7."},
+  {eco:"B51", name:"Siciliana, Variante Moscú", moves:"e4 c5 Nf3 d6 Bb5+", tag:"solid",
+   history:"Hermana de la Rossolimo pero contra el orden de jugadas ...d6, evitando de igual manera la teoría más pesada de la Siciliana abierta.",
+   games:"Muy popular en ajedrez rápido y online por su bajo riesgo y alto valor práctico.",
+   tip:"Tras ...Bd7 y el cambio de alfiles, blancas suele jugar c4 buscando una estructura tipo Maroczy con espacio duradero."},
+
+  {eco:"D06", name:"Gambito de Dama", moves:"d4 d5 c4", tag:"gambit",
+   history:"A pesar del nombre no es un sacrificio real: si negras capturan en c4, blancas lo recuperan fácil. Conocida desde el siglo XVI.",
+   games:"Fue el campo de batalla del Mundial 1927 Capablanca–Alekhine.",
+   tip:"Si el rival acepta con 2...dxc4, no corras a recuperar el peón: desarrolla con e4 o Nf3 primero."},
+  {eco:"D20", name:"Gambito de Dama Aceptado", moves:"d4 d5 c4 dxc4", tag:"solid",
+   history:"Negras acepta el peón de flanco temporalmente, sabiendo que blancas casi siempre lo recupera sin esfuerzo.",
+   games:"Alekhine y Kramnik la han usado en ambos colores como forma de llegar a posiciones abiertas y equilibradas.",
+   tip:"El plan blanco típico es e4 (o e3-Bxc4) recuperando el peón con un centro fuerte y buen desarrollo."},
+  {eco:"D30", name:"Gambito de Dama Rehusado", moves:"d4 d5 c4 e6", tag:"positional",
+   history:"La respuesta clásica: negras sostienen el centro con solidez extrema en vez de tomar el peón.",
+   games:"Estructura predilecta de Karpov, Kramnik y Carlsen en matches por el título mundial.",
+   tip:"El plan minoritario (b4-b5 para blancas) es la idea estratégica clave."},
+  {eco:"D35", name:"Gambito de Dama Rehusado, Variante de Cambio", moves:"d4 d5 c4 e6 Nc3 Nf6 cxd5 exd5", tag:"solid",
+   history:"Blancas simplifica la estructura central buscando el ataque minoritario en el flanco de dama con espacio adicional.",
+   games:"Estructura clave de varios matches mundiales, incluido Botvinnik–Bronstein 1951.",
+   tip:"El plan del ataque minoritario (b4-b5) contra los peones negros en c6/b7 es la idea estratégica central de blancas."},
+  {eco:"D10", name:"Defensa Eslava", moves:"d4 d5 c4 c6", tag:"solid",
+   history:"Sostiene el centro sin encerrar el alfil de casillas claras.",
+   games:"Repertorio de por vida de Kramnik; también muy usada por Anand.",
+   tip:"Saca el alfil a f5 o g4 ANTES de jugar ...e6."},
+  {eco:"D07", name:"Defensa Chigorin", moves:"d4 d5 c4 Nc6", tag:"aggressive",
+   history:"Mikhail Chigorin desarrolló el caballo antes que el peón e6, priorizando piezas activas sobre estructura sólida.",
+   games:"El propio Chigorin la usó en sus dos matches por el título mundial contra Steinitz.",
+   tip:"Negras acepta una estructura de peones algo dañada a cambio de piezas muy activas — juega con energía, no con pasividad."},
+  {eco:"D01", name:"Ataque Veresov", moves:"d4 d5 Nc3 Nf6 Bg5", tag:"aggressive",
+   history:"Nombrado por el soviético Gavriil Veresov, combina ideas del Trompowsky con un desarrollo directo del caballo.",
+   games:"Usada ocasionalmente por Grandes Maestros como arma de sorpresa contra jugadores preparados en líneas principales.",
+   tip:"El plan e4 con apoyo del caballo en c3 busca un centro grande — negras debe golpearlo con ...c5 o ...e5."},
+  {eco:"D00", name:"Gambito Blackmar-Diemer", moves:"d4 d5 Nc3 Nf6 e4", tag:"gambit",
+   history:"Blancas sacrifica un peón por líneas abiertas y desarrollo explosivo, con raíces en el siglo XIX y desarrollado por Emil Diemer.",
+   games:"Popular en clubes de ataque directo; rara en el ajedrez de torneo de máximo nivel.",
+   tip:"Si aceptas el gambito con negras, devuelve el peón en el momento correcto para no quedar bajo ataque perpetuo."},
+  {eco:"D05", name:"Sistema Colle", moves:"d4 d5 Nf3 Nf6 e3", tag:"solid",
+   history:"Sistema de desarrollo modesto pero venenoso: blancas prepara e4 con apoyo total tras completar el desarrollo.",
+   games:"Edgard Colle ganó numerosas partidas de ataque en los años 20 con este plan aparentemente inofensivo.",
+   tip:"El golpe e4 (o el 'Molino' Colle-Koltanowski con dxc4 y e4) suele llegar de sorpresa si negras no vigila el centro."},
+  {eco:"D08", name:"Contragambito Albin", moves:"d4 d5 c4 e5", tag:"gambit",
+   history:"Negras contraataca de inmediato en el centro en vez de sostener con solidez, buscando complicaciones tempranas.",
+   games:"Rara en élite pero temida en niveles de club por la trampa clásica del peón en d3.",
+   tip:"El peón avanzado en d3 puede ser una espina muy molesta si blancas no lo neutraliza a tiempo con Nbd2 o Qc2."},
+  {eco:"D80", name:"Defensa Grünfeld", moves:"d4 Nf6 c4 g6 Nc3 d5", tag:"hypermodern",
+   history:"Ernst Grünfeld la estrenó en 1922: negras dejan que blancas construyan un centro grande para atacarlo a distancia.",
+   games:"Arma principal de Kasparov contra Karpov; también de Carlsen y Nepomniachtchi.",
+   tip:"El contragolpe ...c5 contra el centro blanco es la idea maestra."},
+  {eco:"D85", name:"Grünfeld, Variante de Cambio", moves:"d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3", tag:"aggressive",
+   history:"Blancas acepta peones doblados en la columna c a cambio de un centro de peones enorme e imponente.",
+   games:"El campo de batalla central de todos los matches Kasparov–Karpov de los años 80.",
+   tip:"Negras debe golpear el centro de inmediato con ...c5 — dejarlo intacto favorece automáticamente a blancas."},
+  {eco:"E60", name:"Defensa India de Rey", moves:"d4 Nf6 c4 g6", tag:"hypermodern",
+   history:"Símbolo del ajedrez hipermoderno: negras ceden el centro y atacan con un asalto de peones en el flanco de rey.",
+   games:"Fischer y Kasparov la convirtieron en un arma de ataque temible con negras.",
+   tip:"Plan típico: ...e5 o ...c5 seguido de ...f5-f4-g4 mientras blancas juegan en el flanco de dama."},
+  {eco:"E62", name:"India de Rey, Sistema Fianchetto", moves:"d4 Nf6 c4 g6 Nf3 Bg7 g3", tag:"positional",
+   history:"Blancas devuelve la simetría con su propio fianchetto, evitando el enorme centro que negras normalmente ataca en otras líneas de la India de Rey.",
+   games:"Repertorio habitual de Kramnik y Carlsen cuando buscan neutralizar el contrajuego típico negro.",
+   tip:"El plan de negras debe adaptarse: aquí ...c5 y presión posicional suelen rendir más que el asalto directo al rey."},
+  {eco:"E76", name:"India de Rey, Ataque de los Cuatro Peones", moves:"d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4", tag:"aggressive",
+   history:"Blancas construye el centro más grande posible, apostando a que negras no pueda golpearlo a tiempo.",
+   games:"Considerada teóricamente arriesgada para blancas si negras conoce el contragolpe exacto.",
+   tip:"Negras debe golpear rápido con ...c5 o ...e5 antes de que el centro blanco se vuelva imparable."},
+  {eco:"E81", name:"India de Rey, Sistema Sämisch", moves:"d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3", tag:"solid",
+   history:"Nombrado por Friedrich Sämisch, refuerza el centro con f3 antes de expandirse, a costa de tiempo de desarrollo.",
+   games:"Fischer lo usó como blancas para frenar el contrajuego típico de la India de Rey.",
+   tip:"Negras debe elegir entre el contragolpe clásico ...c5 o el asalto directo ...f5 — cada uno exige un plan distinto."},
+  {eco:"E92", name:"India de Rey, Variante Clásica", moves:"d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2", tag:"positional",
+   history:"El desarrollo más natural de blancas, sin comprometerse temprano a un plan agresivo.",
+   games:"Muchos duelos históricos Kasparov-Karpov pasaron por estructuras de este tipo.",
+   tip:"El plan clásico negro es ...e5 seguido de un asalto de peones en el flanco de rey tras el cierre del centro."},
+  {eco:"E20", name:"Defensa Nimzoindia", moves:"d4 Nf6 c4 e6 Nc3 Bb4", tag:"positional",
+   history:"Aron Nimzowitsch revolucionó la teoría clavando el caballo antes de que el centro blanco se consolide.",
+   games:"Pilar del repertorio de Botvinnik, Karpov, Kasparov y Carlsen durante décadas.",
+   tip:"Decide pronto si vas a doblar los peones blancos con ...Bxc3 o retirarte."},
+  {eco:"E32", name:"Nimzoindia, Variante Clásica", moves:"d4 Nf6 c4 e6 Nc3 Bb4 Qc2", tag:"positional",
+   history:"Blancas evita de raíz los peones doblados, protegiendo c3 con la dama antes de que negras pueda forzar el cambio.",
+   games:"Capablanca la exploró en los años 20 como forma de neutralizar por completo la clavada del alfil negro.",
+   tip:"Negras suele responder ...O-O y ...d5, buscando abrir el centro antes de que blancas complete su desarrollo con comodidad."},
+  {eco:"E30", name:"Nimzoindia, Variante Leningrado", moves:"d4 Nf6 c4 e6 Nc3 Bb4 Bg5", tag:"aggressive",
+   history:"Blancas clava el caballo negro de vuelta en vez de defender la propia clavada, generando una lucha de piezas activas desde temprano.",
+   games:"Explorada a fondo por analistas soviéticos como alternativa dinámica a las líneas clásicas más lentas.",
+   tip:"El golpe ...h6 seguido de ...c5 suele ser la forma más directa que tiene negras de cuestionar el plan blanco."},
+  {eco:"E11", name:"Defensa Bogoindia", moves:"d4 Nf6 c4 e6 Nf3 Bb4+", tag:"solid",
+   history:"Efim Bogoljubov ofrece un jaque en vez de la clavada clásica de la Nimzoindia, buscando una estructura más tranquila y sin riesgo.",
+   games:"Popular entre jugadores que quieren la solidez de la Nimzoindia sin memorizar tanta teoría afilada.",
+   tip:"Si blancas bloquea con 4.Bd2, cambia alfiles sin miedo — la posición resultante es simple y equilibrada."},
+  {eco:"E12", name:"Defensa India de Dama", moves:"d4 Nf6 c4 e6 Nf3 b6", tag:"positional",
+   history:"Negras fianchetta el alfil de dama para presionar la diagonal larga y el centro blanco a distancia, en vez de comprometerse con ...d5.",
+   games:"Repertorio de toda la vida de Kramnik y Karpov como negras contra 1.d4.",
+   tip:"El control de la casilla e4 mediante el alfil en b7 es la idea estratégica central — no la cedas sin razón."},
+  {eco:"A56", name:"Defensa Benoni Moderna", moves:"d4 Nf6 c4 c5 d5 e6", tag:"aggressive",
+   history:"Negras cede espacio central a cambio de un peón pasado potencial en d6 y juego dinámico en el flanco de dama.",
+   games:"Fischer y Tal la usaron para crear complicaciones agudas contra jugadores posicionales.",
+   tip:"El peón en d5 blanco es una espina permanente — el plan negro casi siempre pasa por ...b5 minando el flanco de dama."},
+  {eco:"A70", name:"Benoni Moderna, Línea Principal", moves:"d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4", tag:"aggressive",
+   history:"Blancas ocupa el máximo espacio central posible antes de que negras pueda completar su desarrollo, generando una lucha asimétrica clásica.",
+   games:"Analizada extensamente por Tal, quien encontraba en estas posiciones terreno fértil para el sacrificio y la iniciativa.",
+   tip:"El fianchetto ...g6-Bg7 seguido de ...Re8 y ...Na6-c7 es el plan de reagrupamiento típico de negras contra el centro blanco."},
+  {eco:"A57", name:"Gambito Benko", moves:"d4 Nf6 c4 c5 d5 b5", tag:"gambit",
+   history:"Negras sacrifica un peón de flanco para abrir las columnas a y b contra el rey blanco enrocado.",
+   games:"Especialidad de toda una generación de jugadores posicionales que buscaban presión duradera a cambio de material.",
+   tip:"No te apresures a recuperar el peón — la presión posicional en las columnas abiertas suele valer más que el material."},
+  {eco:"A58", name:"Gambito Benko Aceptado", moves:"d4 Nf6 c4 c5 d5 b5 cxb5 a6 bxa6", tag:"gambit",
+   history:"Blancas acepta el peón sabiendo que la compensación posicional negra en las columnas abiertas es duradera y difícil de neutralizar.",
+   games:"Fuente de innumerables victorias de bajo esfuerzo teórico para negras a nivel de club y también en élite.",
+   tip:"Negras debe recapturar en a6 con el alfil, no con la torre — mantener las columnas a y b abiertas es la esencia del gambito."},
+  {eco:"A51", name:"Gambito Budapest, Variante Fajarowicz", moves:"d4 Nf6 c4 e5 dxe5 Ne4", tag:"gambit",
+   history:"En vez de la retirada clásica a g4, el caballo salta directamente a e4, buscando actividad inmediata al precio de mayor riesgo material.",
+   games:"Analizada por el maestro polaco Sammuel Fajarowicz en los años 20 como alternativa más agresiva al Budapest clásico.",
+   tip:"Negras debe generar amenazas concretas rápido — sin iniciativa inmediata, el peón de menos pesa mucho."},
+  {eco:"A50", name:"Gambito Budapest", moves:"d4 Nf6 c4 e5", tag:"gambit",
+   history:"Negras sacrifica un peón central a cambio de piezas activas y ataque directo contra el flanco de dama blanco.",
+   games:"Especialidad de algunos maestros húngaros de principios del siglo XX que buscaban desequilibrio inmediato.",
+   tip:"El caballo saltando a e5-g4 o e5-d3 suele ser la fuente principal de la compensación — no lo cambies sin necesidad."},
+  {eco:"A56", name:"Defensa Old Indian", moves:"d4 Nf6 c4 d6", tag:"solid",
+   history:"Precursora histórica de la India de Rey, con un desarrollo más modesto y menos comprometido del alfil de rey.",
+   games:"Jugada por Capablanca y otros clásicos antes de que la India de Rey moderna la eclipsara en popularidad.",
+   tip:"El plan de negras suele incluir ...e5 sin fianchetto, apuntando a un juego cerrado y estratégico."},
+  {eco:"D47", name:"Semi-Eslava, Variante Meran", moves:"d4 d5 c4 c6 Nf3 Nf6 Nc3 e6 e4", tag:"aggressive",
+   history:"Blancas rompe el centro de inmediato con e4, generando una de las estructuras más dinámicas y analizadas del ajedrez clásico.",
+   games:"Campo de batalla constante en los matches por el título mundial de los años 30 y revivida por la élite computacional moderna.",
+   tip:"Negras suele contragolpear con ...b5 y ...c5, aceptando riesgo posicional a cambio de piezas muy activas."},
+  {eco:"E10", name:"Sistema Catalán", moves:"d4 Nf6 c4 e6 g3", tag:"positional",
+   history:"Nace en el torneo de Barcelona de 1929, combina ideas de Gambito de Dama con un fianchetto de rey.",
+   games:"Arma predilecta de Kramnik y Carlsen en partidas de máximo nivel por su equilibrio entre solidez y presión.",
+   tip:"La presión del alfil en g2 sobre la diagonal larga dura toda la partida — negras debe neutralizarla con ...c6 o ...dxc4."},
+  {eco:"E04", name:"Catalana Abierta", moves:"d4 Nf6 c4 e6 g3 d5 Nf3 dxc4", tag:"hypermodern",
+   history:"Negras acepta el peón de flanco apostando a devolverlo más tarde a cambio de tiempo de desarrollo, similar en espíritu al Gambito de Dama Aceptado.",
+   games:"Estructura habitual en el repertorio de Kramnik como blancas durante más de dos décadas.",
+   tip:"Blancas rara vez recupera el peón de inmediato — Qa4+ y Ne5 son los recursos típicos para hacerlo con ventaja de desarrollo."},
+  {eco:"E06", name:"Catalana Cerrada", moves:"d4 Nf6 c4 e6 g3 d5 Nf3 Be7 Bg2 O-O", tag:"positional",
+   history:"Negras retiene el peón central en d5 en vez de capturar en c4, buscando una estructura sólida tipo Gambito de Dama Rehusado con el alfil blanco fianchettado.",
+   games:"Línea preferida de Kramnik cuando buscaba un juego lento y sin riesgos con blancas.",
+   tip:"Blancas presiona con Qc2 y Rd1 preparando e4 — negras debe vigilar el momento justo para ...c6 o ...dxc4."},
+  {eco:"A45", name:"Sistema Londres", moves:"d4 Nf6 Bf4", tag:"solid",
+   history:"Sistema de desarrollo casi automático, popular por su bajo esfuerzo teórico.",
+   games:"Adoptado por Carlsen y Nakamura en rápidas para evitar preparación profunda del rival.",
+   tip:"Bf4, e3, Bd3, Nbd2, c3, h3 — cuidado con ...c5 y ...Qb6 golpeando b2 y d4."},
+  {eco:"A40", name:"Ataque Trompowsky", moves:"d4 Nf6 Bg5", tag:"aggressive",
+   history:"Nombrada por el brasileño Octávio Trompowsky en los años 30, revivida en los 80.",
+   games:"Julian Hodgson la hizo popular en los 90 como arma de sorpresa.",
+   tip:"Busca doblar los peones negros con Bxf6 cuando la dama no pueda recapturar cómodamente."},
+  {eco:"A46", name:"Sistema Torre", moves:"d4 Nf6 Nf3 e6 Bg5", tag:"solid",
+   history:"Sistema de desarrollo nombrado por el mexicano Carlos Torre Repetto, similar en espíritu al Sistema Londres.",
+   games:"Torre venció a Lasker con esta idea en Moscú 1925, en una de las combinaciones más famosas de la historia.",
+   tip:"Vigila la combinación clásica del 'Molino' con Bxf6 y Nf5-Bxg7 en posiciones abiertas."},
+  {eco:"A80", name:"Defensa Holandesa", moves:"d4 f5", tag:"aggressive",
+   history:"Negras lucha por el control de e4 desde la primera jugada, a costa de debilitar su propio rey.",
+   games:"Botvinnik y Alekhine la jugaron ocasionalmente como arma de lucha por la iniciativa con negras.",
+   tip:"Decide desde el principio entre la Stonewall (...d5,...e6,...c6) o la Leningrado (...g6,...Bg7) — son casi aperturas distintas."},
+  {eco:"A87", name:"Holandesa Leningrado", moves:"d4 f5 g3 Nf6 Bg2 g6", tag:"hypermodern",
+   history:"Combina la Holandesa con un fianchetto de rey, dando a negras piezas muy activas a cambio de cierto riesgo posicional.",
+   games:"Popular entre especialistas modernos que buscan desequilibrio con negras contra 1.d4.",
+   tip:"El peón en f5 y el alfil en g7 forman una batería agresiva contra el flanco de rey blanco — no la cambies sin necesidad."},
+  {eco:"A85", name:"Holandesa Stonewall", moves:"d4 f5 c4 e6 Nc3 Nf6 Nf3 d5", tag:"solid",
+   history:"Nombrada por el 'muro de piedra' de peones en d5-e6-f5, una fortaleza que limita al alfil de casillas claras propio.",
+   games:"Usada por jugadores de club y algunos GM como estructura de bajo riesgo con planes claros de ataque.",
+   tip:"El plan típico es ...Bd6, ...Qe8-h5 y un asalto directo contra el rey enrocado corto."},
+
+  {eco:"A10", name:"Apertura Inglesa", moves:"c4", tag:"hypermodern",
+   history:"Nombrada así porque el campeón inglés Howard Staunton la popularizó en el siglo XIX.",
+   games:"Fischer venció a Petrosian con ella en 1971; Carlsen la adoptó como arma flexible.",
+   tip:"Es camaleónica: no memorices líneas, entiende las estructuras de peones."},
+  {eco:"A15", name:"Inglesa, Sistema de Ataque", moves:"c4 Nf6", tag:"hypermodern",
+   history:"Blancas mantiene máxima flexibilidad, dejando abierta la puerta a transponer a India de Rey, Catalana o Inglesa pura.",
+   games:"Usada por Carlsen para evitar teoría forzada mientras mantiene todas las opciones estructurales abiertas.",
+   tip:"No definas tu estructura de peones demasiado pronto — la fuerza de esta apertura es justamente su ambigüedad."},
+  {eco:"A34", name:"Inglesa Simétrica", moves:"c4 c5", tag:"positional",
+   history:"Negras responde con la misma jugada de flanco, buscando un juego equilibrado y rico en transposiciones.",
+   games:"Muy común en niveles de élite como forma de evitar teoría afilada de 1.e4.",
+   tip:"El plan de blancas con g3, Bg2 y Nf3 suele apuntar a un pequeño control posicional duradero, no a un ataque directo."},
+  {eco:"A30", name:"Inglesa, Sistema Erizo", moves:"c4 c5 Nf3 Nf6 g3 b6", tag:"positional",
+   history:"Ambos bandos construyen una fila de peones compacta ('el erizo') que parece pasiva pero esconde recursos dinámicos de contragolpe tardío.",
+   games:"Estructura muy estudiada por Andersson y Ulf en los años 70-80, y todavía vigente en élite moderna.",
+   tip:"Negras espera pacientemente el momento correcto para el golpe liberador ...d5 o ...b5 — no lo juegues antes de tiempo."},
+  {eco:"A29", name:"Inglesa, Variante de los Cuatro Caballos", moves:"c4 e5 Nc3 Nf6 Nf3 Nc6 g3", tag:"positional",
+   history:"Una Siciliana con los colores invertidos: blancas juega el rol que normalmente tiene negras en la Siciliana.",
+   games:"Popular entre especialistas de la Inglesa que buscan estructuras conocidas con un tempo de más.",
+   tip:"Piensa en espejo: los planes típicos de negras en la Siciliana (...d6, ...a6, ...b5) aplican a blancas aquí con colores invertidos."},
+  {eco:"A20", name:"Inglesa Reversa (Siciliana con colores invertidos)", moves:"c4 e5", tag:"positional",
+   history:"Negras juega el papel de blancas en una Siciliana, con un tempo extra a su favor.",
+   games:"Popular entre jugadores que dominan estructuras sicilianas y quieren aplicarlas desde el otro lado.",
+   tip:"Piensa como blancas en una Siciliana Cerrada: g3, Bg2 y d3 son el plan natural de desarrollo."},
+  {eco:"A04", name:"Apertura Reti", moves:"Nf3", tag:"hypermodern",
+   history:"Richard Réti demostró en los años 1920 que el centro se puede controlar con piezas antes que con peones.",
+   games:"Réti venció a Capablanca en 1924, rompiendo una racha de invencibilidad de 8 años.",
+   tip:"Mantén la flexibilidad: decide entre c4, d4 o g3 según cómo responda el rival."},
+  {eco:"A07", name:"Reti, Sistema del Rey Indio (Barcza)", moves:"Nf3 d5 g3", tag:"hypermodern",
+   history:"Nombrado por el húngaro Gedeon Barcza, combina ideas de la Reti con un fianchetto de rey flexible.",
+   games:"Usada por jugadores posicionales como Petrosian para evitar teoría afilada desde el inicio.",
+   tip:"El plan es c4 en el momento justo para presionar d5 sin comprometerte a una estructura fija demasiado pronto."},
+  {eco:"A09", name:"Reti Aceptada", moves:"Nf3 d5 c4 dxc4", tag:"hypermodern",
+   history:"Negras acepta el peón de flanco, similar en espíritu al Gambito de Dama pero con los caballos ya desarrollados.",
+   games:"Analizada extensamente por Réti y sus contemporáneos como demostración de que el centro se recupera con piezas.",
+   tip:"Blancas no necesita apurarse en recuperar el peón — el desarrollo rápido con Na3 o Qa4+ suele bastar."},
+  {eco:"A11", name:"Reti, Variante Eslava", moves:"Nf3 d5 c4 c6", tag:"hypermodern",
+   history:"Negras adopta una estructura tipo Eslava contra el orden de jugadas flexible de la Reti, evitando comprometerse temprano.",
+   games:"Sistema muy usado en ajedrez de torneo por su bajo riesgo y amplias posibilidades de transposición.",
+   tip:"Vigila las transposiciones hacia el Gambito de Dama o la Catalana — el orden de jugadas aquí lo decide todo."},
+  {eco:"A08", name:"Ataque Indio de Rey (contra la Francesa)", moves:"e4 e6 d3", tag:"hypermodern",
+   history:"Blancas evita la teoría pesada de la Francesa clásica y en su lugar construye un fianchetto de rey flexible tipo Réti.",
+   games:"Fischer la usó con gran éxito en varias ocasiones, evitando la preparación teórica de sus rivales.",
+   tip:"El plan típico es Nd2, g3, Bg2, Ngf3 y O-O, seguido de e5 en el momento adecuado para ganar espacio."},
+  {eco:"A00", name:"Apertura Bird / irregulares", moves:"f4", tag:"aggressive",
+   history:"Henry Bird la practicó en el siglo XIX buscando desequilibrio inmediato desde la primera jugada.",
+   games:"Rara en élite pero efectiva en ajedrez rápido por su carácter sorpresivo.",
+   tip:"Vigila la debilidad permanente en e1-h4 — no dejes tu rey ahí sin protección extra."},
+  {eco:"A02", name:"Bird, Gambito From", moves:"f4 e5", tag:"gambit",
+   history:"Negras contraataca de inmediato el flanco de rey debilitado por 1.f4, sacrificando un peón por desarrollo rápido y líneas abiertas.",
+   games:"Temida a nivel de club porque castiga con dureza cualquier imprecisión blanca en las primeras jugadas.",
+   tip:"Blancas debe devolver el peón con rapidez (3.e4 o 3.Nf3 seguido de d4) en vez de aferrarse a la ventaja material."},
+  {eco:"A00", name:"Apertura Larsen (1.b3)", moves:"b3", tag:"hypermodern",
+   history:"Nombrada por el danés Bent Larsen, quien la usó para vencer a Spassky en la 'Partida del Siglo' de estilo hipermoderno.",
+   games:"Larsen–Spassky, Belgrado 1970, es la partida de referencia de esta apertura.",
+   tip:"El alfil en b2 apunta a la diagonal larga toda la partida — evita bloquearlo con tus propios peones."},
+  {eco:"A00", name:"Apertura Sokolsky (1.b4)", moves:"b4", tag:"aggressive",
+   history:"Nombrada por el soviético Alexey Sokolsky, gana espacio en el flanco de dama desde la primera jugada.",
+   games:"Rara en élite, pero efectiva como arma de sorpresa en niveles de club y ajedrez rápido.",
+   tip:"El plan es Bb2, e3 y c4, presionando la diagonal larga mientras se gana espacio en el flanco de dama."},
+  {eco:"A00", name:"Apertura Grob (1.g4)", moves:"g4", tag:"aggressive",
+   history:"Considerada una de las aperturas más arriesgadas del ajedrez moderno, debilita el rey blanco desde la primera jugada.",
+   games:"Popularizada por el suizo Henri Grob como arma psicológica contra rivales desprevenidos.",
+   tip:"Solo se justifica si conoces bien las líneas tácticas — en manos inexpertas suele ser simplemente peor para blancas."},
+  {eco:"A00", name:"Apertura Van't Kruijs (1.e3)", moves:"e3", tag:"solid",
+   history:"Una de las aperturas más discretas: blancas no compromete ninguna estructura y mantiene todas las opciones abiertas.",
+   games:"Usada ocasionalmente por jugadores que prefieren evitar por completo la teoría forzada desde la jugada 1.",
+   tip:"Puede transponer a casi cualquier apertura de peón de dama — útil si quieres sorprender sin arriesgar nada concreto."},
+  {eco:"C40", name:"Gambito Englund", moves:"d4 e5", tag:"gambit",
+   history:"Negras sacrifica un peón de inmediato contra 1.d4, buscando complicaciones tácticas tempranas poco preparadas por blancas.",
+   games:"Común como arma sorpresa en niveles de club y ajedrez rápido online.",
+   tip:"Blancas debe simplemente devolver la pieza en el momento correcto y desarrollarse con naturalidad para consolidar la ventaja."},
+  {eco:"C30", name:"Gambito de Rey Rehusado", moves:"e4 e5 f4 Bc5", tag:"solid",
+   history:"Negras ignora el peón ofrecido y desarrolla con jaque a f2, evitando por completo la teoría afilada de las líneas de aceptación.",
+   games:"Refugio clásico de jugadores que no querían memorizar las líneas forzadas del Gambito de Rey Aceptado.",
+   tip:"Blancas debe elegir entre Nf3 (sólido) o Qh5+ inmediato — cuidado con exponer demasiado al propio rey."},
+  {eco:"C31", name:"Contragambito Falkbeer", moves:"e4 e5 f4 d5", tag:"aggressive",
+   history:"Negras contraataca el centro de inmediato en vez de aceptar el peón, castigando el debilitamiento del flanco de rey blanco.",
+   games:"Popular en el siglo XIX; sigue siendo un arma temida contra jugadores del Gambito de Rey poco preparados.",
+   tip:"Si blancas captura dos veces en d5/e5 sin cuidado, negras recupera material con clara iniciativa — conoce el orden exacto."},
+  {eco:"B01", name:"Escandinava, Gambito de Islandia", moves:"e4 d5 exd5 Nf6", tag:"gambit",
+   history:"Versión moderna y agresiva de la Escandinava: negras sacrifica un segundo peón por desarrollo fulminante.",
+   games:"Muy popular en blitz y bullet online por su capacidad de sorprender con trampas tempranas.",
+   tip:"Si blancas se aferra a los dos peones sin desarrollar, negras suele recuperar material con ventaja de tiempo."},
+  {eco:"B00", name:"Defensa Nimzowitsch (1...Nc6)", moves:"e4 Nc6", tag:"hypermodern",
+   history:"Aron Nimzowitsch propuso desarrollar el caballo antes de fijar la estructura de peones, en pleno espíritu hipermoderno.",
+   games:"Poco común en élite pero efectiva como arma sorpresa contra la preparación de aperturas 1.e4 del rival.",
+   tip:"Negras suele seguir con ...d5 o ...e5 según la respuesta blanca — flexibilidad es la clave, no un plan fijo."},
+  {eco:"B07", name:"Defensa Pirc, Variante Clásica", moves:"e4 d6 d4 Nf6 Nc3 g6 Nf3 Bg7", tag:"hypermodern",
+   history:"Negras cede el centro a propósito para golpearlo después con piezas, en vez de disputarlo con peones desde el inicio.",
+   games:"Repertorio habitual de Bronstein y, más tarde, de aficionados a las estructuras dinámicas y flexibles.",
+   tip:"El golpe central ...e5 o ...c5 en el momento justo es la idea que valida toda la estrategia — no te demores demasiado."},
+  {eco:"B06", name:"Defensa Moderna, Variante Averbakh", moves:"e4 g6 d4 Bg7 Nc3 d6 Be3", tag:"positional",
+   history:"Blancas ocupa el centro por completo antes de que negras pueda organizar el contragolpe típico de las defensas fianchetto.",
+   games:"Sistema muy usado a nivel de club por jugadores blancos que buscan ventaja espacial estable.",
+   tip:"Negras debe elegir bien entre ...c6/...b5 o ...c5 para golpear el centro blanco antes de quedar totalmente comprimida."},
+  {eco:"B12", name:"Caro-Kann, Variante Fantasía", moves:"e4 c6 d4 d5 f3", tag:"aggressive",
+   history:"Blancas refuerza e4 con un peón de flanco de rey en vez de desarrollar una pieza, buscando un centro de peones dominante.",
+   games:"Arma sorpresa poco teorizada, popular en partidas rápidas por sacar a negras de la teoría principal.",
+   tip:"Si negras responde con ...e5 o ...Qb6 con precisión, el centro blanco puede volverse una debilidad en vez de una fortaleza."},
+  {eco:"C10", name:"Francesa, Ataque Alekhine-Chatard", moves:"e4 e6 d4 d5 Nc3 Nf6 Bg5 Be7 e5 Nfd7 h4", tag:"aggressive",
+   history:"Blancas sacrifica tiempo de desarrollo por un ataque directo al rey negro en el flanco de rey antes de que enroque con seguridad.",
+   games:"Arma predilecta de jugadores de ataque contra la Francesa Clásica desde principios del siglo XX.",
+   tip:"Negras debe conocer la defensa exacta con ...a6 y ...c5 — un solo error temprano puede ser fatal para el rey negro."},
+  {eco:"B40", name:"Siciliana, Variante Cuatro Caballos", moves:"e4 c5 Nf3 e6 Nc3 Nc6 d4 cxd4 Nxd4 Nf6", tag:"solid",
+   history:"Estructura simétrica y flexible dentro de la Siciliana, que evita las líneas más afiladas del Najdorf o el Dragón.",
+   games:"Habitual entre jugadores posicionales que buscan la Siciliana sin memorizar teoría forzada de más de 20 jugadas.",
+   tip:"El plan típico blanco es Ndb5 presionando d6 — negras debe vigilar esa casilla desde el principio."},
+  {eco:"B21", name:"Siciliana, Gambito Ala", moves:"e4 c5 b4", tag:"gambit",
+   history:"Blancas ofrece un peón de flanco para abrir líneas rápidas contra el rey negro antes de que se complete el desarrollo.",
+   games:"Arma de sorpresa poco convencional, más vista en ajedrez rápido y online que en torneos clásicos.",
+   tip:"Si negras acepta con ...cxb4, blancas sigue con a3 buscando abrir la columna a — conoce el plan o evita aceptar el gambito."},
+  {eco:"D06", name:"Gambito de Dama, Variante Eslava Aceptada", moves:"d4 d5 c4 dxc4", tag:"aggressive",
+   history:"Negras acepta el peón de inmediato, cediendo el centro a cambio de intentar retenerlo o devolverlo en mejores condiciones.",
+   games:"Analizada a fondo desde la era soviética; hoy es terreno habitual de la teoría de aperturas de dama.",
+   tip:"Blancas debe recuperar el peón con e3/e4 y Bxc4 sin perder tiempo — dejar pasar el momento cede la iniciativa."},
+  {eco:"D43", name:"Semi-Eslava, Variante Botvinnik", moves:"d4 d5 c4 c6 Nc3 Nf6 Nf3 e6 Bg5 dxc4", tag:"aggressive",
+   history:"Una de las estructuras más complicadas y analizadas del ajedrez moderno, con sacrificios de material a cambio de ataque directo.",
+   games:"Botvinnik la investigó a fondo en los años 40-50; hoy sigue siendo territorio de preparación profunda con computadora.",
+   tip:"No entres a esta línea sin memorizar teoría concreta: los errores tempranos suelen ser decisivos en ambos sentidos."},
+  {eco:"D85", name:"Grünfeld, Variante del Cambio con Ataque Central", moves:"d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3 Bg7 Nf3 c5", tag:"aggressive",
+   history:"Blancas construye un centro de peones imponente que negras ataca de inmediato desde el fianchetto, en el espíritu hipermoderno clásico.",
+   games:"Línea principal de la Grünfeld a nivel de élite durante décadas, con aportes teóricos constantes de Kasparov.",
+   tip:"El golpe ...c5 y luego ...Qa5/...Bg4 es el plan típico negro para desgastar el centro blanco antes de que avance."},
+  {eco:"E92", name:"India de Rey, Variante Petrosian", moves:"d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 d5", tag:"positional",
+   history:"Petrosian cerraba el centro de inmediato para neutralizar el típico ataque de flanco de rey negro antes de que arrancara.",
+   games:"Arma predilecta de jugadores blancos posicionales que prefieren maniobra lenta a complicaciones tácticas.",
+   tip:"Negras debe preparar ...f5 con cuidado — un avance prematuro sin apoyo suficiente puede debilitar su propio rey."},
+  {eco:"E20", name:"Nimzoindia, Variante Rubinstein", moves:"d4 Nf6 c4 e6 Nc3 Bb4 e3", tag:"solid",
+   history:"Blancas elige la vía más flexible y sólida contra la Nimzoindia, evitando comprometerse en la estructura de peones tan pronto.",
+   games:"La más jugada de todas las variantes de Nimzoindia a nivel de club y élite por su equilibrio entre solidez y ambición.",
+   tip:"El plan de blancas suele incluir Bd3, O-O y luego a3 o Qc2 según cómo resuelva negras la clavada en c3."},
+  {eco:"A07", name:"Reti / Ataque Indio de Rey (King's Indian Attack)", moves:"Nf3 d5 g3 Nf6 Bg2 e6 O-O", tag:"hypermodern",
+   history:"Blancas fianchetta ambos alfiles y ataca en el flanco de rey sin importar demasiado lo que juegue negras en el centro.",
+   games:"Sistema de por vida de Bobby Fischer contra casi cualquier respuesta negra, incluida la Francesa y la Siciliana.",
+   tip:"El plan típico es e4, Nbd2, Re1 y el avance e4-e5 empujando piezas negras — aprende el plan, no memorices jugadas exactas."},
+  {eco:"A45", name:"Ataque Trompowsky, Variante Raetsky", moves:"d4 Nf6 Bg5 Ne4 Bf4", tag:"aggressive",
+   history:"Blancas retiene el alfil activo en vez de cambiarlo, manteniendo la presión sobre el caballo adelantado en e4.",
+   games:"Arma de sorpresa habitual en ajedrez rápido para sacar a negras de las líneas teóricas más trilladas del Trompowsky.",
+   tip:"Si negras juega ...d5 con solidez, blancas debe decidir entre f3 (ganando espacio) o Nd2 (desarrollo tranquilo)."},
+  {eco:"A80", name:"Defensa Holandesa, Ataque Estático", moves:"d4 f5 Nc3", tag:"aggressive",
+   history:"Blancas desarrolla el caballo a c3 de inmediato apuntando a e4 y d5, buscando explotar la debilidad que crea 1...f5.",
+   games:"Poco frecuente en élite pero temida a nivel de club por su capacidad de sorprender a jugadores de Holandesa poco preparados.",
+   tip:"Negras debe vigilar el avance e4 blanco — si no reacciona a tiempo con ...d5 o ...Nf6, el centro puede desbordarla."},
+  {eco:"A34", name:"Inglesa, Variante Siciliana Simétrica Cerrada", moves:"c4 c5 Nc3 Nc6 g3 g6 Bg2 Bg7", tag:"positional",
+   history:"Ambos bandos fianchettan sus alfiles de rey, generando una lucha lenta y estratégica de maniobras en vez de cálculo forzado.",
+   games:"Estructura predilecta de jugadores posicionales de estilo Botvinnik y, más tarde, de la escuela soviética completa.",
+   tip:"El plan típico blanco pasa por d3, Rb1 y b4, ganando espacio en el flanco de dama antes de decidir el centro."}
+];
+
+
+/* Repertorio ampliado SOLO para prediccion/deteccion (eco+nombre+jugadas).
+   Para agregar mas lineas: una entrada por linea, SAN exacto de chess.js
+   (incluir + en jaques, O-O en enroques). */
+const EXTRA_OPENINGS = [
+["C25","Vienesa, Max Lange","e4 e5 Nc3 Nc6"],
+["C26","Vienesa, Fianchetto","e4 e5 Nc3 Nf6 g3"],
+["C27","Vienesa, Frankenstein-Dracula","e4 e5 Nc3 Nf6 Bc4 Nxe4"],
+["C24","Apertura del Alfil, Berlin","e4 e5 Bc4 Nf6"],
+["C33","G. de Rey Aceptado, Gambito del Alfil","e4 e5 f4 exf4 Bc4"],
+["C36","G. de Rey Aceptado, Defensa Moderna","e4 e5 f4 exf4 Nf3 d5"],
+["C37","Gambito Muzio","e4 e5 f4 exf4 Nf3 g5 Bc4 g4 O-O"],
+["C39","Gambito Kieseritzky","e4 e5 f4 exf4 Nf3 g5 h4 g4 Ne5"],
+["C41","Philidor, Variante Hanham","e4 e5 Nf3 d6 d4 Nd7"],
+["C42","Petrov, Variante Clasica","e4 e5 Nf3 Nf6 Nxe5 d6 Nf3 Nxe4"],
+["C45","Escocesa Clasica","e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Bc5"],
+["C46","Tres Caballos, Variante del Alfil","e4 e5 Nf3 Nc6 Nc3 Bc5"],
+["C47","Cuatro Caballos, Escocesa","e4 e5 Nf3 Nc6 Nc3 Nf6 d4"],
+["C55","Dos Caballos, Moderna","e4 e5 Nf3 Nc6 Bc4 Nf6 d4"],
+["C58","Dos Caballos, Linea Principal","e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 d5 exd5 Na5"],
+["C57","Ataque Higado Frito","e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 d5 exd5 Nxd5 Nxf7"],
+["C64","Espanola, Defensa Clasica","e4 e5 Nf3 Nc6 Bb5 Bc5"],
+["C63","Espanola, Defensa Schliemann","e4 e5 Nf3 Nc6 Bb5 f5"],
+["C65","Espanola, Berlinesa con d3","e4 e5 Nf3 Nc6 Bb5 Nf6 d3"],
+["C69","Espanola, Cambio con O-O","e4 e5 Nf3 Nc6 Bb5 a6 Bxc6 dxc6 O-O"],
+["C70","Espanola, Clasica Diferida","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Bc5"],
+["C71","Espanola, Steinitz Diferida","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 d6"],
+["C77","Espanola, Anderssen","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 d3"],
+["C78","Espanola, Arcangel","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O b5 Bb3 Bb7"],
+["C84","Espanola Cerrada","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7"],
+["C88","Espanola, Anti-Marshall","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 O-O a4"],
+["C96","Espanola Cerrada, Chigorin","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Na5"],
+["B23","Siciliana Cerrada con g3","e4 c5 Nc3 Nc6 g3"],
+["B28","Siciliana O'Kelly","e4 c5 Nf3 a6"],
+["B29","Siciliana Nimzowitsch","e4 c5 Nf3 Nf6"],
+["B31","Rossolimo, Fianchetto","e4 c5 Nf3 Nc6 Bb5 g6"],
+["B40","Siciliana Francesa","e4 c5 Nf3 e6"],
+["B42","Siciliana Kan con Bd3","e4 c5 Nf3 e6 d4 cxd4 Nxd4 a6 Bd3"],
+["B50","Siciliana con 2...d6","e4 c5 Nf3 d6"],
+["B52","Variante Moscu con Bd7","e4 c5 Nf3 d6 Bb5+ Bd7"],
+["B53","Siciliana Chekhover","e4 c5 Nf3 d6 d4 cxd4 Qxd4"],
+["B56","Siciliana Clasica","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6"],
+["B57","Ataque Sozin","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bc4"],
+["B60","Ataque Richter-Rauzer","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5"],
+["B76","Dragon, Ataque Yugoslavo","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 Bg7 f3"],
+["B92","Najdorf con Be2","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Be2"],
+["B96","Najdorf con Bg5","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Bg5"],
+["B97","Najdorf, Peon Envenenado","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Bg5 e6 f4 Qb6"],
+["C04","Francesa Tarrasch, Guimard","e4 e6 d4 d5 Nd2 Nc6"],
+["C05","Francesa Tarrasch Cerrada","e4 e6 d4 d5 Nd2 Nf6"],
+["C07","Francesa Tarrasch Abierta","e4 e6 d4 d5 Nd2 c5"],
+["C12","Francesa MacCutcheon","e4 e6 d4 d5 Nc3 Nf6 Bg5 Bb4"],
+["C13","Francesa Clasica con Bg5","e4 e6 d4 d5 Nc3 Nf6 Bg5"],
+["C18","Winawer, Linea Principal","e4 e6 d4 d5 Nc3 Bb4 e5 c5 a3 Bxc3+ bxc3"],
+["C02","Francesa Avance, Milner-Barry","e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 Qb6 Bd3"],
+["B11","Caro-Kann, Dos Caballos con Bg4","e4 c6 Nc3 d5 Nf3 Bg4"],
+["B12","Caro-Kann Avance con Bf5","e4 c6 d4 d5 e5 Bf5"],
+["B14","Panov con e6","e4 c6 d4 d5 exd5 cxd5 c4 Nf6 Nc3 e6"],
+["B19","Caro-Kann Clasica, Linea Principal","e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg6 h4 h6 Nf3 Nd7"],
+["B01","Escandinava con Qd8","e4 d5 exd5 Qxd5 Nc3 Qd8"],
+["B01","Escandinava, Gambito Portugues","e4 d5 exd5 Nf6 d4 Bg4"],
+["D02","Londres contra d5","d4 d5 Nf3 Nf6 Bf4"],
+["D02","Sistema Zukertort","d4 d5 Nf3"],
+["D00","Ataque Stonewall","d4 d5 e3 Nf6 Bd3"],
+["D11","Eslava con Nf3","d4 d5 c4 c6 Nf3"],
+["D15","Eslava Chebanenko","d4 d5 c4 c6 Nf3 Nf6 Nc3 a6"],
+["D17","Eslava, Linea Principal","d4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4 Bf5"],
+["D21","G. de Dama Aceptado con Nf3","d4 d5 c4 dxc4 Nf3"],
+["D24","G. de Dama Aceptado, e3","d4 d5 c4 dxc4 Nf3 Nf6 e3"],
+["D31","Semi-Eslava","d4 d5 c4 e6 Nc3 c6"],
+["D37","GDR con Nf3","d4 d5 c4 e6 Nc3 Nf6 Nf3"],
+["D38","GDR, Defensa Ragozin","d4 d5 c4 e6 Nc3 Nf6 Nf3 Bb4"],
+["D52","GDR, Cambridge Springs","d4 d5 c4 e6 Nc3 Nf6 Bg5 Nbd7 e3 c6 Nf3 Qa5"],
+["D53","GDR Ortodoxa","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7"],
+["E15","India de Dama con g3","d4 Nf6 c4 e6 Nf3 b6 g3"],
+["E24","Nimzoindia, Variante Samisch","d4 Nf6 c4 e6 Nc3 Bb4 a3 Bxc3+ bxc3"],
+["E61","India de Rey con Nc3 y Nf3","d4 Nf6 c4 g6 Nc3 Bg7 Nf3"],
+["E70","India de Rey con e4","d4 Nf6 c4 g6 Nc3 Bg7 e4"],
+["E73","India de Rey, Averbakh","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Be2 O-O Bg5"],
+["E97","India de Rey, Mar del Plata","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7"],
+["A43","Benoni Antigua","d4 c5"],
+["A52","Budapest con Ng4","d4 Nf6 c4 e5 dxe5 Ng4"],
+["A41","Moderna contra d4","d4 g6"],
+["A40","Owen contra d4","d4 b6"],
+["A40","Defensa Horwitz","d4 e6"],
+["A48","Londres contra India de Rey","d4 Nf6 Nf3 g6 Bf4"],
+["A03","Bird con d5","f4 d5"],
+["A05","Reti con Nf6","Nf3 Nf6"],
+["A06","Reti contra d5","Nf3 d5"],
+["A13","Inglesa Agincourt","c4 e6"],
+["A16","Inglesa Anglo-Grunfeld","c4 Nf6 Nc3 d5"],
+["A21","Inglesa contra e5","c4 e5 Nc3"],
+["A22","Inglesa, Dos Caballos","c4 e5 Nc3 Nf6"],
+["A25","Inglesa, Siciliana Invertida Cerrada","c4 e5 Nc3 Nc6"],
+["A36","Inglesa Simetrica con g3","c4 c5 Nc3 Nc6 g3"],
+["C00","Francesa, Variante Chigorin","e4 e6 Qe2"]
+].map(function(a){ return {eco:a[0], name:a[1], moves:a[2]}; });
+
+/* Lineas unificadas para el predictor: base rica + repertorio compacto */
+const ALL_LINES = OPENINGS.map(function(o){ return {eco:o.eco, name:o.name, moves:o.moves}; }).concat(EXTRA_OPENINGS);
+
+/* PREDICTOR — filtra las lineas aun alcanzables desde el historial actual.
+   Una linea es "posible" si sus jugadas EMPIEZAN con lo ya jugado y todavia
+   le quedan jugadas por revelar. A cada movimiento la lista se poda sola. */
+function updatePredictions(hist){
+  const countEl = document.getElementById('predict-count');
+  const listEl = document.getElementById('predict-list');
+  if(!countEl || !listEl) return;
+  const seen = new Set(); const cands = [];
+  for(const o of ALL_LINES){
+    const seq = o.moves.split(' ');
+    if(seq.length <= hist.length) continue;
+    let ok = true;
+    for(let i=0;i<hist.length;i++){ if(seq[i]!==hist[i]){ ok=false; break; } }
+    if(ok){
+      const k = o.eco+'|'+o.name;
+      if(!seen.has(k)){ seen.add(k); cands.push({o:o, next:seq[hist.length]}); }
+    }
+  }
+  if(hist.length===0){
+    countEl.textContent = cands.length + ' lineas en el radar';
+    listEl.innerHTML = '<span class="chip-empty">Mueve una pieza y la lista de aperturas posibles ira mutando en vivo.</span>';
+    return;
+  }
+  if(cands.length===0){
+    countEl.textContent = '0 lineas conocidas';
+    listEl.innerHTML = '<span class="chip-empty">Terreno inexplorado: ninguna linea del repertorio sigue este orden exacto.</span>';
+    return;
+  }
+  countEl.textContent = cands.length + (cands.length===1?' linea posible':' lineas posibles');
+  const MAX = 14;
+  let html = cands.slice(0,MAX).map(function(c){
+    return '<span class="chip"><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+
+           '<span class="chip-next">&rarr; '+c.next+'</span></span>';
+  }).join('');
+  if(cands.length>MAX) html += '<span class="chip">+'+(cands.length-MAX)+' m&aacute;s&hellip;</span>';
+  listEl.innerHTML = html;
+}
+
+const TEMPERAMENT = {
+  aggressive: { label:"Perfil agresivo / intuitivo",
+    text:"Te sientes cómodo aquí si te gusta decidir la partida con iniciativa y cálculo concreto en vez de planes lentos. Terreno natural de Tal o Kasparov: alto apetito de riesgo, tolerancia a posiciones desequilibradas.",
+    watch:"El riesgo: sobre-extenderte y dejar el rey débil. Antes de atacar, cuenta cuántas piezas atacan y cuántas defienden." },
+  positional: { label:"Perfil posicional / metódico",
+    text:"Estas líneas premian la paciencia: acumular ventajas pequeñas durante 20-30 jugadas antes de cobrar. Estilo de Karpov, Petrosian o Carlsen en finales.",
+    watch:"El riesgo: la parálisis por análisis. Si tienes ventaja clara, no la guardes indefinidamente." },
+  gambit: { label:"Perfil de sacrificio calculado",
+    text:"Entregar material por tiempo o iniciativa exige tolerancia alta a la incertidumbre a corto plazo — típico de los románticos del siglo XIX y de especialistas modernos en ajedrez rápido.",
+    watch:"El riesgo: convertir un gambito en una donación. Si no recuperas material NI iniciativa pronto, la posición es simplemente peor." },
+  hypermodern: { label:"Perfil hipermoderno / flexible",
+    text:"Ceder el centro a propósito para atacarlo después exige comodidad con la ambigüedad. Estilo de Réti, Nimzowitsch y del propio Kasparov con negras.",
+    watch:"El riesgo: dejar que el centro rival crezca demasiado antes de golpearlo. Hay una ventana de tiempo — no la dejes pasar." },
+  solid: { label:"Perfil sólido / de bajo riesgo",
+    text:"Estructuras sin debilidades, dispuestas a jugar posiciones ligeramente peores con tal de no tener nada roto. Terreno de Petrosian y Caro.",
+    watch:"El riesgo: la pasividad excesiva. La solidez es una base, no un plan." }
+};
+
+/* ============================================================
+   NOTACIÓN EN ESPAÑOL:
+   R=Rey T=Torre A=Alfil C=Caballo P=Peón (ASCII)
+   Dama = carácter especial no-ASCII (♕ blanca / ♛ negra)
+   ============================================================ */
+const PIECE_GLYPHS = {
+  w:{ k:'♔', q:'♕', r:'♖', b:'♗', n:'♘', p:'♙' },
+  b:{ k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' }
+};
+function pieceGlyph(type, color){
+  return PIECE_GLYPHS[color][type];
+}
+
+function renderBoard(){
+  const boardEl = document.getElementById('board');
+  boardEl.classList.toggle('flipped', humanColor === 'b');
+  boardEl.innerHTML = '';
+  const board = game.board();
+  for(let r=0; r<8; r++){
+    for(let c=0; c<8; c++){
+      const file = FILES[c];
+      const rank = 8-r;
+      const squareName = file+rank;
+      const isLight = (r+c)%2===0;
+      const sq = document.createElement('div');
+      sq.className = 'sq ' + (isLight?'light':'dark');
+      sq.dataset.sq = squareName;
+
+      const piece = board[r][c];
+      if(piece){
+        const span = document.createElement('span');
+        span.className = 'pc ' + (piece.color==='w'?'w':'b');
+        span.textContent = pieceGlyph(piece.type, piece.color);
+        sq.appendChild(span);
+      } else {
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.textContent = '·';
+        sq.appendChild(dot);
+      }
+
+      if(selectedSq === squareName) sq.classList.add('selected');
+      if(legalTargets.find(m=>m.to===squareName)){
+        sq.classList.add('legal');
+        if(piece) sq.classList.add('capture');
+      }
+      if(lastMove && (lastMove.from===squareName || lastMove.to===squareName)){
+        sq.classList.add('last');
+      }
+
+      if(c===0){
+        const rc = document.createElement('span');
+        rc.className='coord rank'; rc.textContent=rank;
+        sq.appendChild(rc);
+      }
+      if(r===7){
+        const fc = document.createElement('span');
+        fc.className='coord file'; fc.textContent=file;
+        sq.appendChild(fc);
+      }
+
+      sq.addEventListener('click', ()=>onSquareClick(squareName));
+      boardEl.appendChild(sq);
+    }
+  }
+  renderPeriscope();
+}
+
+/* Vista espejada (180°) de la misma posición — el "periscopio".
+   Reutiliza el mismo orden de casillas que el tablero principal;
+   el giro de 180° lo hace el CSS, así que esto siempre queda en
+   sync con renderBoard() sin lógica de espejo duplicada. */
+/* Periscopio: espía toda la MEDIA CANCHA del rival (4 filas — su
+   campamento completo, no solo su fila de fondo), mostradas como el
+   rival las ve (espejadas izq/der). Ahí se arma toda su apertura o
+   defensa, así que con 2-3 filas no alcanzaba: con 4 sí se ve completa. */
+function renderPeriscope(){
+  const el = document.getElementById('periscope-board');
+  if(!el) return;
+  el.innerHTML = '';
+  const board = game.board(); // board[0]=fila 8 ... board[7]=fila 1
+  const rivalIsBlack = humanColor === 'w';
+  // filas de la media cancha rival (donde arma su apertura/defensa), en el
+  // orden en que él las ve: su fila de fondo queda abajo, la más lejana arriba.
+  const rankRows = rivalIsBlack ? [3,2,1,0] : [4,5,6,7];
+  for(const r of rankRows){
+    for(let cc=0; cc<8; cc++){
+      const c = 7-cc; // espejo horizontal: la vista rotada 180° del rival
+      const isLight = (r+c)%2===0;
+      const sq = document.createElement('div');
+      sq.className = 'psq ' + (isLight?'light':'dark');
+      const piece = board[r][c];
+      if(piece){
+        const span = document.createElement('span');
+        span.textContent = pieceGlyph(piece.type, piece.color);
+        sq.appendChild(span);
+      }
+      el.appendChild(sq);
+    }
+  }
+}
+
+function onSquareClick(squareName){
+  if(thinking) return;
+  if(game.turn() !== humanColor) return;
+
+  if(selectedSq){
+    const move = legalTargets.find(m=>m.to===squareName);
+    if(move){
+      makeMoveWithFx(selectedSq, squareName, ()=>{
+        selectedSq = null; legalTargets = [];
+        renderBoard();
+        setTimeout(engineTurn, 250);
+      });
+      return;
+    }
+  }
+  const piece = game.get(squareName);
+  if(piece && piece.color===humanColor){
+    selectedSq = squareName;
+    legalTargets = game.moves({square:squareName, verbose:true});
+  } else {
+    selectedSq = null; legalTargets = [];
+  }
+  renderBoard();
+}
+
+/* Aplica el movimiento; si hay captura, dispara una de las 3
+   animaciones (genéricas, según la pieza CAPTURADA, no el par) y
+   retrasa el re-render hasta que termine. */
+function makeMoveWithFx(from, to, after){
+  const capturedPiece = game.get(to);
+  const moveObj = game.move({from, to, promotion:'q'});
+  if(!moveObj) return;
+  lastMove = {from,to};
+
+  if(capturedPiece){
+    const el = document.querySelector('.sq[data-sq="'+to+'"]');
+    const effects = ['fx-dissolve','fx-shatter','fx-flash'];
+    const effClass = effects[capturedPiece.type.charCodeAt(0) % 3];
+    if(el){
+      el.classList.add(effClass);
+      setTimeout(()=>{ finishMove(after); }, 380);
+      return;
+    }
+  }
+  finishMove(after);
+}
+function finishMove(after){
+  logMoves();
+  updateOpeningPanel();
+  checkGameOver();
+  if(after) after();
+}
+
+function logMoves(){
+  const hist = game.history();
+  if(hist.length===0){
+    document.getElementById('moves-log').textContent = 'aún no hay jugadas.';
+    setLastMoveReadout('you', '—', false);
+    setLastMoveReadout('ai', '—', false);
+    return;
+  }
+  let out = '';
+  for(let i=0;i<hist.length;i+=2){
+    const w = hist[i]||'', b = hist[i+1]||'';
+    out += '<span class="mv-row"><span class="mv-num">'+(i/2+1)+'.</span>'+
+           (w?'<span class="mv-you">'+w+'</span>':'')+
+           (b?' <span class="mv-ai">'+b+'</span>':'')+
+           '</span> ';
+  }
+  document.getElementById('moves-log').innerHTML = out;
+  document.getElementById('moves-log').scrollTop = document.getElementById('moves-log').scrollHeight;
+
+  // "TÚ" es siempre humanColor, "IA" el contrario, sin importar si humanColor es 'w' o 'b'
+  const lastIdx = hist.length-1;
+  const lastWasWhite = lastIdx % 2 === 0;
+  const lastMoverIsHuman = (lastWasWhite && humanColor==='w') || (!lastWasWhite && humanColor==='b');
+
+  // recupera la última jugada de CADA lado desde el historial, no solo la más reciente
+  let youSan = '—', aiSan = '—';
+  for(let i=hist.length-1;i>=0;i--){
+    const wasWhite = i%2===0;
+    const isHumanMove = (wasWhite && humanColor==='w') || (!wasWhite && humanColor==='b');
+    if(isHumanMove && youSan==='—') youSan = hist[i];
+    if(!isHumanMove && aiSan==='—') aiSan = hist[i];
+    if(youSan!=='—' && aiSan!=='—') break;
+  }
+  setLastMoveReadout('you', youSan, lastMoverIsHuman);
+  setLastMoveReadout('ai', aiSan, !lastMoverIsHuman);
+}
+
+function setLastMoveReadout(who, san, shouldPulse){
+  const val = document.getElementById('lm-'+who+'-val');
+  const box = val.closest('.lm-box');
+  val.textContent = san;
+  if(shouldPulse){
+    box.classList.remove('pulse'); void box.offsetWidth; box.classList.add('pulse');
+  }
+}
+
+function checkGameOver(){
+  const bar = document.getElementById('status-bar');
+  if(game.in_checkmate()){
+    bar.textContent = (game.turn()==='w'?'Negras':'Blancas') + ' dan JAQUE MATE.';
+    bar.className='check'; return true;
+  }
+  if(game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()){
+    bar.textContent = 'Tablas.'; bar.className=''; return true;
+  }
+  if(game.in_check()){
+    bar.textContent = '¡Jaque!'; bar.className='check';
+  } else {
+    bar.textContent = game.turn()===humanColor ? humanTurnMsg() : 'Pensando…';
+    bar.className='';
+  }
+  return false;
+}
+
+/* ============================================================
+   % DE VICTORIAS HISTÓRICO — aproximado y opcional.
+   No hay una base de datos real conectada; esto es una
+   estimación por estilo/ECO pensada solo como referencia
+   curiosa, oculta por defecto detrás de un click. A propósito
+   NO se muestra como un llamado a "jugar lo más ganador":
+   el ajedrez tiene lugar de sobra para la creatividad.
+   ============================================================ */
+function approxWinPct(o){
+  const base = {gambit:55, aggressive:53, solid:51, positional:52, hypermodern:53}[o.tag] || 52;
+  let h = 0;
+  const s = o.eco+o.name;
+  for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
+  const jitter = (h % 9) - 4; // -4..+4, determinístico por apertura
+  const w = Math.max(38, Math.min(63, base + jitter));
+  const b = 100 - w;
+  return {w, b};
+}
+let wpUid = 0;
+function winPctToggleHtml(o){
+  const {w,b} = approxWinPct(o);
+  const id = 'wp'+(wpUid++);
+  return '<span class="wp-toggle" onclick="toggleWinPct(this)">≈%</span>'+
+         '<span class="wp-detail" id="'+id+'">'+w+'% blancas · '+b+'% negras — aprox., no es un mandato a seguir</span>';
+}
+function toggleWinPct(el){
+  const detail = el.nextElementSibling;
+  if(detail) detail.classList.toggle('open');
+}
+
+/* ============================================================
+   DETECTOR DE APERTURA — el propósito central del tablero.
+   ============================================================ */
+function updateOpeningPanel(){
+  const hist = game.history();
+  updatePredictions(hist);
+  let best = null, bestLen = 0;
+  for(const o of OPENINGS){
+    const seq = o.moves.split(' ');
+    if(seq.length > hist.length) continue;
+    let ok = true;
+    for(let i=0;i<seq.length;i++){
+      if(seq[i] !== hist[i]){ ok=false; break; }
+    }
+    if(ok && seq.length > bestLen){ best = o; bestLen = seq.length; }
+  }
+  /* si el repertorio ampliado tiene una coincidencia MAS larga, usa su nombre
+     (con textos genericos: EXTRA_OPENINGS no trae historia/consejo propios) */
+  for(const x of EXTRA_OPENINGS){
+    const seq = x.moves.split(' ');
+    if(seq.length > hist.length || seq.length <= bestLen) continue;
+    let ok = true;
+    for(let i=0;i<seq.length;i++){ if(seq[i] !== hist[i]){ ok=false; break; } }
+    if(ok){
+      best = {eco:x.eco, name:x.name, moves:x.moves,
+        tag:(best&&best.tag)||'solid',
+        history:(best&&best.history)||'Linea del repertorio ampliado - identificada por transposicion exacta de jugadas.',
+        games:(best&&best.games)||'-',
+        tip:(best&&best.tip)||'Sigue los principios: desarrolla piezas menores, controla el centro y asegura tu rey.'};
+      bestLen = seq.length;
+    }
+  }
+
+  const badge = document.getElementById('eco-badge-wrap');
+  const nameEl = document.getElementById('opening-name');
+  const movesEl = document.getElementById('opening-moves');
+  const histEl = document.getElementById('opening-history');
+  const gamesEl = document.getElementById('opening-games');
+  const tempEl = document.getElementById('temperament');
+  const tipEl = document.getElementById('tactic-tip');
+
+  if(!best){
+    if(hist.length===0){
+      badge.innerHTML=''; nameEl.textContent='—';
+      movesEl.style.display='none'; histEl.textContent='—'; gamesEl.textContent='—';
+      tempEl.textContent='Elige una apertura y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí.';
+      tipEl.textContent='Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.';
+    } else {
+      badge.innerHTML=''; nameEl.textContent='Línea propia — aún explorando.';
+      movesEl.style.display='none';
+      histEl.textContent='Estás en terreno menos común. Sigue jugando: si la partida transpone a una línea conocida, la detectaré al instante.';
+      gamesEl.textContent='—';
+      tipEl.textContent='—';
+    }
+    updateAiDefensePanel(hist, null);
+    return;
+  }
+
+  badge.innerHTML = '<span class="eco-badge">'+best.eco+'</span>';
+  nameEl.innerHTML = best.name + winPctToggleHtml(best);
+  movesEl.style.display='inline-block';
+  movesEl.textContent = best.moves;
+  histEl.innerHTML = '<div class="hist-fact">'+best.history+'</div>';
+  gamesEl.innerHTML = '<div class="hist-fact">'+best.games+'</div>';
+
+  const t = TEMPERAMENT[best.tag];
+  tempEl.innerHTML = '<b>'+t.label+'</b><br>'+t.text+'<div class="watch-box"><b>Cuidado con:</b> '+t.watch+'</div>';
+  tipEl.innerHTML = best.tip;
+
+  tryLiveWikipedia(best.name);
+
+  updateAiDefensePanel(hist, best);
+}
+
+/* ============================================================
+   PANEL DE LA IA — separado a propósito del panel de arriba.
+   Arriba se identifica la línea de la partida en curso (mezcla
+   tus jugadas con las de la IA); este panel identifica
+   específicamente CÓMO RESPONDIÓ LA IA (negras) en esta partida,
+   y va acumulando en un log de sesión las defensas distintas que
+   te ha jugado, para que las vayas reconociendo con el tiempo.
+   ============================================================ */
+function updateAiDefensePanel(hist, best){
+  const badge = document.getElementById('ai-badge-wrap');
+  const nameEl = document.getElementById('ai-defense-name');
+  const tipEl = document.getElementById('ai-defense-tip');
+
+  const blackJustMoved = hist.length>0 && hist.length%2===0;
+
+  if(!blackJustMoved || !best){
+    badge.innerHTML='';
+    if(hist.length===0){
+      nameEl.textContent = 'Aún no ha respondido — juega tu primera jugada.';
+    } else if(!blackJustMoved){
+      nameEl.textContent = 'Esperando la respuesta de las negras…';
+    } else {
+      nameEl.textContent = 'Respondió con una línea poco común, aún sin identificar.';
+    }
+    tipEl.textContent='';
+    return;
+  }
+
+  badge.innerHTML = '<span class="eco-badge-ai">'+best.eco+'</span>';
+  nameEl.innerHTML = best.name + winPctToggleHtml(best);
+  tipEl.textContent = 'La IA está jugando esta línea como negras.';
+
+  const key = best.eco+'|'+best.name;
+  if(!aiDefenseSeen.has(key)){
+    aiDefenseSeen.add(key);
+    aiDefenseLog.push({eco:best.eco, name:best.name});
+    renderAiDefenseLog();
+  }
+}
+
+function renderAiDefenseLog(){
+  const el = document.getElementById('ai-defense-log');
+  if(aiDefenseLog.length===0){
+    el.innerHTML = '<span class="chip-empty">Todavía ninguna — juega para descubrirlas.</span>';
+    return;
+  }
+  el.innerHTML = aiDefenseLog.map(d =>
+    '<span class="chip"><span class="chip-eco">'+d.eco+'</span>'+d.name+'</span>'
+  ).join('');
+}
+
+let wikiCurrentOpening = null;
+async function tryLiveWikipedia(openingName){
+  if(wikiCurrentOpening === openingName) return; // ya la tenemos, no repitas la llamada ni el texto
+  wikiCurrentOpening = openingName;
+  try{
+    const url = 'https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(openingName.replace(/\s*\(.*?\)\s*/g,''));
+    const res = await fetch(url);
+    if(!res.ok) return;
+    const data = await res.json();
+    // si mientras esperábamos la respuesta la partida ya transpuso a OTRA
+    // apertura, este resultado está obsoleto: no lo pegues encima del panel actual.
+    if(wikiCurrentOpening !== openingName) return;
+    if(data && data.extract){
+      const histEl = document.getElementById('opening-history');
+      histEl.innerHTML += '<div class="hist-fact">📡 Wikipedia: '+data.extract+'</div>';
+    }
+  }catch(e){ /* fallback silencioso */ }
+}
+
+/* ============================================================
+   MOTOR EXTERNO (Stockfish vía CDN + Worker por blob)
+   con TIMEOUT y caída automática a motor local si no responde.
+   ============================================================ */
+async function loadEngine(){
+  const timeoutId = setTimeout(()=>{
+    if(engineMode === 'loading'){
+      engineMode = 'local';
+      document.getElementById('status-bar').textContent = 'Motor local listo. ' + humanTurnMsg();
+    }
+  }, 4500);
+
+  try{
+    const res = await fetch('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
+    const code = await res.text();
+    const blob = new Blob([code], {type:'application/javascript'});
+    engine = new Worker(URL.createObjectURL(blob));
+    engine.onmessage = (e)=>handleEngineMessage(e, timeoutId);
+    engine.onerror = (e)=>{
+      console.warn('Worker de Stockfish falló en tiempo de ejecución', e);
+      clearTimeout(timeoutId);
+      engineMode = 'local';
+      if(pendingResolve){
+        const resolve = pendingResolve; pendingResolve = null;
+        resolve(null);
+      }
+    };
+    engine.postMessage('uci');
+  }catch(e){
+    clearTimeout(timeoutId);
+    engineMode = 'local';
+    document.getElementById('status-bar').textContent = 'Motor local listo (sin conexión a CDN). ' + humanTurnMsg();
+  }
+}
+
+let pendingResolve = null;
+let multipvLines = [];
+
+function handleEngineMessage(e, timeoutId){
+  const line = typeof e.data==='string' ? e.data : '';
+  if(line === 'uciok'){
+    engine.postMessage('isready');
+  } else if(line === 'readyok'){
+    if(engineMode === 'loading'){
+      clearTimeout(timeoutId);
+      engineMode = 'stockfish';
+      applyLevel();
+      document.getElementById('status-bar').textContent = 'Motor listo. ' + humanTurnMsg();
+    }
+  } else if(line.startsWith('info') && line.includes(' pv ')){
+    const mpvMatch = line.match(/multipv (\d+)/);
+    const pvMatch = line.match(/ pv (\S+)/);
+    if(pvMatch){
+      const idx = mpvMatch ? parseInt(mpvMatch[1],10)-1 : 0;
+      multipvLines[idx] = pvMatch[1];
+    }
+  } else if(line.startsWith('bestmove')){
+    const mv = line.split(' ')[1];
+    if(pendingResolve){
+      const resolve = pendingResolve; pendingResolve = null;
+      resolve(mv);
+    }
+  }
+}
+
+function applyLevel(){
+  if(engineMode !== 'stockfish') return;
+  const L = LEVELS[currentLevel];
+  engine.postMessage('setoption name Skill Level value ' + L.skill);
+  engine.postMessage('setoption name MultiPV value 3');
+}
+
+function setHumanColor(c){
+  if(thinking || c===humanColor) return;
+  humanColor = c;
+  document.getElementById('color-w').classList.toggle('active', c==='w');
+  document.getElementById('color-b').classList.toggle('active', c==='b');
+  const aiColorWord = c==='w' ? 'negras' : 'blancas';
+  document.getElementById('ai-label-turn').textContent = 'Respuesta de las '+aiColorWord+' (IA)';
+  document.getElementById('periscope-label').innerHTML = 'PERISCOPIO<br>su media cancha, espejada';
+  resetGame();
+}
+
+function setLevel(i){
+  currentLevel = i;
+  document.querySelectorAll('.lvl-btn').forEach((b,idx)=>b.classList.toggle('active', idx===i));
+  applyLevel();
+}
+
+function askEngineExternal(){
+  return new Promise((resolve)=>{
+    multipvLines = [];
+    pendingResolve = resolve;
+    const L = LEVELS[currentLevel];
+    try{
+      engine.postMessage('position fen ' + game.fen());
+      engine.postMessage('go depth ' + L.depth + ' movetime ' + L.movetime);
+    }catch(err){
+      console.warn('askEngineExternal: postMessage falló, motor caído', err);
+      pendingResolve = null;
+      engineMode = 'local';
+      resolve(null);
+      return;
+    }
+    // watchdog: si no responde en 6s, se cae a motor local para esta y futuras jugadas
+    setTimeout(()=>{
+      if(pendingResolve === resolve){
+        pendingResolve = null;
+        engineMode = 'local';
+        resolve(null);
+      }
+    }, 6000);
+  });
+}
+
+/* ---- Motor local de respaldo: material + minimax corto ---- */
+const VALUES = {p:1,n:3,b:3,r:5,q:9,k:0};
+function evalMaterial(){
+  const board = game.board();
+  let score = 0;
+  for(const row of board) for(const sq of row){
+    if(!sq) continue;
+    score += (sq.color==='b'?1:-1) * VALUES[sq.type];
+  }
+  return score; // positivo = mejor para negras
+}
+function negamax(depth, maximizingBlack){
+  if(depth===0 || game.game_over()) return evalMaterial();
+  const moves = game.moves({verbose:true});
+  let best = maximizingBlack ? -Infinity : Infinity;
+  for(const m of moves){
+    game.move(m);
+    const val = negamax(depth-1, !maximizingBlack);
+    game.undo();
+    if(maximizingBlack) best = Math.max(best,val); else best = Math.min(best,val);
+  }
+  return best;
+}
+function localCandidates(){
+  const L = LEVELS[currentLevel];
+  const engineIsBlack = humanColor === 'w'; // el motor juega del color contrario a la persona
+  const moves = game.moves({verbose:true});
+  const scored = moves.map(m=>{
+    game.move(m);
+    const s = negamax(Math.max(L.localDepth-1,0), !engineIsBlack);
+    game.undo();
+    return {m, s};
+  });
+  // el eval es "positivo = mejor para negras": si el motor juega blancas,
+  // busca el valor más bajo (mejor para blancas), si no, el más alto.
+  scored.sort((a,b)=> engineIsBlack ? (b.s-a.s) : (a.s-b.s));
+  return scored.slice(0,3).map(x=>x.m);
+}
+
+async function engineTurn(){
+  if(thinking) return;
+  if(game.turn() === humanColor) return;
+  if(checkGameOver()) return;
+
+  thinking = true;
+  document.getElementById('status-bar').textContent = 'Pensando…';
+  document.getElementById('status-bar').className = 'thinking';
+  document.getElementById('btn-reroll').disabled = true;
+
+  const L = LEVELS[currentLevel];
+  let chosen = null;
+
+  try{
+    if(engineMode === 'local' || engineMode === 'loading'){
+      candidateMoves = localCandidates();
+      candidateIdx = 0;
+      const legalMoves = game.moves({verbose:true});
+      if(currentLevel===0 && Math.random() < L.randomness){
+        chosen = legalMoves[Math.floor(Math.random()*legalMoves.length)];
+      } else {
+        chosen = candidateMoves[0] || legalMoves[0];
+      }
+    } else {
+      const legalMoves = game.moves({verbose:true});
+      if(currentLevel===0 && Math.random() < L.randomness){
+        chosen = legalMoves[Math.floor(Math.random()*legalMoves.length)];
+        candidateMoves = [chosen];
+      } else {
+        const uci = await askEngineExternal();
+        if(uci === null){
+          // se cayó a local en pleno vuelo
+          candidateMoves = localCandidates();
+          candidateIdx = 0;
+          chosen = candidateMoves[0] || legalMoves[0];
+        } else {
+          chosen = uciToMoveObj(uci);
+          candidateMoves = multipvLines.filter(Boolean).map(uciToMoveObj);
+          if(candidateMoves.length===0) candidateMoves = [chosen];
+          candidateIdx = 0;
+        }
+      }
+    }
+  }catch(err){
+    // Cualquier fallo del motor externo (worker caído, CDN inaccesible a
+    // mitad de partida, mensaje UCI corrupto, etc.) NUNCA debe dejar el
+    // turno trabado en negras. Forzamos modo local y elegimos una jugada.
+    console.warn('engineTurn: motor externo falló, usando motor local', err);
+    engineMode = 'local';
+    try{
+      candidateMoves = localCandidates();
+      candidateIdx = 0;
+      chosen = candidateMoves[0] || game.moves({verbose:true})[0];
+    }catch(err2){
+      chosen = game.moves({verbose:true})[0];
+    }
+  }
+
+  if(!chosen){
+    // Última red de seguridad: si por lo que sea no hay jugada elegida
+    // pero el juego no terminó, tomamos la primera legal disponible.
+    const legal = game.moves({verbose:true});
+    chosen = legal[0] || null;
+  }
+
+  playEngineMove(chosen);
+}
+
+function uciToMoveObj(uci){
+  const from = uci.slice(0,2), to = uci.slice(2,4);
+  const promo = uci.length>4 ? uci.slice(4,5) : undefined;
+  return {from,to,promotion:promo||'q'};
+}
+
+function playEngineMove(moveObj){
+  if(!moveObj){ thinking=false; return; }
+  const capturedPiece = game.get(moveObj.to);
+  const applied = game.move({from:moveObj.from, to:moveObj.to, promotion:moveObj.promotion||'q'});
+  if(!applied){
+    const legal = game.moves({verbose:true});
+    const fallback = legal.find(m=>m.from===moveObj.from && m.to===moveObj.to) || legal[0];
+    if(fallback) game.move({from:fallback.from,to:fallback.to,promotion:'q'});
+  }
+  lastMove = {from:moveObj.from, to:moveObj.to};
+  thinking = false;
+  document.getElementById('btn-reroll').disabled = (candidateMoves.length<=1);
+
+  renderBoard();
+  logMoves();
+  updateOpeningPanel();
+  checkGameOver();
+}
+
+function rerollMove(){
+  if(thinking) return;
+  if(game.history().length===0) return;
+  game.undo();
+  candidateIdx = (candidateIdx+1) % Math.max(candidateMoves.length,1);
+  const mv = candidateMoves[candidateIdx];
+  if(mv){
+    playEngineMove(mv);
+  } else {
+    engineTurn();
+  }
+}
+
+function undoMove(){
+  if(thinking) return;
+  game.undo();
+  game.undo();
+  selectedSq=null; legalTargets=[]; lastMove=null;
+  renderBoard(); logMoves(); updateOpeningPanel();
+  if(game.turn() === humanColor){
+    document.getElementById('status-bar').textContent = humanTurnMsg();
+    document.getElementById('status-bar').className = '';
+  } else {
+    document.getElementById('status-bar').textContent = 'Pensando…';
+    document.getElementById('status-bar').className = 'thinking';
+    setTimeout(engineTurn, 200);
+  }
+}
+
+function resetGame(){
+  if(thinking) return;
+  game.reset();
+  selectedSq=null; legalTargets=[]; lastMove=null; candidateMoves=[]; wikiCurrentOpening=null;
+  renderBoard(); logMoves(); updateOpeningPanel();
+  if(game.turn() === humanColor){
+    document.getElementById('status-bar').textContent = humanTurnMsg();
+    document.getElementById('status-bar').className = '';
+  } else {
+    document.getElementById('status-bar').textContent = 'Pensando…';
+    document.getElementById('status-bar').className = 'thinking';
+    setTimeout(engineTurn, 200);
+  }
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+renderBoard();
+logMoves();
+updateOpeningPanel();
+loadEngine();
+</script>
+</body>
+</html>
