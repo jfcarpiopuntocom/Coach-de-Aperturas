@@ -283,20 +283,26 @@ button:disabled{ opacity:0.35; cursor:default; }
 .ai-log-card{ padding:0 calc(var(--u)*1); }
 .chip-list{ display:flex; flex-wrap:wrap; gap:calc(var(--u)*1.5); }
 .chip{
-  background:var(--bg-panel); border:1px solid var(--green-dim); color:#FFFFFF;
-  padding:calc(var(--u)*1) calc(var(--u)*2); font-size:calc(var(--u)*4); white-space:nowrap;
+  background:var(--bg-panel); border:1px solid var(--green); color:var(--green);
+  padding:calc(var(--u)*1.5) calc(var(--u)*2.5); font-size:calc(var(--u)*4.5); white-space:nowrap;
 }
 .chip .chip-eco{ color:#E86040; margin-right:calc(var(--u)*1); }
-.chip-empty{ color:#FFFFFF; font-size:calc(var(--u)*4); }
+.chip-empty{ color:var(--green); font-size:calc(var(--u)*4.5); }
 
 /* ---------- 2d. PREDICTOR DE APERTURAS POSIBLES ---------- */
+/* POSICION: INMEDIATAMENTE BAJO EL TABLERO — no mover */
+.predict-label{
+  display:block; font-family:var(--font-pix); font-size:calc(var(--u)*4);
+  color:var(--orange); margin-bottom:calc(var(--u)*2); letter-spacing:2px;
+  text-transform:uppercase;
+}
 .predict-card{
-  background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--green);
-  padding:calc(var(--u)*2);
+  background:var(--bg-panel); border-left:calc(var(--u)*1.5) solid var(--green);
+  padding:calc(var(--u)*3) calc(var(--u)*3);
 }
 .predict-count{
-  font-family:var(--font-pix); font-size:calc(var(--u)*3.8); color:var(--green);
-  margin-bottom:calc(var(--u)*2.5); letter-spacing:1px;
+  font-family:var(--font-pix); font-size:calc(var(--u)*5); color:var(--green);
+  margin-bottom:calc(var(--u)*2); letter-spacing:1px;
 }
 .chip .chip-next{ color:var(--green); margin-left:calc(var(--u)*1.5); font-weight:bold; }
 
@@ -385,6 +391,15 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*3.2); padding:
       </div>
     </section>
 
+    <!-- PREDICTOR — CORE FEATURE — INMEDIATAMENTE BAJO EL TABLERO
+         Aquí caen los ojos y los dedos tras mover. NUNCA mover más abajo.
+         Lista viva que muta con cada movimiento. Se recalcula siempre. -->
+    <section class="predict-card">
+      <span class="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
+      <div id="predict-count" class="predict-count">&mdash;</div>
+      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; la lista muta en vivo.</span></div>
+    </section>
+
     <section class="opening-card">
       <div id="eco-badge-wrap"></div>
       <div id="opening-name">—</div>
@@ -398,14 +413,6 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*3.2); padding:
       <div id="ai-defense-tip"></div>
     </section>
 
-    <!-- PREDICTOR — CORE FEATURE: lista viva de aperturas/defensas posibles.
-         VIVE EN col-center para ser visible en mobile Y desktop sin scroll.
-         Se recalcula tras CADA movimiento del jugador Y de la IA. -->
-    <section class="predict-card">
-      <span class="ai-label">Posibles aperturas desde aqu&iacute;</span>
-      <div id="predict-count" class="predict-count">&mdash;</div>
-      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza y la lista de aperturas posibles ir&aacute; mutando en vivo.</span></div>
-    </section>
 
     <!-- PERISCOPIO — recorte del propio tablero, espejado, como lo ve el rival -->
     <section class="periscope-card">
