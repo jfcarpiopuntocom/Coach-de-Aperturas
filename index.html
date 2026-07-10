@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -62,7 +64,7 @@ body::after{
 /* ---------- HERO: mínimo, sin instrucciones, sin lore ---------- */
 header.hero{
   display:flex; align-items:center; justify-content:center;
-  gap:calc(var(--u)*3); padding:calc(var(--u)*3) calc(var(--u)*4);
+  gap:calc(var(--u)*3); padding:calc(var(--u)*1.5) calc(var(--u)*4);
   border-bottom:2px solid var(--green-dim); flex-shrink:0;
 }
 @media (max-width:640px){
@@ -125,7 +127,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #board{
   display:grid; grid-template-columns:repeat(8, 1fr);
-  width:min(70vmin, 92vw, 560px); aspect-ratio:1/1;
+  width:min(61.6vmin, 81vw, 493px); aspect-ratio:1/1;
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
 }
@@ -3997,6 +3999,7 @@ function setHumanColor(c){
 }
 
 function setLevel(i){
+  if(!LEVELS[i]) return; // indice invalido: ignora, no corrompe currentLevel
   currentLevel = i;
   document.querySelectorAll('.lvl-btn').forEach((b,idx)=>b.classList.toggle('active', idx===i));
   applyLevel();
@@ -4171,6 +4174,7 @@ function rerollMove(){
   if(thinking) return;
   if(game.history().length===0) return;
   game.undo();
+  if(game.turn() === humanColor) return; // no era jugada del motor: nada que rerollear
   candidateIdx = (candidateIdx+1) % Math.max(candidateMoves.length,1);
   const mv = candidateMoves[candidateIdx];
   if(mv){
@@ -4182,8 +4186,9 @@ function rerollMove(){
 
 function undoMove(){
   if(thinking) return;
+  if(game.history().length===0) return;
   game.undo();
-  game.undo();
+  if(game.history().length>0) game.undo();
   selectedSq=null; legalTargets=[]; lastMove=null;
   renderBoard(); logMoves(); updateOpeningPanel();
   if(game.turn() === humanColor){
