@@ -398,6 +398,15 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*3.2); padding:
       <div id="ai-defense-tip"></div>
     </section>
 
+    <!-- PREDICTOR — CORE FEATURE: lista viva de aperturas/defensas posibles.
+         VIVE EN col-center para ser visible en mobile Y desktop sin scroll.
+         Se recalcula tras CADA movimiento del jugador Y de la IA. -->
+    <section class="predict-card">
+      <span class="ai-label">Posibles aperturas desde aqu&iacute;</span>
+      <div id="predict-count" class="predict-count">&mdash;</div>
+      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza y la lista de aperturas posibles ir&aacute; mutando en vivo.</span></div>
+    </section>
+
     <!-- PERISCOPIO — recorte del propio tablero, espejado, como lo ve el rival -->
     <section class="periscope-card">
       <span class="periscope-label" id="periscope-label">PERISCOPIO<br>su media cancha, espejada</span>
@@ -405,18 +414,8 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*3.2); padding:
     </section>
   </div>
 
-  <!-- COLUMNA IZQUIERDA: qué apertura es y qué responde la IA -->
+  <!-- COLUMNA IZQUIERDA: consejo táctico y contexto -->
   <div class="col-left">
-    <!-- PREDICTOR — lista viva de aperturas posibles segun cada jugada.
-         Se recalcula tras CADA movimiento: las lineas incompatibles se
-         eliminan y la lista muta. Para ampliar la base, agregar entradas
-         a EXTRA_OPENINGS en el JS (solo eco/name/moves). -->
-    <section class="predict-card">
-      <span class="ai-label">Posibles aperturas desde aqu&iacute;</span>
-      <div id="predict-count" class="predict-count">&mdash;</div>
-      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza y la lista de aperturas posibles ir&aacute; mutando en vivo.</span></div>
-    </section>
-
     <section class="tip-card">
       <span class="tip-label">Consejo de la variante</span>
       <div id="tactic-tip">Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.</div>
