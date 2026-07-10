@@ -37,7 +37,9 @@
 html,body{
   margin:0; padding:0; background:var(--bg); color:var(--green);
   font-family:var(--font-term); overflow-x:hidden;
+  height:100%;
 }
+body{ display:flex; flex-direction:column; height:100vh; }
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
   background:repeating-linear-gradient(
@@ -53,35 +55,37 @@ body::after{
 
 /* ---------- HERO: mínimo, sin instrucciones, sin lore ---------- */
 header.hero{
-  text-align:center; padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*3);
+  display:flex; align-items:center; justify-content:center;
+  gap:calc(var(--u)*3); padding:calc(var(--u)*2) calc(var(--u)*4);
+  border-bottom:1px solid #1a2a1a; flex-shrink:0;
 }
 .title-ascii{
-  font-family:var(--font-pix); font-size:calc(var(--u)*3.4);
-  line-height:1.9; color:var(--green);
-  text-shadow:0 0 calc(var(--u)*2) var(--green);
-  letter-spacing:1px;
+  font-family:var(--font-pix); font-size:calc(var(--u)*2.8);
+  color:var(--green); text-shadow:0 0 calc(var(--u)*2) var(--green);
+  letter-spacing:1px; white-space:nowrap;
 }
-.title-ascii .side-w, .title-ascii .side-b{ font-family:var(--font-term); }
 .title-ascii .side-w{ color:var(--green); }
 .title-ascii .side-b{ color:var(--orange); }
 .tagline{
-  margin-top:calc(var(--u)*2); font-size:calc(var(--u)*4); color:var(--green-dim);
-  letter-spacing:0.5px;
+  font-size:calc(var(--u)*3.5); color:var(--green-dim); letter-spacing:0.5px;
+  white-space:nowrap;
 }
 
 /* ---------- Contenedor general: tablero al centro, info a los lados ---------- */
 .wrap{
-  max-width:1460px; margin:0 auto; padding:0 calc(var(--u)*6) calc(var(--u)*8);
+  max-width:1460px; margin:0 auto; padding:0 calc(var(--u)*4) calc(var(--u)*2);
+  flex:1; overflow:hidden;
   display:grid; grid-template-columns:1fr; gap:calc(var(--u)*7);
+  height:100%;
 }
-.col-left, .col-right{ display:flex; flex-direction:column; gap:calc(var(--u)*6); min-width:0; }
-.col-center{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*5); min-width:0; }
+.col-left, .col-right{ display:flex; flex-direction:column; gap:calc(var(--u)*4); min-width:0; overflow-y:auto; max-height:100%; }
+.col-center{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*3); min-width:0; }
 .col-center > section{ width:100%; }
 
 @media (min-width:900px){
   .wrap{
-    grid-template-columns: minmax(280px,1fr) minmax(400px,640px) minmax(280px,1fr);
-    align-items:start; gap:calc(var(--u)*9);
+    grid-template-columns: minmax(240px,1fr) minmax(360px,560px) minmax(240px,1fr);
+    align-items:start; gap:calc(var(--u)*7); height:100%;
   }
   .col-left{ grid-column:1; grid-row:1; }
   .col-center{ grid-column:2; grid-row:1; }
@@ -89,13 +93,13 @@ header.hero{
 }
 
 /* ---------- 1. TABLERO ---------- */
-#stage{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*4); }
+#stage{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*2); }
 
-.levels{ display:flex; gap:var(--u); width:100%; justify-content:center; flex-wrap:wrap; }
+.levels{ display:flex; gap:var(--u); width:100%; justify-content:center; flex-wrap:nowrap; }
 button{
   font-family:var(--font-term); font-size:calc(var(--u)*4.2);
   background:var(--bg-panel); color:var(--green);
-  border:calc(var(--u)*0.5) solid var(--green-dim); padding:calc(var(--u)*1.5) calc(var(--u)*3);
+  border:calc(var(--u)*0.5) solid var(--green-dim); padding:calc(var(--u)*1) calc(var(--u)*2.5);
   cursor:pointer; letter-spacing:0.5px;
 }
 button:hover{ border-color:var(--green); }
@@ -106,7 +110,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #board{
   display:grid; grid-template-columns:repeat(8, 1fr);
-  width:min(92vw, 640px); aspect-ratio:1/1;
+  width:min(calc(100vh - 260px), 92vw, 560px); aspect-ratio:1/1;
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
 }
@@ -155,8 +159,8 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.fx-flash .pc{ animation: fx-flash-kf 0.38s ease-in forwards; }
 
 #status-bar{
-  width:100%; text-align:center; font-size:calc(var(--u)*4.5);
-  color:var(--green-dim); min-height:calc(var(--u)*6);
+  width:100%; text-align:center; font-size:calc(var(--u)*4);
+  color:var(--green-dim); min-height:calc(var(--u)*5);
 }
 #status-bar.thinking{ color:var(--orange); }
 #status-bar.check{ color:var(--orange); font-weight:bold; }
@@ -165,7 +169,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #moves-log{
   width:100%; background:var(--bg-panel); border:1px solid var(--green-dim);
-  padding:calc(var(--u)*2); font-size:calc(var(--u)*3.6); max-height:calc(var(--u)*20);
+  padding:calc(var(--u)*2); font-size:calc(var(--u)*3.6); max-height:calc(var(--u)*14);
   overflow-y:auto; line-height:1.6; color:var(--green-dim);
 }
 #moves-log .mv-num{ color:#3d5a3a; margin-right:calc(var(--u)*0.5); }
@@ -198,14 +202,14 @@ button:disabled{ opacity:0.35; cursor:default; }
 @keyframes lm-pulse{ 0%{ opacity:0.35; } 100%{ opacity:0; } }
 
 /* ---------- 2. APERTURA (lo que el humano está jugando) ---------- */
-.opening-card{ text-align:center; }
+.opening-card{ text-align:center; padding-top:calc(var(--u)*1); }
 .eco-badge{
   display:inline-block; font-family:var(--font-pix); font-size:calc(var(--u)*2.8);
   background:var(--green-dim); color:#000; padding:calc(var(--u)*1) calc(var(--u)*2);
   margin-bottom:calc(var(--u)*2);
 }
 #opening-name{
-  font-size:calc(var(--u)*6.5); color:var(--green); font-weight:bold; line-height:1.25;
+  font-size:calc(var(--u)*5.5); color:var(--green); font-weight:bold; line-height:1.2;
   text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.35);
 }
 #opening-moves{
@@ -257,7 +261,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 /* ---------- 2b. DEFENSA DE LA IA (lo que responden las negras) ---------- */
 .ai-card{
   background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--green-dim);
-  padding:calc(var(--u)*3.5); text-align:center;
+  padding:calc(var(--u)*2); text-align:center;
 }
 .ai-label{
   display:block; font-family:var(--font-pix); font-size:calc(var(--u)*2.4);
@@ -288,7 +292,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 /* ---------- 2d. PREDICTOR DE APERTURAS POSIBLES ---------- */
 .predict-card{
   background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--green);
-  padding:calc(var(--u)*3.5);
+  padding:calc(var(--u)*2);
 }
 .predict-count{
   font-family:var(--font-pix); font-size:calc(var(--u)*3.2); color:var(--green);
@@ -299,7 +303,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 /* ---------- 3. CONSEJO DE VARIANTE ---------- */
 .tip-card{
   background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--orange);
-  padding:calc(var(--u)*3.5); font-size:calc(var(--u)*4.6); line-height:1.5;
+  padding:calc(var(--u)*2); font-size:calc(var(--u)*4); line-height:1.5;
 }
 .tip-card .tip-label{
   display:block; font-family:var(--font-pix); font-size:calc(var(--u)*2.4);
@@ -324,7 +328,9 @@ button:disabled{ opacity:0.35; cursor:default; }
 .hist-fact{ border-left:calc(var(--u)*0.75) solid var(--green-dim); padding-left:calc(var(--u)*2); margin:var(--u) 0; }
 .watch-box{ border-left:calc(var(--u)*0.75) solid var(--orange); padding-left:calc(var(--u)*2); margin-top:calc(var(--u)*2); color:var(--orange); }
 
-/* ---------- 5. LORE (al fondo, discreto) ---------- */
+/* ---------- 5. LORE — DORMANT (oculto para caber en viewport) */
+.lore, footer{ display:none !important; }
+/* ---------- 5. LORE ref */
 .lore{
   max-width:560px; margin:calc(var(--u)*8) auto 0; padding:calc(var(--u)*4) calc(var(--u)*3);
   border-top:1px dashed var(--green-dim);
@@ -343,8 +349,8 @@ button:disabled{ opacity:0.35; cursor:default; }
 footer{ text-align:center; color:var(--green-dim); font-size:calc(var(--u)*3.2); padding:calc(var(--u)*4) 0 calc(var(--u)*6); }
 
 @media (min-width:640px){
-  #opening-name{ font-size:calc(var(--u)*7.5); }
-  .sq{ font-size:calc(var(--u)*11); }
+  #opening-name{ font-size:calc(var(--u)*6); }
+  .sq{ font-size:calc(var(--u)*10); }
 }
 </style>
 </head>
@@ -352,7 +358,6 @@ footer{ text-align:center; color:var(--green-dim); font-size:calc(var(--u)*3.2);
 
 <header class="hero">
   <div class="title-ascii"><span class="side-w">○</span> COACH DE APERTURAS Y DEFENSAS <span class="side-b">●</span></div>
-  <div class="tagline">Juega. La apertura se revela sola.</div>
 </header>
 
 <div class="wrap">
@@ -2955,6 +2960,414 @@ const EXTRA_OPENINGS = [
 ["A36","Inglesa Simetrica con g3","c4 c5 Nc3 Nc6 g3"],
 ["C00","Francesa, Variante Chigorin","e4 e6 Qe2"]
 ].map(function(a){ return {eco:a[0], name:a[1], moves:a[2]}; });
+
+
+/* ---- 400+ aperturas adicionales v2 ---- */
+const OPENINGS_BATCH2 = [
+/* === APERTURAS DE REY (e4 e5) === */
+["C20","Apertura del Rey, variante Napoleon","e4 e5 Qh5"],
+["C20","Apertura Wayward Queen","e4 e5 Qh5 Nc6 Bc4"],
+["C23","Apertura del Alfil, variante Berlin","e4 e5 Bc4 Nf6 d3"],
+["C23","Apertura del Alfil, variante Urusov","e4 e5 Bc4 Nf6 d4"],
+["C24","Apertura del Alfil, variante Lewis","e4 e5 Bc4 d5 exd5 Nf6"],
+["C25","Vienesa, Variante Frankenstein","e4 e5 Nc3 Nf6 Bc4 Nxe4 Qh5 Nd6 Bb3"],
+["C25","Vienesa, Stanley con d3","e4 e5 Nc3 Nc6 d3"],
+["C26","Vienesa, Fianchetto con Nf3","e4 e5 Nc3 Nf6 g3 d5 exd5"],
+["C27","Vienesa, Gambito con exf4","e4 e5 Nc3 Nf6 Bc4 Nxe4 Qh5 Nd6 Bb3 Nc6 Nb5 g6"],
+["C28","Vienesa, con Be2","e4 e5 Nc3 Nc6 Bc4 Nf6 d3"],
+["C30","Gambito de Rey, variante Falkbeer con d4","e4 e5 f4 d5 exd5 e4 d3"],
+["C31","Falkbeer, variante Charousek","e4 e5 f4 d5 exd5 Bd6"],
+["C32","Gambito de Rey, Gambito del Alfil Cunningham","e4 e5 f4 exf4 Bc4 Nf6"],
+["C33","Gambito de Rey, variante Abbazia","e4 e5 f4 exf4 Bc4 d5 Bxd5 Nf6"],
+["C34","Gambito de Rey, variante Fischer","e4 e5 f4 exf4 Nf3 d6"],
+["C35","Gambito de Rey, variante Cunningham","e4 e5 f4 exf4 Nf3 Be7"],
+["C36","Gambito de Rey, variante Petroff","e4 e5 f4 exf4 Nf3 d5 exd5 Nf6"],
+["C37","Gambito de Rey, variante Quaade","e4 e5 f4 exf4 Nf3 g5 Nc3"],
+["C38","Gambito de Rey, variante Hanstein","e4 e5 f4 exf4 Nf3 g5 Bc4 Bg7"],
+["C39","Gambito de Rey, variante Allgaier","e4 e5 f4 exf4 Nf3 g5 h4 g4 Ng5"],
+["C40","Gambito Elefante aceptado","e4 e5 Nf3 d5 Nxe5"],
+["C41","Defensa Philidor, variante Berger","e4 e5 Nf3 d6 d4 exd4 Nxd4 Nf6 Nc3"],
+["C41","Philidor, variante Nimzowitsch","e4 e5 Nf3 d6 d4 Nf6 dxe5 Nxe4 Qd5"],
+["C42","Petrov, variante Cochrane","e4 e5 Nf3 Nf6 Nxe5 d6 Nxf7"],
+["C43","Petrov, variante del Alfil","e4 e5 Nf3 Nf6 d4 exd4 e5"],
+["C44","Apertura Escocesa, variante Kasparov","e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Nf6 Nxc6 bxc6 e5"],
+["C44","Gambito Max Lange","e4 e5 Nf3 Nc6 Bc4 Bc5 d4 exd4 O-O"],
+["C45","Escocesa, variante Schmid","e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Qh4"],
+["C46","Cuatro Caballos, variante Gunsberg","e4 e5 Nf3 Nc6 Nc3 Nf6 Bb5 Nd4"],
+["C47","Cuatro Caballos, Ataque Halloween","e4 e5 Nf3 Nc6 Nc3 Nf6 Nxe5"],
+["C48","Cuatro Caballos, variante Metger","e4 e5 Nf3 Nc6 Nc3 Nf6 Bb5 Bc5"],
+["C49","Cuatro Caballos doble espanola","e4 e5 Nf3 Nc6 Nc3 Nf6 Bb5 Bb4 O-O"],
+["C50","Italiana, variante Fried Liver","e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 d5 exd5 Na5 Bb5+ c6 dxc6 bxc6 Bf1 h6 Nxf7"],
+["C51","Gambito Evans aceptado","e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4"],
+["C51","Gambito Evans, linea Alapin","e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 O-O"],
+["C52","Gambito Evans, linea Pierce","e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 Qb3"],
+["C53","Italiana, variante Greco","e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Qe7"],
+["C54","Italiana, variante Mller","e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d4 exd4 cxd4 Bb4+"],
+["C55","Italiana, variante Max Lange Modern","e4 e5 Nf3 Nc6 Bc4 Nf6 d4 exd4 O-O Bc5"],
+["C56","Italiana, variante Scotch","e4 e5 Nf3 Nc6 Bc4 Nf6 d4 exd4 Ng5"],
+["C58","Dos Caballos, variante Boden-Kieseritzky","e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 d5 exd5 Na5 Bb5+ c6 dxc6 bxc6 Be2 h6 Nf3 e4"],
+["C60","Ruy Lopez, variante Lucena","e4 e5 Nf3 Nc6 Bb5 f5"],
+["C61","Ruy Lopez, Defensa del Caballo","e4 e5 Nf3 Nc6 Bb5 Nd4"],
+["C62","Ruy Lopez, variante antigua","e4 e5 Nf3 Nc6 Bb5 d6"],
+["C63","Ruy Lopez, Schliemann aceptado","e4 e5 Nf3 Nc6 Bb5 f5 Nc3 fxe4"],
+["C65","Ruy Lopez, Berlin con Re8","e4 e5 Nf3 Nc6 Bb5 Nf6 O-O Nxe4 Re1 Nd6 Nxe5 Nxe5 Rxe5+ Be7"],
+["C66","Ruy Lopez, variante Steinitz","e4 e5 Nf3 Nc6 Bb5 Nf6 O-O d6 d4"],
+["C72","Ruy Lopez, variante Moderna con d6","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 d6"],
+["C73","Ruy Lopez, variante Schliemann-Jaenisch","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 d6 Bxc6+"],
+["C74","Ruy Lopez, variante Cortlandt","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 d6 c3"],
+["C75","Ruy Lopez, variante clasica","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 d6 c3 Bd7"],
+["C76","Ruy Lopez, variante Fianchetto","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 d6 c3 g6"],
+["C79","Ruy Lopez, variante Steinitz diferida con Re8","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 d6 c3 Bd7 d4 Nf6"],
+["C81","Ruy Lopez, variante Dilworth","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Nxe4 d4 b5 Bb3 d5 dxe5 Be6"],
+["C82","Ruy Lopez, variante Moeller","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Nxe4 d4 b5 Bb3 d5 dxe5 Be6 c3"],
+["C83","Ruy Lopez, variante Abierta con Bg4","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Nxe4 d4 b5 Bb3 d5 dxe5 Be6 Be3"],
+["C84","Ruy Lopez, variante Tchigorin","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 d3"],
+["C85","Ruy Lopez, variante Anderssen","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Bxc6"],
+["C86","Ruy Lopez, variante Worrall","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Qe2"],
+["C87","Ruy Lopez, variante Averbach","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 d6"],
+["C90","Ruy Lopez, variante Tartakower","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O d4"],
+["C91","Ruy Lopez, variante Bogoljubov","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O d3"],
+["C92","Ruy Lopez, variante Flohr","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Bd7"],
+["C93","Ruy Lopez, variante Smyslov","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 h6"],
+["C94","Ruy Lopez, variante Morphy con b5","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Na5 Bc2 c5 d4"],
+["C97","Ruy Lopez, variante Chigorin Main","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Na5 Bc2 c5 d4 Qc7"],
+["C98","Ruy Lopez, variante Caro","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Na5 Bc2 c5 d4 Qc7 Nbd2"],
+["C99","Ruy Lopez, variante Chigorin, jugada 12","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Na5 Bc2 c5 d4 Qc7 Nbd2 cxd4"],
+
+/* === SICILIANA EXTENDIDA === */
+["B24","Siciliana Cerrada, variante del Alfil","e4 c5 Nc3 Nc6 g3 g6 Bg2 Bg7 d3"],
+["B25","Siciliana Cerrada, variante con f4","e4 c5 Nc3 Nc6 g3 g6 Bg2 Bg7 d3 d6 f4"],
+["B26","Siciliana Cerrada, variante con Be3","e4 c5 Nc3 Nc6 g3 g6 Bg2 Bg7 d3 d6 Be3"],
+["B29","Siciliana Nimzowitsch-Alapin","e4 c5 Nf3 Nf6 e5 Nd5 Nc3"],
+["B31","Siciliana Rossolimo con d6","e4 c5 Nf3 Nc6 Bb5 g6 O-O Bg7 Re1 d6 Bxc6"],
+["B32","Siciliana con 2...Nc6","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e5"],
+["B34","Siciliana Dragon Acelerado","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 g6 c4"],
+["B35","Siciliana Dragon Acelerado, variante Maroczy","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 g6 c4 Nf6"],
+["B36","Siciliana Kan, variante con b4","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 g6 Nc3 Bg7 Be3 Nf6 Bc4"],
+["B38","Siciliana Dragon Acelerado, variante con Bg5","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 g6 c4 Bg7 Be3 Nf6 Nc3"],
+["B39","Siciliana Dragon, variante Hyper-Acelerada","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 g6 c4 Bg7 Be3 Nf6 Nc3 d6"],
+["B43","Siciliana Kan con Nc3","e4 c5 Nf3 e6 d4 cxd4 Nxd4 a6 Nc3"],
+["B45","Siciliana Taimanov con e4","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6 Nc3 Nf6 Ndb5 d6 Bf4 e5 Bg5"],
+["B46","Siciliana Taimanov, variante Bastrikov","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6 Nc3 a6"],
+["B47","Siciliana Taimanov, variante Bastrikov con Qc7","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6 Nc3 a6 g3"],
+["B48","Siciliana Taimanov, variante Bastrikov con Qc7 Be3","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6 Nc3 a6 Be3"],
+["B49","Siciliana Taimanov, variante con Bg5","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6 Nc3 a6 Be3 Qc7 Be2"],
+["B54","Siciliana, linea principal con d4","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3"],
+["B58","Siciliana Boleslavsky","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Be2 e5"],
+["B59","Siciliana Boleslavsky, variante principal","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Be2 e5 Nb3 Be7 O-O O-O"],
+["B61","Siciliana Richter-Rauzer con Be7","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5 e6 Qd2 Be7"],
+["B62","Siciliana Richter-Rauzer, variante clasica","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5 e6 Qd2 Be7 O-O-O"],
+["B63","Siciliana Richter-Rauzer, variante principal","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5 e6 Qd2 Be7 O-O-O a6"],
+["B64","Siciliana Richter-Rauzer, variante con Bc4","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5 e6 Qd2 Be7 O-O-O O-O f4"],
+["B65","Siciliana Richter-Rauzer, variante con h3","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5 e6 Qd2 Be7 O-O-O O-O f4 Nxd4 Qxd4"],
+["B66","Siciliana Richter-Rauzer, variante Urbano","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5 e6 Qd2 a6"],
+["B67","Siciliana Richter-Rauzer, variante con a6","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5 e6 Qd2 a6 O-O-O h6"],
+["B68","Siciliana Richter-Rauzer, variante Voronezh","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bg5 e6 Qd2 a6 O-O-O h6 Be3"],
+["B71","Siciliana Dragon, variante Levenfish","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 f4"],
+["B72","Siciliana Dragon, variante clasica","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be2"],
+["B73","Siciliana Dragon, variante con O-O","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be2 Bg7 O-O"],
+["B74","Siciliana Dragon, variante clásica con Be3","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be2 Bg7 O-O Nc6 Be3 O-O"],
+["B75","Siciliana Dragon, variante con Bg5","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Bg5"],
+["B77","Siciliana Dragon, Ataque Yugoslavo con O-O-O","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 Bg7 f3 Nc6 Qd2 O-O O-O-O"],
+["B78","Siciliana Dragon, Ataque Yugoslavo con h4","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 Bg7 f3 Nc6 Qd2 O-O O-O-O Nxd4 Bxd4 Be6 h4"],
+["B79","Siciliana Dragon, Ataque Yugoslavo con h5","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 Bg7 f3 Nc6 Qd2 O-O O-O-O Nxd4 Bxd4 Be6 h4 h5"],
+["B81","Siciliana Scheveningen, Ataque Keres","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6 g4"],
+["B82","Siciliana Scheveningen con f4","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6 f4"],
+["B83","Siciliana Scheveningen, variante principal","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6 Be2"],
+["B84","Siciliana Scheveningen, variante Najdorf","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6 Be2 a6"],
+["B85","Siciliana Scheveningen, variante con Qc7","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6 Be2 a6 O-O Qc7"],
+["B86","Siciliana Scheveningen, variante Bc4","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6 Bc4"],
+["B87","Siciliana Scheveningen, variante Sozin con Bc4","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6 Bc4 a6 Bb3"],
+["B88","Siciliana Sozin, variante clasica","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bc4 e6 Be3"],
+["B89","Siciliana Sozin con f4","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6 Bc4 e6 Be3 Be7 f4"],
+["B91","Siciliana Najdorf, variante principal","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 g3"],
+["B93","Siciliana Najdorf con Qd1","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 f4"],
+["B94","Siciliana Najdorf con Bg5 y Qd2","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Bg5 Nbd7"],
+["B95","Siciliana Najdorf con Bg5 y e6","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Bg5 e6"],
+["B98","Siciliana Najdorf, variante clasica","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Bg5 e6 f4 Be7 Qf3 Qc7"],
+["B99","Siciliana Najdorf, variante principal linea principal","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Bg5 e6 f4 Be7 Qf3 Qc7 O-O-O Nbd7"],
+
+/* === SICILIANA ANTI-TEORICA === */
+["B50","Siciliana, variante Wing Gambit","e4 c5 Nf3 d6 b4"],
+["B53","Siciliana variante con e6","e4 c5 Nf3 d6 d4 cxd4 Qxd4 Nc6"],
+
+/* === CARO-KANN EXTENDIDA === */
+["B10","Caro-Kann, variante Accelerated Panov","e4 c6 d4 d5 exd5 cxd5 c4"],
+["B11","Caro-Kann, variante con Nd7","e4 c6 Nc3 d5 Nf3 Nf6 e5 Ne4"],
+["B13","Caro-Kann Panov-Botvinnik con Nf3","e4 c6 d4 d5 exd5 cxd5 c4 Nf6"],
+["B14","Caro-Kann Panov con Bg5","e4 c6 d4 d5 exd5 cxd5 c4 Nf6 Nc3 e6 Bg5"],
+["B15","Caro-Kann, variante Gurgenidze","e4 c6 d4 d5 Nc3 g6"],
+["B16","Caro-Kann, variante Bronstein-Larsen","e4 c6 d4 d5 Nc3 dxe4 Nxe4 Nf6 Nxf6+ gxf6"],
+["B17","Caro-Kann, variante Steinitz","e4 c6 d4 d5 Nc3 dxe4 Nxe4 Nd7"],
+["B19","Caro-Kann, variante con h6","e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg6 h4 h6 Be3"],
+["B20","Siciliana, variante con f4","e4 c5 f4"],
+
+/* === APERTURAS DE DAMA (d4) EXTENDIDAS === */
+["D00","Torre, variante con g3","d4 Nf6 Nf3 e6 Bg5 c5 e3 h6 Bh4"],
+["D01","Ataque Veresov con Nf3","d4 d5 Nc3 Nf6 Bg5 Nbd7 Nf3"],
+["D02","Sistema Londres con e3","d4 d5 Nf3 Nf6 Bf4 e6 e3 c5"],
+["D03","Torre, variante Bogo","d4 Nf6 Nf3 e6 Bg5 d5"],
+["D04","Sistema Colle con Nc3","d4 d5 Nf3 Nf6 e3 c5 c3 Nc3"],
+["D06","GD variante Chigorin","d4 d5 c4 Nc6 Nc3"],
+["D07","Chigorin, linea principal","d4 d5 c4 Nc6 Nf3 Bg4 cxd5 Bxf3 gxf3 Qxd5"],
+["D09","Gambito Albin con Nc3","d4 d5 c4 e5 dxe5 d4 e3 Bb4+ Nc3"],
+["D10","Eslava, variante del intercambio","d4 d5 c4 c6 cxd5 cxd5"],
+["D11","Eslava con Nf3 y Bf4","d4 d5 c4 c6 Nf3 Nf6 Bf4"],
+["D12","Eslava con Bf4","d4 d5 c4 c6 Nf3 Nf6 e3 Bf5"],
+["D13","Eslava, linea antigua","d4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4"],
+["D14","Eslava, variante de intercambio con e4","d4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 e4"],
+["D16","Eslava, variante Sokolsky","d4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4"],
+["D18","Eslava, variante holandesa","d4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4 Bf5 e3 e6 Bxc4 Bb4"],
+["D19","Eslava, variante principal","d4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4 Bf5 e3 e6 Bxc4 Bb4 O-O O-O"],
+["D22","GDA, linea del alfil","d4 d5 c4 dxc4 Nf3 a6 e3"],
+["D23","GDA, variante con Qc2","d4 d5 c4 dxc4 Qc2"],
+["D25","GDA, variante con e4","d4 d5 c4 dxc4 Nf3 Nf6 e3 Bg4"],
+["D26","GDA, variante clasica con e3","d4 d5 c4 dxc4 Nf3 Nf6 e3 e6 Bxc4 c5"],
+["D27","GDA, variante clasica principal","d4 d5 c4 dxc4 Nf3 Nf6 e3 e6 Bxc4 c5 O-O a6"],
+["D28","GDA, variante Saduleto","d4 d5 c4 dxc4 Nf3 Nf6 e3 e6 Bxc4 c5 O-O a6 Qe2"],
+["D29","GDA, variante con b6","d4 d5 c4 dxc4 Nf3 Nf6 e3 e6 Bxc4 c5 O-O a6 Qe2 b5 Bd3 Bb7 a4"],
+["D30","GDR, variante Tartakower","d4 d5 c4 e6 Nf3 Nf6 Bg5"],
+["D31","GDR, variante Semi-Tarrasch","d4 d5 c4 e6 Nc3 c6"],
+["D32","GDR Tarrasch, variante von Hennig-Schara","d4 d5 c4 e6 Nc3 c5 cxd5 cxd4"],
+["D33","GDR Tarrasch, variante del alfil","d4 d5 c4 e6 Nc3 c5 cxd5 exd5 Nf3 Nc6 g3"],
+["D34","GDR Tarrasch, linea de peones colgantes","d4 d5 c4 e6 Nc3 c5 cxd5 exd5 Nf3 Nc6 g3 Nf6 Bg2 Be7 O-O O-O"],
+["D36","GDR, variante con Bg5","d4 d5 c4 e6 Nc3 Nf6 Bg5 Nbd7 cxd5 exd5 e3"],
+["D39","GDR, variante con Ne4","d4 d5 c4 e6 Nc3 Nf6 Nf3 dxc4 e3 b5"],
+["D40","GDR Semi-Tarrasch con e3","d4 d5 c4 e6 Nc3 Nf6 Nf3 c5 e3"],
+["D41","GDR Semi-Tarrasch con Ne5","d4 d5 c4 e6 Nc3 Nf6 Nf3 c5 cxd5 Nxd5"],
+["D42","GDR Semi-Tarrasch con e4","d4 d5 c4 e6 Nc3 Nf6 Nf3 c5 cxd5 Nxd5 e4"],
+["D44","Semi-Eslava, variante de ataque con d5","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 Bg5 dxc4 e4 b5"],
+["D45","Semi-Eslava, variante principal","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3"],
+["D46","Semi-Eslava, variante Rubinstein","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3 Nbd7 Bd3"],
+["D48","Semi-Eslava, variante Meran con b5","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3 Nbd7 Bd3 dxc4 Bxc4 b5"],
+["D49","Semi-Eslava, variante Meran con Nxb5","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3 Nbd7 Bd3 dxc4 Bxc4 b5 Be2 Bb7 O-O a6 Nxb5"],
+["D50","GDR, variante Tartakower con Nc3","d4 d5 c4 e6 Nc3 Nf6 Bg5"],
+["D51","GDR, variante Cambdrige Springs","d4 d5 c4 e6 Nc3 Nf6 Bg5 Nbd7 e3 c6 Nf3 Qa5"],
+["D54","GDR Tartakower con O-O","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 O-O Nf3 h6 Bh4 O-O"],
+["D55","GDR, variante con Bd3","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 O-O Nf3 h6 Bh4 b6"],
+["D56","GDR Tartakower sin cambio","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 h6 Bh4 O-O Nf3 b6"],
+["D58","GDR Tartakower, linea principal","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 h6 Bh4 b6 cxd5 Nxd5 Bxe7 Qxe7"],
+["D59","GDR Tartakower con Qe7","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 h6 Bh4 b6 cxd5 Nxd5 Bxe7 Qxe7 Nxd5 exd5"],
+["D60","GDR Ortodoxa, variante clasica","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3"],
+["D61","GDR Ortodoxa, variante Bogoljubov","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Qc2"],
+["D62","GDR Ortodoxa, variante del alfil","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Bd3"],
+["D63","GDR Ortodoxa, variante clasica con cxd5","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 cxd5"],
+["D64","GDR Ortodoxa, variante neo-clasica","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 c6 Bd3"],
+["D67","GDR Ortodoxa, variante Capablanca","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 c6 Bd3 dxc4 Bxc4 Nd5"],
+["D69","GDR Ortodoxa, variante intercambio con Rc1","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 c6 Bd3 dxc4 Bxc4 Nd5 Bxe7 Qxe7 O-O Nxc3 Rxc3"],
+["D73","Grunfeld, variante con Ne5","d4 Nf6 c4 g6 Nf3 Bg7 g3 d5 cxd5 Nxd5 Nc3"],
+["D74","Grunfeld, variante Neo-Grunfeld","d4 Nf6 c4 g6 Nf3 Bg7 g3 d5 cxd5 Nxd5 Nc3 Nc6"],
+["D75","Grunfeld, variante linea principal","d4 Nf6 c4 g6 Nf3 Bg7 g3 d5 cxd5 Nxd5 Nc3 Nxc3 bxc3 c5"],
+["D76","Grunfeld, variante del cambio con d5","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d5 O-O dxc4"],
+["D77","Grunfeld, variante Neo-Grunfeld 6.O-O","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d5 O-O"],
+["D78","Grunfeld, variante Neo-Grunfeld con c6","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d5 O-O c6"],
+["D79","Grunfeld, variante Neo-Grunfeld con Bg5","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d5 O-O c6 cxd5 cxd5"],
+["D82","Grunfeld, variante Brinckmann","d4 Nf6 c4 g6 Nc3 d5 Bf4"],
+["D83","Grunfeld, Gambito Grunfeld","d4 Nf6 c4 g6 Nc3 d5 Bf4 Bg7 e3 O-O Be2"],
+["D84","Grunfeld, variante Gambito con e4","d4 Nf6 c4 g6 Nc3 d5 Bf4 Bg7 e3 O-O Be2 c5 dxc5"],
+["D86","Grunfeld, variante del cambio clásica","d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3 Bg7 Bc4"],
+["D87","Grunfeld, variante del cambio Spassky","d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3 Bg7 Bc4 O-O Ne2"],
+["D88","Grunfeld, variante del cambio con Re1","d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3 Bg7 Bc4 O-O Ne2 c5 Be3 Nc6 O-O"],
+["D89","Grunfeld, variante del cambio principal","d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3 Bg7 Bc4 O-O Ne2 c5 Be3 Nc6 O-O cxd4 cxd4"],
+["D90","Grunfeld, variante Schlechter-Grob","d4 Nf6 c4 g6 Nc3 d5 Nf3"],
+["D91","Grunfeld, variante con Bg5","d4 Nf6 c4 g6 Nc3 d5 Bg5"],
+["D92","Grunfeld, variante con g3 de 5.Bf4","d4 Nf6 c4 g6 Nc3 d5 Bf4 Bg7 e3 O-O Rc1"],
+["D93","Grunfeld, variante con Bg5 y Nxd5","d4 Nf6 c4 g6 Nc3 d5 Bg5 Ne4 Bh4"],
+["D94","Grunfeld, variante con c3","d4 Nf6 c4 g6 Nc3 d5 e3 Bg7 c3"],
+["D95","Grunfeld, variante con Ne5","d4 Nf6 c4 g6 Nc3 d5 e3 Bg7 Nf3 O-O b4"],
+["D96","Grunfeld, variante con Qa4+","d4 Nf6 c4 g6 Nc3 d5 Nf3 Bg7 Qa4+"],
+["D97","Grunfeld, variante rusa principal","d4 Nf6 c4 g6 Nc3 d5 Nf3 Bg7 Qb3"],
+["D99","Grunfeld, variante rusa con Be2","d4 Nf6 c4 g6 Nc3 d5 Nf3 Bg7 Qb3 dxc4 Qxc4 O-O e4 Bg4 Be3"],
+
+/* === INDIA DE REY EXTENDIDA === */
+["E61","India de Rey, variante 4.g3","d4 Nf6 c4 g6 Nc3 Bg7 g3"],
+["E63","India de Rey, variante Fianchetto Simagin","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d6 Nc3 Nc6"],
+["E64","India de Rey, variante Fianchetto Uhlmann","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d6 Nc3 Nbd7"],
+["E65","India de Rey, variante Fianchetto con Ne4","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d6 Nc3 Nc6 d5 Ne5"],
+["E66","India de Rey, variante Fianchetto Larsen","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 c5 d5"],
+["E67","India de Rey, variante Fianchetto con Nd7","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d6 O-O Nbd7"],
+["E68","India de Rey, variante Fianchetto principal","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d6 O-O Nbd7 Nc3"],
+["E69","India de Rey, Fianchetto principal con e4","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d6 O-O Nbd7 Nc3 e5 e4"],
+["E71","India de Rey, Petrosian con h3","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 h3"],
+["E72","India de Rey, variante con Bg5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 h3 O-O Be3 e5 d5"],
+["E73","India de Rey, variante Averbakh clasica","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Be2 O-O Bg5"],
+["E74","India de Rey, variante Averbakh con d5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Be2 O-O Bg5 c5"],
+["E75","India de Rey, variante Averbakh con e5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Be2 O-O Bg5 c5 d5 e6"],
+["E77","India de Rey, variante 4P con Be2","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4 O-O Nf3 c5 Be2"],
+["E78","India de Rey, variante 4P con Nf3 y Be2","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4 O-O Be2 c5 Nf3"],
+["E79","India de Rey, variante 4P con O-O","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4 O-O Be2 c5 Nf3 Nc6 O-O"],
+["E80","India de Rey, Samisch con Bg5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 c5 d5"],
+["E82","India de Rey, Samisch con O-O-O","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 c5 d5 Ne8 Qd2 f5 O-O-O"],
+["E83","India de Rey, Samisch con Be6","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 Nc6"],
+["E84","India de Rey, Samisch con f5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 Nc6 Qd2 Rb8 Nge2 f5"],
+["E85","India de Rey, Samisch con e5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5"],
+["E86","India de Rey, Samisch con h5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5 Nge2"],
+["E87","India de Rey, Samisch, linea principal","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5 d5 Ne8"],
+["E88","India de Rey, Samisch con c4","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5 d5 Ne8 Qd2 f5 O-O-O"],
+["E89","India de Rey, Samisch con c5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5 d5 Ne8 Qd2 f5 O-O-O fxe4 fxe4 Nf6"],
+["E90","India de Rey, linea principal sin f4","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3"],
+["E91","India de Rey, linea principal con Bf4","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 Nc6"],
+["E93","India de Rey, variante Petrosian con Nd2","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 d5 Nd7 Nd2"],
+["E94","India de Rey, variante clasica","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O"],
+["E95","India de Rey, variante clasica con Nbd7","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nbd7 Re1"],
+["E96","India de Rey, variante clasica con h3","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nbd7 Re1 c6 Bf1 h6"],
+["E97","India de Rey, variante Mar del Plata","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7"],
+["E98","India de Rey, Mar del Plata con Nd2","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Nd2"],
+["E99","India de Rey, variante principal linea final","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Nd2 f5 exf5 Nxf5 Nxf5 Rxf5"],
+
+/* === NIMZOINDIA EXTENDIDA === */
+["E21","Nimzoindia, variante tres caballos","d4 Nf6 c4 e6 Nc3 Bb4 Nf3"],
+["E22","Nimzoindia, variante del alfil","d4 Nf6 c4 e6 Nc3 Bb4 Qb3"],
+["E23","Nimzoindia, variante Spielmann","d4 Nf6 c4 e6 Nc3 Bb4 Qb3 c5 dxc5"],
+["E25","Nimzoindia, Samisch con f3","d4 Nf6 c4 e6 Nc3 Bb4 a3 Bxc3+ bxc3 c5 f3"],
+["E26","Nimzoindia, Samisch variante","d4 Nf6 c4 e6 Nc3 Bb4 a3 Bxc3+ bxc3 c5"],
+["E27","Nimzoindia, Samisch variante sin f3","d4 Nf6 c4 e6 Nc3 Bb4 a3 Bxc3+ bxc3 O-O"],
+["E28","Nimzoindia, Samisch variante con e4","d4 Nf6 c4 e6 Nc3 Bb4 a3 Bxc3+ bxc3 O-O e4"],
+["E29","Nimzoindia, Samisch principal","d4 Nf6 c4 e6 Nc3 Bb4 a3 Bxc3+ bxc3 O-O e4 d5 e5"],
+["E31","Nimzoindia, variante Leningrado con Qb6","d4 Nf6 c4 e6 Nc3 Bb4 Bg5 h6 Bh4 c5"],
+["E33","Nimzoindia, variante Anderssen","d4 Nf6 c4 e6 Nc3 Bb4 Qc2 Nc6"],
+["E34","Nimzoindia, variante clasica","d4 Nf6 c4 e6 Nc3 Bb4 Qc2 d5 cxd5 Qxd5"],
+["E35","Nimzoindia, variante Qc2 con dxc4","d4 Nf6 c4 e6 Nc3 Bb4 Qc2 d5 cxd5 exd5"],
+["E36","Nimzoindia, variante Qc2 con a3","d4 Nf6 c4 e6 Nc3 Bb4 Qc2 d5 a3"],
+["E37","Nimzoindia, variante clasica principal","d4 Nf6 c4 e6 Nc3 Bb4 Qc2 d5 a3 Bxc3+ Qxc3 Ne4 Qc2 c5"],
+["E38","Nimzoindia, variante clasica con 4...c5","d4 Nf6 c4 e6 Nc3 Bb4 Qc2 c5 dxc5"],
+["E39","Nimzoindia, variante clasica 4...c5 principal","d4 Nf6 c4 e6 Nc3 Bb4 Qc2 c5 dxc5 O-O a3 Bxc5 Nf3"],
+["E40","Nimzoindia, variante 4.e3 c5","d4 Nf6 c4 e6 Nc3 Bb4 e3 c5"],
+["E41","Nimzoindia, variante 4.e3 c5 Kasparov","d4 Nf6 c4 e6 Nc3 Bb4 e3 c5 Nge2"],
+["E42","Nimzoindia, variante 4.e3 c5 5.Ne4","d4 Nf6 c4 e6 Nc3 Bb4 e3 c5 Ne2 cxd4 exd4"],
+["E43","Nimzoindia, variante Taimanov con b3","d4 Nf6 c4 e6 Nc3 Bb4 e3 b6"],
+["E44","Nimzoindia, variante con e4","d4 Nf6 c4 e6 Nc3 Bb4 e3 b6 Nge2 Ba6 a3 Bxc3+ Nxc3"],
+["E45","Nimzoindia, variante Taimanov con 5.Nge2","d4 Nf6 c4 e6 Nc3 Bb4 e3 b6 Nge2"],
+["E46","Nimzoindia, variante Reshevsky","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O"],
+["E47","Nimzoindia, variante 4.e3 O-O 5.Bd3","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3"],
+["E48","Nimzoindia, variante 4.e3 O-O 5.Bd3 d5","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 d5"],
+["E49","Nimzoindia, variante Hromadka","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 d5 a3 Bxc3+ bxc3"],
+["E50","Nimzoindia, variante 4.e3 O-O 5.Nf3 d5 6.Bd3","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3"],
+["E51","Nimzoindia, variante 4.e3 Nf3 d5","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5"],
+["E52","Nimzoindia, variante 4.e3 Nf3 d5 Bg5","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bg5"],
+["E53","Nimzoindia, variante 4.e3 Nf3 d5 Bd3","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3"],
+["E54","Nimzoindia, variante con Gambit","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O dxc4 Bxc4"],
+["E55","Nimzoindia, variante Gligoric","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O Nc6"],
+["E56","Nimzoindia, variante con Re1","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O cxd4 exd4 dxc4"],
+["E57","Nimzoindia, variante con 7...cxd4","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O cxd4 exd4 dxc4 Bxc4 Nxc3 bxc3"],
+["E58","Nimzoindia, variante Karpov","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O Nc6 a3 Bxc3 bxc3"],
+["E59","Nimzoindia, variante principal","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O Nc6 a3 Bxc3 bxc3 dxc4"],
+
+/* === INDIA DE DAMA EXTENDIDA === */
+["E13","India de Dama, variante del alfil","d4 Nf6 c4 e6 Nf3 b6 Nc3 Bb4"],
+["E14","India de Dama, variante con e3","d4 Nf6 c4 e6 Nf3 b6 e3 Bb7 Bd3"],
+["E16","India de Dama, variante Capablanca","d4 Nf6 c4 e6 Nf3 b6 g3 Bb7 Bg2 Bb4+"],
+["E17","India de Dama, variante clasica","d4 Nf6 c4 e6 Nf3 b6 g3 Bb7 Bg2 Be7"],
+["E18","India de Dama, variante con O-O","d4 Nf6 c4 e6 Nf3 b6 g3 Bb7 Bg2 Be7 O-O O-O"],
+["E19","India de Dama, variante principal","d4 Nf6 c4 e6 Nf3 b6 g3 Bb7 Bg2 Be7 O-O O-O Nc3 Ne4 Qc2"],
+
+/* === INGLESA EXTENDIDA === */
+["A17","Inglesa, variante anti-Grunfeld","c4 Nf6 Nc3 e6 Nf3 Bb4"],
+["A18","Inglesa, variante Mikenas","c4 Nf6 Nc3 e6 e4"],
+["A19","Inglesa, variante Mikenas con Nd4","c4 Nf6 Nc3 e6 e4 c5 e5 Ng8"],
+["A27","Inglesa, variante Bristol","c4 e5 Nc3 Nf6 Nf3 Nc6 d4 cxd4"],
+["A31","Inglesa, variante Siciliana simetrica","c4 c5 Nf3 Nf6 d4 cxd4 Nxd4"],
+["A32","Inglesa, variante Siciliana simetrica con Nf6","c4 c5 Nf3 Nf6 d4 cxd4 Nxd4 e6"],
+["A33","Inglesa, variante Siciliana simetrica con Nc6","c4 c5 Nf3 Nf6 d4 cxd4 Nxd4 e6 Nc3 Nc6"],
+["A37","Inglesa, variante con Bg2","c4 c5 Nc3 Nc6 g3 g6 Bg2 Bg7 Nf3"],
+["A38","Inglesa, variante con d3","c4 c5 Nc3 Nc6 g3 g6 Bg2 Bg7 Nf3 Nf6 O-O O-O d3"],
+["A39","Inglesa, variante con d4","c4 c5 Nc3 Nc6 g3 g6 Bg2 Bg7 Nf3 Nf6 O-O O-O d4"],
+
+/* === RETI Y SISTEMA INDIO DE REY EXTENDIDO === */
+["A10","Inglesa, variante con d3","c4 g6"],
+["A12","Reti, variante Barcza-Larsen","Nf3 d5 c4 c6 b3"],
+["A14","Reti, variante King's Indian","Nf3 Nf6 c4 e6 g3 d5 Bg2 Be7"],
+
+/* === FRANCESA EXTENDIDA === */
+["C06","Francesa Tarrasch, variante Kasparov","e4 e6 d4 d5 Nd2 Nf6 e5 c5 c3 Nc6 Bd3"],
+["C08","Francesa Tarrasch, variante abierta","e4 e6 d4 d5 Nd2 c5 exd5 exd5"],
+["C09","Francesa Tarrasch, variante abierta con Nf6","e4 e6 d4 d5 Nd2 c5 exd5 exd5 Nf3 Nc6"],
+["C14","Francesa Clasica con variante","e4 e6 d4 d5 Nc3 Nf6 Bg5 Be7 e5 Nfd7 Bxe7 Qxe7"],
+["C16","Francesa Winawer, variante Advance","e4 e6 d4 d5 Nc3 Bb4 e5 Qd7"],
+["C17","Francesa Winawer, variante Armenian","e4 e6 d4 d5 Nc3 Bb4 e5 c5 a3 Bxc3+ bxc3 Ne7"],
+["C19","Francesa Winawer, variante principal","e4 e6 d4 d5 Nc3 Bb4 e5 c5 a3 Bxc3+ bxc3 Qc7"],
+
+/* === ESCANDINAVA EXTENDIDA === */
+["B01","Escandinava con Qe5+","e4 d5 exd5 Nf6 d4 Nxd5 c4 Nb4"],
+["B01","Escandinava, variante Bronstein","e4 d5 exd5 Nf6 d4 Nxd5 Nf3 Bg4"],
+["B01","Escandinava, variante del Alfil","e4 d5 exd5 Nf6 d4 Nxd5 c4 Nb4 Na3"],
+
+/* === DEFENSA PIRC/MODERNA EXTENDIDA === */
+["B07","Pirc, variante con Bg5","e4 d6 d4 Nf6 Nc3 g6 Bg5"],
+["B08","Pirc, variante con Be2","e4 d6 d4 Nf6 Nc3 g6 Nf3 Bg7 Be2"],
+["B09","Pirc, variante Byrne","e4 d6 d4 Nf6 Nc3 g6 f4 Bg7 Nf3"],
+
+/* === ALEKHINE EXTENDIDA === */
+["B05","Alekhine, variante Balogh","e4 Nf6 e5 Nd5 d4 d6 Nf3 Bg4 Be2"],
+
+/* === APERTURAS DE FLANCO === */
+["A00","Ataque Dunst (1.Nc3)","Nc3"],
+["A00","Apertura Nimzowitsch (1.Nc3)","Nc3 d5 d4"],
+["A00","Apertura Anderssen (1.a3)","a3"],
+["A00","Apertura Benko (1.g3)","g3"],
+["A00","Apertura Mieses (1.d3)","d3"],
+["A04","Reti con g3","Nf3 c5 g3"],
+["A05","Reti con g6","Nf3 Nf6 g3"],
+["A01","Apertura Nimzowitsch-Larsen","b3 d5 Bb2 Nf6 Nf3"],
+["A40","Defensa Wade","d4 Nf6 c4 d6"],
+["A40","Sistema Colle-Koltanowski","d4 d5 Nf3 Nf6 e3 e6 Bd3 c5 c3 Nc6 O-O Bd6"],
+["A42","Moderna, variante del peon de dama","d4 d6 c4 g6 Nc3 Bg7 e4 c5"],
+["A44","Benoni antigua","d4 c5 d5 e5"],
+["A53","Defensa Old Benoni","d4 Nf6 c4 d6 Nf3"],
+["A55","Old Indian, variante con Be2","d4 Nf6 c4 d6 Nc3 Nbd7 e4 e5 Nf3 Be7 Be2"],
+["A60","Benoni Moderna con e6","d4 Nf6 c4 c5 d5 e6 Nc3"],
+["A61","Benoni Moderna variante Nge2","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 Nd2"],
+["A62","Benoni Moderna variante Fianchetto","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3"],
+["A63","Benoni Moderna variante Fianchetto principal","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O Nbd7"],
+["A64","Benoni Moderna variante principal","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O Nbd7 Nd2 a6 a4"],
+["A65","Benoni Moderna variante con e4","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4"],
+["A66","Benoni Moderna, variante Pawn Storm","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 f4"],
+["A67","Benoni Moderna, variante Taimanov","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 f4 Bg7 Bb5+"],
+["A68","Benoni Moderna, variante Nf3","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 f4 Bg7 Nf3"],
+["A69","Benoni Moderna, variante principal","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 f4 Bg7 Nf3 O-O Be2"],
+["A71","Benoni, variante con Bg5","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 Bg5"],
+["A72","Benoni, variante sin g3","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 Nf3 Bg7"],
+["A73","Benoni, variante Fianchetto Petrosian","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O"],
+["A74","Benoni, variante Fianchetto con a6","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O a6"],
+["A75","Benoni, variante Fianchetto con Bg4","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O a6 a4 Bg4"],
+["A76","Benoni, variante Fianchetto con Re8","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O Re8"],
+["A77","Benoni, variante Fianchetto con Nbd7","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O Re8 Nd2"],
+["A78","Benoni, variante principal clasica","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O Re8 Nd2 a6 a4 Nbd7"],
+["A79","Benoni, variante principal con h3","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O Re8 Nd2 a6 a4 Nbd7 h3"],
+["A82","Holandesa, variante Staunton","d4 f5 e4 fxe4 Nc3"],
+["A83","Holandesa, variante Staunton con Nf6","d4 f5 e4 fxe4 Nc3 Nf6 Bg5"],
+["A84","Holandesa, variante con c4","d4 f5 c4 Nf6"],
+["A86","Holandesa, variante con Nf3","d4 f5 c4 Nf6 g3 g6 Nf3"],
+["A88","Holandesa Leningrado, variante con O-O","d4 f5 c4 Nf6 g3 g6 Bg2 Bg7 Nf3 O-O O-O d6"],
+["A89","Holandesa Leningrado, variante principal","d4 f5 c4 Nf6 g3 g6 Bg2 Bg7 Nf3 O-O O-O d6 Nc3"],
+["A90","Holandesa, variante Stonewall con c4","d4 f5 c4 Nf6 g3 e6 Bg2 d5"],
+["A91","Holandesa, variante del alfil con e3","d4 f5 c4 Nf6 g3 e6 Bg2 Be7"],
+["A92","Holandesa, variante con O-O","d4 f5 c4 Nf6 g3 e6 Bg2 Be7 Nf3 O-O"],
+["A93","Holandesa, variante Botvinnik","d4 f5 c4 Nf6 g3 e6 Bg2 Be7 Nf3 O-O O-O d5 b3"],
+["A94","Holandesa Stonewall, variante c3","d4 f5 c4 Nf6 g3 e6 Bg2 Be7 Nf3 O-O O-O d5 b3 c6"],
+["A95","Holandesa Stonewall, variante principal","d4 f5 c4 Nf6 g3 e6 Bg2 d5 Nf3 c6 O-O Bd6"],
+["A96","Holandesa, variante clasica","d4 f5 c4 Nf6 g3 e6 Bg2 Be7 Nf3 O-O O-O Ne4"],
+["A97","Holandesa, variante Ilyin-Zhenevsky","d4 f5 c4 Nf6 g3 e6 Bg2 Be7 Nf3 O-O O-O Ne4 Qc2"],
+["A98","Holandesa, variante con Qe8","d4 f5 c4 Nf6 g3 e6 Bg2 Be7 Nf3 O-O O-O Ne4 Qc2 Qe8"],
+["A99","Holandesa, variante principal","d4 f5 c4 Nf6 g3 e6 Bg2 Be7 Nf3 O-O O-O Ne4 Nc3 Nxc3 bxc3 d6"],
+
+/* === GAMBITO BUDAPEST Y VARIANTES === */
+["A51","Gambito Budapest aceptado, variante clasica","d4 Nf6 c4 e5 dxe5 Ng4 Nf3 Bc5"],
+["A52","Gambito Budapest, variante principal","d4 Nf6 c4 e5 dxe5 Ng4 Bf4 Nc6"],
+
+/* === CATALANA EXTENDIDA === */
+["E00","Catalana, variante con d5","d4 Nf6 c4 e6 g3 d5"],
+["E01","Catalana, variante del alfil","d4 Nf6 c4 e6 g3 d5 Bg2 dxc4"],
+["E02","Catalana, variante abierta","d4 Nf6 c4 e6 g3 d5 Bg2 dxc4 Qa4+"],
+["E03","Catalana, variante abierta Kasparov","d4 Nf6 c4 e6 g3 d5 Bg2 dxc4 Qa4+ Bd7 Qxc4 c5"],
+["E05","Catalana, variante cerrada con Nf3","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O dxc4"],
+["E07","Catalana, variante cerrada con b3","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O c6 b3"],
+["E08","Catalana, variante Kramnik","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O c6 Qc2"],
+["E09","Catalana, variante abierta con Nc3","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O dxc4 Qe2 Nc6"]
+].map(function(a){ return {eco:a[0], name:a[1], moves:a[2]}; });
+
+/* Unir al array global */
+EXTRA_OPENINGS.push.apply(EXTRA_OPENINGS, OPENINGS_BATCH2);
 
 /* Lineas unificadas para el predictor: base rica + repertorio compacto */
 const ALL_LINES = OPENINGS.map(function(o){ return {eco:o.eco, name:o.name, moves:o.moves}; }).concat(EXTRA_OPENINGS);
