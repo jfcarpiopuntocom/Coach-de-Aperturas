@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -401,8 +400,8 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); paddi
   <div class="col-center">
     <section id="stage">
       <div class="levels">
-        <button id="lvl-400" class="lvl-btn" onclick="setLevel(0)">NIVEL 400</button>
-        <button id="lvl-1500" class="lvl-btn active" onclick="setLevel(1)">NIVEL 1500</button>
+        <button id="lvl-400" class="lvl-btn active" onclick="setLevel(0)">NIVEL 400</button>
+        <button id="lvl-1500" class="lvl-btn" onclick="setLevel(1)">NIVEL 1500</button>
         <button id="lvl-2600" class="lvl-btn" onclick="setLevel(2)">NIVEL 2600</button>
       </div>
       <div class="levels">
@@ -2282,7 +2281,7 @@ function toggleContext(){ document.getElementById('context-box').classList.toggl
 const game = new Chess();
 let engineMode = 'loading'; // loading | stockfish | local
 let engine = null;
-let currentLevel = 1;
+let currentLevel = 0;
 let selectedSq = null;
 let legalTargets = [];
 let lastMove = null;
@@ -2295,8 +2294,8 @@ let humanColor = 'w';            // 'w' o 'b' — de qué lado juega la persona
 function humanTurnMsg(){ return 'Tu turno ('+(humanColor==='w'?'blancas':'negras')+').'; }
 
 const LEVELS = [
-  { label:"400",  skill:0,  depth:2,  movetime:100, randomness:0.55, localDepth:1 },
-  { label:"1500", skill:8,  depth:8,  movetime:400, randomness:0.08, localDepth:1 },
+  { label:"400",  skill:0,  depth:2,  movetime:100, randomness:0.35, localDepth:3 },
+  { label:"1500", skill:8,  depth:8,  movetime:400, randomness:0.08, localDepth:3 },
   { label:"2600", skill:20, depth:15, movetime:900, randomness:0.0,  localDepth:2 }
 ];
 
@@ -3764,30 +3763,42 @@ function toggleWinPct(el){
 function updateOpeningPanel(){
   const hist = game.history();
   updatePredictions(hist);
-  let best = null, bestLen = 0;
+  /* criterio de "mejor": entre lineas cuyo prefijo coincide con hist,
+     preferir la MAS ESPECIFICA ya totalmente revelada (seq.length<=hist.length,
+     maximizando seq.length). Si ninguna esta completa aun, usar la de mayor
+     prefijo cubierto (lim) como aproximacion mientras sigues jugando. */
+  let best = null, bestComplete = -1, bestLim = 0;
   for(const o of OPENINGS){
     const seq = o.moves.split(' ');
-    if(seq.length > hist.length) continue;
+    const lim = Math.min(seq.length, hist.length);
     let ok = true;
-    for(let i=0;i<seq.length;i++){
+    for(let i=0;i<lim;i++){
       if(seq[i] !== hist[i]){ ok=false; break; }
     }
-    if(ok && seq.length > bestLen){ best = o; bestLen = seq.length; }
+    if(!ok) continue;
+    const complete = seq.length <= hist.length ? seq.length : -1;
+    if(complete > bestComplete || (complete === -1 && bestComplete === -1 && lim > bestLim)){
+      best = o; bestComplete = complete; bestLim = lim;
+    }
   }
-  /* si el repertorio ampliado tiene una coincidencia MAS larga, usa su nombre
-     (con textos genericos: EXTRA_OPENINGS no trae historia/consejo propios) */
+  /* si el repertorio ampliado tiene una coincidencia igual o mejor, usa su
+     nombre (con textos genericos: EXTRA_OPENINGS no trae historia/consejo propios) */
   for(const x of EXTRA_OPENINGS){
     const seq = x.moves.split(' ');
-    if(seq.length > hist.length || seq.length <= bestLen) continue;
+    const lim = Math.min(seq.length, hist.length);
     let ok = true;
-    for(let i=0;i<seq.length;i++){ if(seq[i] !== hist[i]){ ok=false; break; } }
-    if(ok){
+    for(let i=0;i<lim;i++){ if(seq[i] !== hist[i]){ ok=false; break; } }
+    if(!ok) continue;
+    const complete = seq.length <= hist.length ? seq.length : -1;
+    const better = complete > bestComplete || (complete === -1 && bestComplete === -1 && lim > bestLim);
+    if(!better) continue;
+    {
       best = {eco:x.eco, name:x.name, moves:x.moves,
         tag:(best&&best.tag)||'solid',
         history:(best&&best.history)||'Linea del repertorio ampliado - identificada por transposicion exacta de jugadas.',
         games:(best&&best.games)||'-',
         tip:(best&&best.tip)||'Sigue los principios: desarrolla piezas menores, controla el centro y asegura tu rey.'};
-      bestLen = seq.length;
+      bestComplete = complete; bestLim = lim;
     }
   }
 
@@ -4028,15 +4039,22 @@ function evalMaterial(){
   }
   return score; // positivo = mejor para negras
 }
-function negamax(depth, maximizingBlack){
+function negamax(depth, maximizingBlack, alpha, beta){
   if(depth===0 || game.game_over()) return evalMaterial();
   const moves = game.moves({verbose:true});
   let best = maximizingBlack ? -Infinity : Infinity;
   for(const m of moves){
     game.move(m);
-    const val = negamax(depth-1, !maximizingBlack);
+    const val = negamax(depth-1, !maximizingBlack, alpha, beta);
     game.undo();
-    if(maximizingBlack) best = Math.max(best,val); else best = Math.min(best,val);
+    if(maximizingBlack){
+      best = Math.max(best,val);
+      alpha = Math.max(alpha,best);
+    } else {
+      best = Math.min(best,val);
+      beta = Math.min(beta,best);
+    }
+    if(beta <= alpha) break; // poda alpha-beta
   }
   return best;
 }
@@ -4046,7 +4064,7 @@ function localCandidates(){
   const moves = game.moves({verbose:true});
   const scored = moves.map(m=>{
     game.move(m);
-    const s = negamax(Math.max(L.localDepth-1,0), !engineIsBlack);
+    const s = negamax(Math.max(L.localDepth-1,0), !engineIsBlack, -Infinity, Infinity);
     game.undo();
     return {m, s};
   });
