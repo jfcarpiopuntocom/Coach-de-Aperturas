@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,8 +9,6 @@
 <meta property="og:description" content="Un tablero, un despertar de cien años, y una apertura que aún no tiene nombre para ti.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#050705">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
    SISTEMA DE DISEÑO
@@ -29,8 +28,10 @@
   --orange-dim:#c98a4a;
   --sq-a:      #0c110c;
   --sq-b:      #060906;
-  --font-term: 'VT323', monospace;
-  --font-pix:  'Press Start 2P', monospace;
+  /* Monospace 100% del sistema: sin Google Fonts, sin red, funciona
+     offline en cualquier telefono. Cada SO resuelve al primero que
+     tenga instalado, todos con buen caracter retro/terminal. */
+  --font-term: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Consolas', 'Roboto Mono', 'Courier New', monospace;
 }
 
 *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -42,7 +43,10 @@ body{ display:block; }
 /* PANTALLA CORE: exactamente un viewport, SIN scroll interno.
    Contiene header + tablero + controles + predictor = todo lo crucial.
    La pagina hace scroll normal para revelar la leyenda que va DEBAJO. */
-.screen{ height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+.screen{ display:flex; flex-direction:column; }
+@media (min-width:900px){
+  .screen{ height:100vh; overflow:hidden; }
+}
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
   background:repeating-linear-gradient(
@@ -59,13 +63,16 @@ body::after{
 /* ---------- HERO: mínimo, sin instrucciones, sin lore ---------- */
 header.hero{
   display:flex; align-items:center; justify-content:center;
-  gap:calc(var(--u)*3); padding:calc(var(--u)*2) calc(var(--u)*4);
-  border-bottom:1px solid #1a2a1a; flex-shrink:0;
+  gap:calc(var(--u)*3); padding:calc(var(--u)*3) calc(var(--u)*4);
+  border-bottom:2px solid var(--green-dim); flex-shrink:0;
+}
+@media (max-width:640px){
+  .title-ascii{ font-size:calc(var(--u)*4.5); white-space:normal; text-align:center; }
 }
 .title-ascii{
-  font-family:var(--font-term); font-size:calc(var(--u)*5);
+  font-family:var(--font-term); font-size:calc(var(--u)*9);
   color:var(--green); text-shadow:0 0 calc(var(--u)*2) var(--green);
-  letter-spacing:1px; white-space:nowrap;
+  letter-spacing:1px; white-space:nowrap; font-weight:bold;
 }
 .title-ascii .side-w{ color:var(--green); }
 .title-ascii .side-b{ color:var(--orange); }
@@ -119,7 +126,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #board{
   display:grid; grid-template-columns:repeat(8, 1fr);
-  width:min(calc(100vh - 260px), 92vw, 560px); aspect-ratio:1/1;
+  width:min(70vmin, 92vw, 560px); aspect-ratio:1/1;
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
 }
@@ -168,8 +175,8 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.fx-flash .pc{ animation: fx-flash-kf 0.38s ease-in forwards; }
 
 #status-bar{
-  width:100%; text-align:center; font-size:calc(var(--u)*5);
-  color:var(--green); min-height:calc(var(--u)*5);
+  font-size:calc(var(--u)*4); color:var(--green-dim); text-align:right;
+  min-width:0; flex-shrink:1;
 }
 #status-bar.thinking{ color:var(--orange); }
 #status-bar.check{ color:var(--orange); font-weight:bold; }
@@ -211,14 +218,25 @@ button:disabled{ opacity:0.35; cursor:default; }
 @keyframes lm-pulse{ 0%{ opacity:0.35; } 100%{ opacity:0; } }
 
 /* ---------- 2. APERTURA (lo que el humano está jugando) ---------- */
-.opening-card{ text-align:center; padding-top:calc(var(--u)*1); }
+.opening-card{
+  text-align:center; padding:calc(var(--u)*3) calc(var(--u)*2);
+  background:var(--bg-panel); border:2px solid var(--green); width:100%;
+}
+.opening-top-row{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:calc(var(--u)*2); margin-bottom:calc(var(--u)*1.5);
+}
+.opening-kicker{
+  font-size:calc(var(--u)*4.5); color:var(--green-dim);
+  letter-spacing:2px; text-transform:uppercase; white-space:nowrap;
+}
 .eco-badge{
   display:inline-block; font-family:var(--font-term); font-size:calc(var(--u)*5);
   background:var(--green-dim); color:#000; padding:calc(var(--u)*1) calc(var(--u)*2);
   margin-bottom:calc(var(--u)*2);
 }
 #opening-name{
-  font-size:calc(var(--u)*5.5); color:var(--green); font-weight:bold; line-height:1.2;
+  font-size:calc(var(--u)*7); color:var(--green); font-weight:bold; line-height:1.2;
   text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.35);
 }
 #opening-moves{
@@ -363,7 +381,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); padding:calc(var(--u)*4) 0 calc(var(--u)*6); }
 
 @media (min-width:640px){
-  #opening-name{ font-size:calc(var(--u)*6); }
+  #opening-name{ font-size:calc(var(--u)*8); }
   .sq{ font-size:calc(var(--u)*10); }
 }
 </style>
@@ -393,7 +411,19 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); paddi
       </div>
 
       <div id="board"></div>
-      <div id="status-bar">cargando motor…</div>
+
+      <!-- INMEDIATAMENTE bajo el tablero, sin nada en medio: es EL tema
+           de toda la app. El status ("Tu turno...") va en la MISMA fila,
+           chico, a la derecha, para no competir por espacio vertical. -->
+      <section class="opening-card">
+        <div class="opening-top-row">
+          <span class="opening-kicker">Tu apertura</span>
+          <span id="status-bar">cargando motor…</span>
+        </div>
+        <div id="eco-badge-wrap"></div>
+        <div id="opening-name">—</div>
+        <div id="opening-moves" style="display:none"></div>
+      </section>
 
       <div class="game-controls">
         <button id="btn-reroll" onclick="rerollMove()" disabled>OTRA RESPUESTA</button>
@@ -403,20 +433,14 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); paddi
     </section>
   </div>
 
-  <!-- IZQUIERDA (desktop) — A UN LADO DEL TABLERO: predictor CORE + apertura + defensa IA.
-       DOM order 2 => en mobile aparece JUSTO debajo del tablero. -->
+  <!-- IZQUIERDA (desktop) — A UN LADO DEL TABLERO: predictor CORE + defensa IA.
+       DOM order 2 => en mobile aparece JUSTO debajo de la apertura. -->
   <div class="col-left">
-    <!-- PREDICTOR — CORE FEATURE. Al lado del tablero en desktop, bajo el tablero en mobile. -->
+    <!-- PREDICTOR — CORE FEATURE. Al lado del tablero en desktop, bajo la apertura en mobile. -->
     <section class="predict-card">
       <span class="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
       <div id="predict-count" class="predict-count">&mdash;</div>
       <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; las aperturas posibles aparecen aquí.</span></div>
-    </section>
-
-    <section class="opening-card">
-      <div id="eco-badge-wrap"></div>
-      <div id="opening-name">—</div>
-      <div id="opening-moves" style="display:none"></div>
     </section>
 
     <section class="ai-card">
@@ -454,7 +478,7 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); paddi
 
     <section class="ai-log-card">
       <span class="ai-label">Defensas de la IA vistas hoy</span>
-      <div id="ai-defense-log" class="chip-list"><span class="chip-empty">Todavía ninguna — juega para descubrirlas.</span></div>
+      <div id="ai-defense-log" class="chip-list"><span class="chip-empty">Aún no has visto ninguna. Juega para que la IA responda y aparezcan aquí.</span></div>
     </section>
 
     <button class="context-toggle" onclick="toggleContext()">+ historia, partidas y perfil de jugador</button>
@@ -2287,6 +2311,14 @@ const OPENINGS = [
    history:"El movimiento más antiguo del ajedrez moderno. Domina el centro de inmediato y abre líneas para dama y alfil.",
    games:"Casi cualquier partida clásica del siglo XIX empieza así — desde Morphy hasta el día de hoy.",
    tip:"No te apresures a atacar: primero desarrolla caballos antes que alfiles y no muevas la dama temprano."},
+  {eco:"D00", name:"Apertura de Dama", moves:"d4 d5", tag:"positional",
+   history:"La réplica simétrica a 1.d4. Ambos bandos luchan por el centro con peones de dama antes de decidir un plan.",
+   games:"Base de casi todo el ajedrez clásico de torneo desde principios del siglo XX — de Capablanca a Carlsen.",
+   tip:"El plan típico de blancas es c4 (Gambito de Dama). Desarrolla tus piezas menores antes de comprometer el centro."},
+  {eco:"A45", name:"Defensa India", moves:"d4 Nf6", tag:"hypermodern",
+   history:"Negras retrasa el peón central y presiona con piezas — la base de todo el complejo de defensas indias.",
+   games:"Pilar del repertorio de negras en la era hipermoderna, de Nimzowitsch a Kasparov.",
+   tip:"Espera a ver el plan de blancas (c4, Nf3) antes de decidir si irás por India de Rey, Nimzoindia o Grünfeld."},
   {eco:"C50", name:"Italiana", moves:"e4 e5 Nf3 Nc6 Bc4", tag:"aggressive",
    history:"Conocida desde el siglo XVI en Italia. Apunta directo al punto débil f7 desde la primera jugada de alfil.",
    games:"Greco ya la analizaba en 1620. Revivida modernamente por Kasparov y Carlsen como arma de sorpresa.",
@@ -3444,7 +3476,7 @@ function updatePredictions(hist){
         if(!seenN.has(k)){ seenN.add(k); near.push({o:s.o, div:(s.seq[s.m]||null)}); }
       }
     }
-    countEl.textContent = 'Cerca de estas &mdash; ' + best + (best===1?' jugada en com\u00fan':' jugadas en com\u00fan');
+    countEl.textContent = 'Cerca de estas \u2014 ' + best + (best===1?' jugada en com\u00fan':' jugadas en com\u00fan');
     let html = near.slice(0,MAX).map(function(c){
       return '<span class="chip"><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+
              (c.div?'<span class="chip-next">&ne; '+c.div+'</span>':'')+'</span>';
@@ -3719,7 +3751,7 @@ function winPctToggleHtml(o){
   const {w,b} = approxWinPct(o);
   const id = 'wp'+(wpUid++);
   return '<span class="wp-toggle" onclick="toggleWinPct(this)">≈%</span>'+
-         '<span class="wp-detail" id="'+id+'">'+w+'% blancas · '+b+'% negras — aprox., no es un mandato a seguir</span>';
+         '<span class="wp-detail" id="'+id+'">Esta apertura tiene un '+w+'% de victorias históricas jugando blancas (y '+b+'% jugando negras)</span>';
 }
 function toggleWinPct(el){
   const detail = el.nextElementSibling;
@@ -3843,7 +3875,7 @@ function updateAiDefensePanel(hist, best){
 function renderAiDefenseLog(){
   const el = document.getElementById('ai-defense-log');
   if(aiDefenseLog.length===0){
-    el.innerHTML = '<span class="chip-empty">Todavía ninguna — juega para descubrirlas.</span>';
+    el.innerHTML = '<span class="chip-empty">Aún no has visto ninguna. Juega para que la IA responda y aparezcan aquí.</span>';
     return;
   }
   el.innerHTML = aiDefenseLog.map(d =>
