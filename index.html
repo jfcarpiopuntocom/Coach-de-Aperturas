@@ -70,7 +70,7 @@ header.hero{
 .title-ascii .side-w{ color:var(--green); }
 .title-ascii .side-b{ color:var(--orange); }
 .tagline{
-  font-size:calc(var(--u)*5); color:#FFFFFF; letter-spacing:0.5px;
+  font-size:calc(var(--u)*5); color:var(--green); letter-spacing:0.5px;
   white-space:nowrap;
 }
 
@@ -132,7 +132,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.dark{ background:var(--sq-b); }
 .sq .pc.w{ color:var(--green); text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.7); }
 .sq .pc.b{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1.5) rgba(255,127,0,0.7); }
-.sq .dot{ color:#FFFFFF; font-size:calc(var(--u)*5); }
+.sq .dot{ color:var(--green); font-size:calc(var(--u)*5); }
 .sq.selected{ outline:calc(var(--u)*0.75) solid var(--orange); outline-offset:-2px; }
 .sq.legal::after{
   content:""; position:absolute; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5);
@@ -142,7 +142,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   width:80%; height:80%; background:transparent; border:calc(var(--u)*1) solid var(--orange);
 }
 .sq.last{ box-shadow:inset 0 0 0 calc(var(--u)*1) var(--green-dim); }
-.coord{ position:absolute; font-size:calc(var(--u)*5); color:#FFFFFF; font-family:var(--font-term); }
+.coord{ position:absolute; font-size:calc(var(--u)*5); color:var(--green); font-family:var(--font-term); }
 .coord.file{ bottom:1px; right:2px; }
 .coord.rank{ top:1px; left:2px; }
 
@@ -169,7 +169,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #status-bar{
   width:100%; text-align:center; font-size:calc(var(--u)*5);
-  color:#FFFFFF; min-height:calc(var(--u)*5);
+  color:var(--green); min-height:calc(var(--u)*5);
 }
 #status-bar.thinking{ color:var(--orange); }
 #status-bar.check{ color:var(--orange); font-weight:bold; }
@@ -179,7 +179,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 #moves-log{
   width:100%; background:var(--bg-panel); border:1px solid var(--green-dim);
   padding:calc(var(--u)*2); font-size:calc(var(--u)*5); max-height:calc(var(--u)*14);
-  overflow-y:auto; line-height:1.6; color:#FFFFFF;
+  overflow-y:auto; line-height:1.6; color:var(--green);
 }
 #moves-log .mv-num{ color:#888888; margin-right:calc(var(--u)*0.5); }
 #moves-log .mv-you{ color:var(--green); }
@@ -195,7 +195,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 .lm-box.lm-ai{ border-color:var(--orange-dim); }
 .lm-tag{
   display:block; font-family:var(--font-term); font-size:calc(var(--u)*5);
-  color:#FFFFFF; letter-spacing:1px; margin-bottom:calc(var(--u)*1);
+  color:var(--green); letter-spacing:1px; margin-bottom:calc(var(--u)*1);
 }
 .lm-ai .lm-tag{ color:#E86040; }
 .lm-val{
@@ -223,18 +223,18 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 #opening-moves{
   display:inline-block; margin-top:calc(var(--u)*2); font-family:var(--font-term);
-  font-size:calc(var(--u)*5); color:#FFFFFF; letter-spacing:1px;
+  font-size:calc(var(--u)*5); color:var(--green); letter-spacing:1px;
 }
 
 /* ---------- % de victorias histórico, opcional y discreto ---------- */
 .wp-toggle{
   display:inline-block; cursor:pointer; font-family:var(--font-term); font-size:calc(var(--u)*5);
-  color:#FFFFFF; border:1px dashed #39FF14; padding:0 calc(var(--u)*1);
+  color:var(--green); border:1px dashed #39FF14; padding:0 calc(var(--u)*1);
   margin-left:calc(var(--u)*1.5); vertical-align:middle; user-select:none;
 }
 .wp-toggle:hover{ color:#39FF14; border-color:#39FF14; }
 .wp-detail{
-  display:none; font-family:var(--font-term); font-size:calc(var(--u)*5); color:#FFFFFF;
+  display:none; font-family:var(--font-term); font-size:calc(var(--u)*5); color:var(--green);
   margin-left:calc(var(--u)*1); vertical-align:middle;
 }
 .wp-detail.open{ display:inline; }
@@ -248,7 +248,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 .periscope-label{
   display:block; font-family:var(--font-term); font-size:calc(var(--u)*5);
-  color:#FFFFFF; letter-spacing:0.5px; line-height:1.6; flex:1;
+  color:var(--green); letter-spacing:0.5px; line-height:1.6; flex:1;
 }
 #periscope-board{
   flex:none; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(4,1fr);
@@ -274,7 +274,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 .ai-label{
   display:block; font-family:var(--font-term); font-size:calc(var(--u)*5);
-  color:#FFFFFF; margin-bottom:calc(var(--u)*2); letter-spacing:1px;
+  color:var(--green); margin-bottom:calc(var(--u)*2); letter-spacing:1px;
 }
 .eco-badge-ai{
   display:inline-block; font-family:var(--font-term); font-size:calc(var(--u)*5);
@@ -285,7 +285,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   font-size:calc(var(--u)*6); color:var(--orange); font-weight:bold; line-height:1.3;
 }
 #ai-defense-tip{
-  margin-top:calc(var(--u)*2); font-size:calc(var(--u)*5); color:#FFFFFF; line-height:1.5;
+  margin-top:calc(var(--u)*2); font-size:calc(var(--u)*5); color:var(--green); line-height:1.5;
 }
 
 /* ---------- 2c. LOG DE DEFENSAS DE LA IA VISTAS EN LA SESIÓN ---------- */
@@ -328,7 +328,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 /* ---------- 4. CONTEXTO (historia / partidas / perfil), oculto por defecto ---------- */
 .context-toggle{
   width:100%; background:transparent; border:1px dashed var(--green-dim);
-  color:#FFFFFF; font-size:calc(var(--u)*5); padding:calc(var(--u)*2);
+  color:var(--green); font-size:calc(var(--u)*5); padding:calc(var(--u)*2);
 }
 .context-toggle:hover{ color:var(--green); border-color:var(--green); }
 .context-box{
@@ -350,17 +350,17 @@ button:disabled{ opacity:0.35; cursor:default; }
   border-top:1px dashed var(--green-dim);
 }
 .lore-label{
-  font-family:var(--font-term); font-size:calc(var(--u)*5); color:#FFFFFF;
+  font-family:var(--font-term); font-size:calc(var(--u)*5); color:var(--green);
   letter-spacing:1px; margin-bottom:calc(var(--u)*2);
 }
 .lore-text{
-  font-size:calc(var(--u)*5); color:#FFFFFF; line-height:1.6;
+  font-size:calc(var(--u)*5); color:var(--green); line-height:1.6;
 }
 .lore-text .cursor{ display:inline-block; width:calc(var(--u)*2); background:var(--green-dim);
   animation:blink 1s steps(1) infinite; }
 @keyframes blink{ 50%{ opacity:0; } }
 
-footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*5); padding:calc(var(--u)*4) 0 calc(var(--u)*6); }
+footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); padding:calc(var(--u)*4) 0 calc(var(--u)*6); }
 
 @media (min-width:640px){
   #opening-name{ font-size:calc(var(--u)*6); }
@@ -3395,35 +3395,68 @@ function updatePredictions(hist){
   const countEl = document.getElementById('predict-count');
   const listEl = document.getElementById('predict-list');
   if(!countEl || !listEl) return;
-  const seen = new Set(); const cands = [];
-  for(const o of ALL_LINES){
-    const seq = o.moves.split(' ');
-    if(seq.length <= hist.length) continue;
-    let ok = true;
-    for(let i=0;i<hist.length;i++){ if(seq[i]!==hist[i]){ ok=false; break; } }
-    if(ok){
-      const k = o.eco+'|'+o.name;
-      if(!seen.has(k)){ seen.add(k); cands.push({o:o, next:seq[hist.length]}); }
-    }
-  }
+  const MAX = 20;
+
   if(hist.length===0){
-    countEl.textContent = cands.length + ' aperturas en el radar';
+    countEl.textContent = ALL_LINES.length + ' aperturas en el radar';
     listEl.innerHTML = '<span class="chip-empty">Mueve una pieza y la lista de aperturas posibles ira mutando en vivo.</span>';
     return;
   }
-  if(cands.length===0){
-    countEl.textContent = 'Tu apertura — terreno propio';
-    listEl.innerHTML = '<span class="chip-empty">Tu apertura propia &mdash; ninguna del repertorio sigue este camino. Sigue jugando.</span>';
+
+  // Para cada linea: cuantas jugadas iniciales coinciden con lo jugado.
+  let best = 0;
+  const scored = [];
+  for(const o of ALL_LINES){
+    const seq = o.moves.split(' ');
+    let m = 0; const lim = Math.min(seq.length, hist.length);
+    while(m < lim && seq[m] === hist[m]) m++;
+    scored.push({o:o, seq:seq, m:m});
+    if(m > best) best = m;
+  }
+
+  // VIVAS: totalmente consistentes con el historial y con jugada siguiente que revelar.
+  const seenL = new Set(); const live = [];
+  for(const s of scored){
+    if(s.m === hist.length && s.seq.length > hist.length){
+      const k = s.o.eco+'|'+s.o.name;
+      if(!seenL.has(k)){ seenL.add(k); live.push({o:s.o, next:s.seq[hist.length]}); }
+    }
+  }
+
+  if(live.length){
+    countEl.textContent = live.length + (live.length===1?' apertura posible':' aperturas posibles');
+    let html = live.slice(0,MAX).map(function(c){
+      return '<span class="chip"><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+
+             '<span class="chip-next">&rarr; '+c.next+'</span></span>';
+    }).join('');
+    if(live.length>MAX) html += '<span class="chip">+'+(live.length-MAX)+' m&aacute;s&hellip;</span>';
+    listEl.innerHTML = html;
     return;
   }
-  countEl.textContent = cands.length + (cands.length===1?' apertura posible':' aperturas posibles');
-  const MAX = 14;
-  let html = cands.slice(0,MAX).map(function(c){
-    return '<span class="chip"><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+
-           '<span class="chip-next">&rarr; '+c.next+'</span></span>';
-  }).join('');
-  if(cands.length>MAX) html += '<span class="chip">+'+(cands.length-MAX)+' m&aacute;s&hellip;</span>';
-  listEl.innerHTML = html;
+
+  // Ninguna coincide exacto: mostrar las MAS CERCANAS (mayor prefijo comun),
+  // para seguir aprendiendo. Nunca se vacia mientras haya al menos 1 jugada en comun.
+  if(best >= 1){
+    const seenN = new Set(); const near = [];
+    for(const s of scored){
+      if(s.m === best){
+        const k = s.o.eco+'|'+s.o.name;
+        if(!seenN.has(k)){ seenN.add(k); near.push({o:s.o, div:(s.seq[s.m]||null)}); }
+      }
+    }
+    countEl.textContent = 'Cerca de estas &mdash; ' + best + (best===1?' jugada en com\u00fan':' jugadas en com\u00fan');
+    let html = near.slice(0,MAX).map(function(c){
+      return '<span class="chip"><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+
+             (c.div?'<span class="chip-next">&ne; '+c.div+'</span>':'')+'</span>';
+    }).join('');
+    if(near.length>MAX) html += '<span class="chip">+'+(near.length-MAX)+' m&aacute;s&hellip;</span>';
+    listEl.innerHTML = html;
+    return;
+  }
+
+  // Solo si NADA coincide (primera jugada rarisima).
+  countEl.textContent = 'Tu apertura — terreno propio';
+  listEl.innerHTML = '<span class="chip-empty">Ninguna del repertorio empieza asi. Sigue jugando: si transpone, la detecto al instante.</span>';
 }
 
 const TEMPERAMENT = {
