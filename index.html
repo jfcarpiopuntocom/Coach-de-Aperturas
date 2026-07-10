@@ -89,9 +89,16 @@ header.hero{
     grid-template-columns: minmax(240px,1fr) minmax(360px,560px) minmax(240px,1fr);
     align-items:start; gap:calc(var(--u)*7); height:100%;
   }
+  /* Colocacion por grid-column (no por orden DOM): tablero al centro,
+     paneles funcionales a AMBOS lados aprovechando el espacio horizontal.
+     DOM order sigue siendo center->left->right para que en mobile el
+     tablero quede arriba y el predictor justo debajo. */
   .col-left{ grid-column:1; grid-row:1; }
   .col-center{ grid-column:2; grid-row:1; }
   .col-right{ grid-column:3; grid-row:1; }
+  /* Si un panel lateral excede el alto, scrollea DENTRO de si mismo:
+     el viewport nunca scrollea, solo el panel. */
+  .col-left, .col-right{ max-height:100%; min-height:0; overflow-y:auto; }
 }
 
 /* ---------- 1. TABLERO ---------- */
@@ -371,7 +378,8 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*5); padding:ca
 
 <div class="wrap">
 
-  <!-- COLUMNA CENTRAL: el tablero, controles y periscopio -->
+  <!-- CENTRO: SOLO el tablero + controles. DOM order 1 => en mobile va arriba.
+       En desktop se coloca en la columna 2 por grid-column. -->
   <div class="col-center">
     <section id="stage">
       <div class="levels">
@@ -393,10 +401,12 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*5); padding:ca
         <button class="warn" onclick="resetGame()">REINICIAR</button>
       </div>
     </section>
+  </div>
 
-    <!-- PREDICTOR — CORE FEATURE — INMEDIATAMENTE BAJO EL TABLERO
-         Aquí caen los ojos y los dedos tras mover. NUNCA mover más abajo.
-         Lista viva que muta con cada movimiento. Se recalcula siempre. -->
+  <!-- IZQUIERDA (desktop) — A UN LADO DEL TABLERO: predictor CORE + apertura + defensa IA.
+       DOM order 2 => en mobile aparece JUSTO debajo del tablero. -->
+  <div class="col-left">
+    <!-- PREDICTOR — CORE FEATURE. Al lado del tablero en desktop, bajo el tablero en mobile. -->
     <section class="predict-card">
       <span class="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
       <div id="predict-count" class="predict-count">&mdash;</div>
@@ -415,25 +425,21 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*5); padding:ca
       <div id="ai-defense-name">Aún no ha respondido — juega tu primera jugada.</div>
       <div id="ai-defense-tip"></div>
     </section>
+  </div>
 
-
-    <!-- PERISCOPIO — recorte del propio tablero, espejado, como lo ve el rival -->
+  <!-- DERECHA (desktop) — AL OTRO LADO DEL TABLERO: periscopio + consejo + registro + defensas vistas. -->
+  <div class="col-right">
+    <!-- PERISCOPIO — recorte del propio tablero, espejado, como lo ve el rival. A UN LADO, no debajo. -->
     <section class="periscope-card">
       <span class="periscope-label" id="periscope-label">PERISCOPIO<br>su media cancha, espejada</span>
       <div id="periscope-board"></div>
     </section>
-  </div>
 
-  <!-- COLUMNA IZQUIERDA: consejo táctico y contexto -->
-  <div class="col-left">
     <section class="tip-card">
       <span class="tip-label">Consejo de la variante</span>
       <div id="tactic-tip">Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.</div>
     </section>
-  </div>
 
-  <!-- COLUMNA DERECHA: registro de jugadas, defensas vistas y contexto -->
-  <div class="col-right">
     <div class="last-move-row">
       <div class="lm-box lm-you">
         <span class="lm-tag">TÚ</span>
