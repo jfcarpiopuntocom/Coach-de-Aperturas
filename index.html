@@ -397,7 +397,7 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*3.2); padding:
     <section class="predict-card">
       <span class="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
       <div id="predict-count" class="predict-count">&mdash;</div>
-      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; la lista muta en vivo.</span></div>
+      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; las aperturas posibles aparecen aquí.</span></div>
     </section>
 
     <section class="opening-card">
@@ -3397,16 +3397,16 @@ function updatePredictions(hist){
     }
   }
   if(hist.length===0){
-    countEl.textContent = cands.length + ' lineas en el radar';
+    countEl.textContent = cands.length + ' aperturas en el radar';
     listEl.innerHTML = '<span class="chip-empty">Mueve una pieza y la lista de aperturas posibles ira mutando en vivo.</span>';
     return;
   }
   if(cands.length===0){
-    countEl.textContent = '0 lineas conocidas';
-    listEl.innerHTML = '<span class="chip-empty">Terreno inexplorado: ninguna linea del repertorio sigue este orden exacto.</span>';
+    countEl.textContent = 'Tu apertura — terreno propio';
+    listEl.innerHTML = '<span class="chip-empty">Tu apertura propia &mdash; ninguna del repertorio sigue este camino. Sigue jugando.</span>';
     return;
   }
-  countEl.textContent = cands.length + (cands.length===1?' linea posible':' lineas posibles');
+  countEl.textContent = cands.length + (cands.length===1?' apertura posible':' aperturas posibles');
   const MAX = 14;
   let html = cands.slice(0,MAX).map(function(c){
     return '<span class="chip"><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+
@@ -3731,9 +3731,9 @@ function updateOpeningPanel(){
       tempEl.textContent='Elige una apertura y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí.';
       tipEl.textContent='Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.';
     } else {
-      badge.innerHTML=''; nameEl.textContent='Línea propia — aún explorando.';
+      badge.innerHTML=''; nameEl.textContent='Tu apertura — explorando variantes.';
       movesEl.style.display='none';
-      histEl.textContent='Estás en terreno menos común. Sigue jugando: si la partida transpone a una línea conocida, la detectaré al instante.';
+      histEl.textContent='Variante personal. Si transpone a una apertura conocida, aparece al instante.';
       gamesEl.textContent='—';
       tipEl.textContent='—';
     }
