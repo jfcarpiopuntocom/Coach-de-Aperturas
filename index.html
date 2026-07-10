@@ -38,7 +38,11 @@ html,body{
   margin:0; padding:0; background:var(--bg); color:var(--green);
   font-family:var(--font-term); overflow-x:hidden;
 }
-body{ display:flex; flex-direction:column; min-height:100vh; }
+body{ display:block; }
+/* PANTALLA CORE: exactamente un viewport, SIN scroll interno.
+   Contiene header + tablero + controles + predictor = todo lo crucial.
+   La pagina hace scroll normal para revelar la leyenda que va DEBAJO. */
+.screen{ height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
   background:repeating-linear-gradient(
@@ -72,8 +76,8 @@ header.hero{
 
 /* ---------- Contenedor general: tablero al centro, info a los lados ---------- */
 .wrap{
-  max-width:1460px; margin:0 auto; padding:0 calc(var(--u)*4) calc(var(--u)*2);
-  flex:1;
+  max-width:1460px; margin:0 auto; padding:0 calc(var(--u)*4) calc(var(--u)*2); width:100%;
+  flex:1; min-height:0;
   display:grid; grid-template-columns:1fr; gap:calc(var(--u)*7);
 }
 .col-left, .col-right{ display:flex; flex-direction:column; gap:calc(var(--u)*4); min-width:0; }
@@ -359,6 +363,8 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*5); padding:ca
 </head>
 <body>
 
+<!-- PANTALLA CORE: un viewport exacto, sin scroll interno -->
+<div class="screen">
 <header class="hero">
   <div class="title-ascii"><span class="side-w">○</span> COACH DE APERTURAS Y DEFENSAS <span class="side-b">●</span></div>
 </header>
@@ -457,8 +463,9 @@ footer{ text-align:center; color:#FFFFFF; font-size:calc(var(--u)*5); padding:ca
   </div>
 
 </div>
+</div><!-- /.screen -->
 
-<!-- 5. LORE, AL FONDO -->
+<!-- 5. LORE, AL FONDO (bajo el fold, scroll normal de pagina) -->
 <section class="lore">
   <div class="lore-label">// registro de a bordo</div>
   <div class="lore-text" id="introText"></div>
