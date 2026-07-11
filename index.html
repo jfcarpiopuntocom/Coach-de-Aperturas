@@ -241,7 +241,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #board{
   display:grid; grid-template-columns:repeat(8, 1fr); grid-template-rows:repeat(8, 1fr);
-  width:min(max(calc(100dvh - 340px), 240px), 81vw, 620px); aspect-ratio:1/1;
+  width:min(56vmin, 81vw, 460px); aspect-ratio:1/1;
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
   overflow:hidden; min-height:0; min-width:0; position:relative;
@@ -829,7 +829,6 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
   .eco-badge{ margin-bottom:var(--u); padding:calc(var(--u)*0.5) calc(var(--u)*1.5); }
   #opening-name{ font-size:calc(var(--u)*5); }
   .game-controls button{ padding:calc(var(--u)*0.5) calc(var(--u)*2); font-size:calc(var(--u)*4); }
-  #board{ width:min(max(calc(100dvh - 380px), 200px), 81vw, 560px); }
 }
 
 /* Pendiente explicito de la nota: <600px de alto. Chrome al minimo
@@ -842,7 +841,6 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
   .opening-card{ padding:var(--u) calc(var(--u)*2); }
   #opening-name{ font-size:calc(var(--u)*4.5); }
   .game-controls button{ padding:calc(var(--u)*0.4) calc(var(--u)*1.5); font-size:calc(var(--u)*3.5); }
-  #board{ width:min(max(calc(100dvh - 400px), 168px), 81vw, 560px); }
   .col-left, .col-right{ gap:calc(var(--u)*2); }
   .periscope-card, .predict-card, .ai-card, .tip-card{ padding:calc(var(--u)*1.5); }
   #moves-log{ max-height:calc(var(--u)*9); }
@@ -861,7 +859,6 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
   .eco-badge{ padding:calc(var(--u)*0.3) calc(var(--u)*1); margin-bottom:calc(var(--u)*0.5); }
   #opening-name{ font-size:calc(var(--u)*4); }
   .game-controls button{ padding:calc(var(--u)*0.3) calc(var(--u)*1.25); font-size:calc(var(--u)*3.25); }
-  #board{ width:min(max(calc(100dvh - 420px), 120px), 81vw, 560px); }
 }
 </style>
 </head>
