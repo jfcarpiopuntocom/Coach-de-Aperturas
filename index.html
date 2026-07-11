@@ -3936,6 +3936,20 @@ function updateOpeningPanel(){
     return;
   }
 
+  const bestIsStale = best.moves.split(' ').length < hist.length && nearest && nearestLim >= best.moves.split(' ').length;
+
+  if(bestIsStale){
+    badge.innerHTML = '<span class="eco-badge">'+nearest.eco+'</span>';
+    nameEl.textContent = 'Te alejaste de '+nearest.name+' — terreno propio desde aquí.';
+    movesEl.style.display='none';
+    histEl.textContent='Comparte las primeras '+nearestLim+(nearestLim===1?' jugada':' jugadas')+' con '+nearest.name+', pero luego diverge. Si transpone de nuevo a una línea conocida, lo detecto al instante.';
+    gamesEl.textContent='—';
+    tempEl.innerHTML = '';
+    tipEl.textContent=genericTacticalTip(hist);
+    updateAiDefensePanel(hist, null);
+    return;
+  }
+
   badge.innerHTML = '<span class="eco-badge">'+best.eco+'</span>';
   nameEl.innerHTML = best.name + winPctToggleHtml(best);
   movesEl.style.display='inline-block';
