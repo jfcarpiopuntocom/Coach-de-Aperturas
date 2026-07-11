@@ -200,6 +200,14 @@ header.hero{
 .col-left, .col-right{ display:flex; flex-direction:column; gap:calc(var(--u)*4); min-width:0; }
 .col-center{ display:flex; flex-direction:column; align-items:center; justify-content:safe center; gap:calc(var(--u)*3); min-width:0; }
 .col-center > section{ width:100%; }
+/* board-stack: tablero + opening-card al mismo ancho, centrados en la columna */
+.board-stack{
+  width:min(100%, 64vh, 540px);
+  align-self:center;
+  display:flex; flex-direction:column; gap:calc(var(--u)*3);
+}
+.board-stack > #board{ width:100%; }
+.board-stack > .opening-card{ width:100%; }
 
 @media (min-width:900px){
   .wrap{
@@ -810,16 +818,17 @@ button:disabled{ opacity:0.35; cursor:default; }
    A propósito chico: es un "ojo de cerradura" al tablero del rival, no un
    segundo tablero completo. Va en línea, al lado del texto, sin agregar scroll. */
 .periscope-card{
-  background:#020402; border:1px solid var(--green-dim); padding:calc(var(--u)*1.5) calc(var(--u)*2);
-  position:relative; overflow:hidden; display:flex; align-items:center; gap:calc(var(--u)*2.5);
+  background:#020402; border:1px solid var(--green-dim); padding:calc(var(--u)*2);
+  position:relative; overflow:hidden; display:flex; flex-direction:column; gap:calc(var(--u)*2);
 }
 .periscope-label{
   display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
-  color:var(--green); letter-spacing:0.5px; line-height:1.6; flex:1;
+  color:var(--green); letter-spacing:0.5px; line-height:1.6; flex:none;
 }
 #periscope-board{
-  flex:none; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(4,1fr);
-  width:calc(var(--u)*26); height:calc(var(--u)*13);
+  /* tablero completo 8x8, cuadrado, llena el ancho de la columna */
+  display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
+  width:100%; aspect-ratio:1/1;
   border:1px solid var(--green-dim);
   filter:brightness(0.9) saturate(0.7);
 }
@@ -1096,6 +1105,11 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
         <button id="color-b" class="color-btn" onclick="setHumanColor('b')">JUGAR NEGRAS</button>
       </div>
 
+      <!-- board-stack: envuelve tablero + apertura para que ambos tengan
+           el mismo ancho. Sin esto opening-card se estira al ancho de la
+           columna (hasta 660px) mientras el tablero se queda en ~540px
+           — el "invertida T" que luce sloppy. -->
+      <div class="board-stack">
       <div id="board"></div>
 
       <!-- INMEDIATAMENTE bajo el tablero, sin nada en medio: es EL tema
@@ -1110,6 +1124,7 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
         <div id="opening-name">—</div>
         <div id="opening-moves" style="display:none"></div>
       </section>
+      </div><!-- /board-stack -->
 
       <div class="game-controls">
         <button id="btn-reroll" onclick="rerollMove()" disabled>OTRA RESPUESTA</button>
@@ -1141,7 +1156,7 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
   <div class="col-right">
     <!-- PERISCOPIO — recorte del propio tablero, espejado, como lo ve el rival. A UN LADO, no debajo. -->
     <section class="periscope-card">
-      <span class="periscope-label" id="periscope-label">PERISCOPIO<br>su vista del tablero, espejada</span>
+      <span class="periscope-label" id="periscope-label">PERISCOPIO</span>
       <div id="periscope-board"></div>
     </section>
 
@@ -4370,22 +4385,22 @@ function renderBoard(){
    Reutiliza el mismo orden de casillas que el tablero principal;
    el giro de 180° lo hace el CSS, así que esto siempre queda en
    sync con renderBoard() sin lógica de espejo duplicada. */
-/* Periscopio: espía toda la MEDIA CANCHA del rival (4 filas — su
-   campamento completo, no solo su fila de fondo), mostradas como el
-   rival las ve (espejadas izq/der). Ahí se arma toda su apertura o
-   defensa, así que con 2-3 filas no alcanzaba: con 4 sí se ve completa. */
+/* Periscopio: tablero completo 8x8 rotado 180°, exactamente como lo ve el rival.
+   board[0]=fila 8 ... board[7]=fila 1. Rotado 180°: la fila 1 del rival (su fondo)
+   queda abajo, la fila 8 arriba — espejo perfecto de su perspectiva. */
 function renderPeriscope(){
   const el = document.getElementById('periscope-board');
   if(!el) return;
   el.innerHTML = '';
-  const board = game.board(); // board[0]=fila 8 ... board[7]=fila 1
+  const board = game.board();
   const rivalIsBlack = humanColor === 'w';
-  // filas de la media cancha rival (donde arma su apertura/defensa), en el
-  // orden en que él las ve: su fila de fondo queda abajo, la más lejana arriba.
-  const rankRows = rivalIsBlack ? [3,2,1,0] : [4,5,6,7];
+  // Orden de filas en la vista del rival (su fondo queda abajo):
+  // rival=negro ve: fila8 arriba → fila1 abajo  → rows [0,1,2,3,4,5,6,7] normal
+  // rival=blanco ve: fila1 arriba → fila8 abajo  → rows [7,6,5,4,3,2,1,0] invertido
+  const rankRows = rivalIsBlack ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
   for(const r of rankRows){
     for(let cc=0; cc<8; cc++){
-      const c = 7-cc; // espejo horizontal: la vista rotada 180° del rival
+      const c = rivalIsBlack ? 7-cc : cc; // espejo horizontal según color rival
       const isLight = (r+c)%2===0;
       const sq = document.createElement('div');
       sq.className = 'psq ' + (isLight?'light':'dark');
@@ -5275,7 +5290,7 @@ function setHumanColor(c){
   const aiColorWord = c==='w' ? 'negras' : 'blancas';
   const rivalColorWord = c==='w' ? 'negras' : 'blancas';
   document.getElementById('ai-label-turn').textContent = 'Respuesta de las '+aiColorWord+' (IA)';
-  document.getElementById('periscope-label').innerHTML = 'PERISCOPIO<br>su vista del tablero ('+rivalColorWord+'), espejada';
+  document.getElementById('periscope-label').textContent = 'PERISCOPIO';
   updateAiColorLabels();
   resetGame();
 }
