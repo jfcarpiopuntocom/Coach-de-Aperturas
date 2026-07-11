@@ -3345,13 +3345,12 @@ let wasInCheck = false;            // para disparar fx-checkhit solo al ENTRAR e
 function humanTurnMsg(){ return 'Tu turno ('+(humanColor==='w'?'blancas':'negras')+').'; }
 
 /* ============================================================
-   SONIDOS — set "futuristic" de lichess (lichess-org/lila, autor
-   Enigmahack, licencia AGPLv3+, ver COPYING.md del repo), servido
-   vía CDN de jsDelivr (github.com/lichess-org/lila -> cdn.jsdelivr.net/gh/...).
-   Carga perezosa (no bloquea el arranque) y con timeout; si el CDN no
-   responde o el archivo falla, cae a un beep sintetizado con Web Audio
-   (onda cuadrada, el "PC speaker" de toda la vida) para que SIEMPRE
-   suene algo. Nada de esto bloquea ni interrumpe el juego si falla.
+   SONIDOS — paleta sintetizada Web Audio "órgano espacial" (canónica
+   desde 2026-07-11): armónicos apilados tipo registros de órgano,
+   quintas/octavas, swells y drones graves. Cero red, offline-safe.
+   El bloque CDN de lichess (set "futuristic", lichess-org/lila, autor
+   Enigmahack, AGPLv3+, vía jsDelivr) queda DORMANT más abajo — NO
+   BORRAR: ver playChessSound para cómo re-habilitarlo.
    ============================================================ */
 const SOUND_CDN_BASE = 'https://cdn.jsdelivr.net/gh/lichess-org/lila@master/public/sound/';
 const SOUND_CANDIDATES = {
@@ -3384,112 +3383,130 @@ function lazyLoadSound(type){
   tryNext();
 }
 
-// Beep sintetizado por Web Audio — respaldo tenue tipo FX de cine (onda
-// sine, no la cuadrada "PC speaker" original: molestaba). Ataque suave +
-// decaimiento exponencial para que no pegue, volumen bajo por diseño.
+// Paleta sonora sintetizada por Web Audio — REDISEÑO 2026-07-11 (pedido JFC:
+// "cool, asimovianos y heinleinianos, más de órgano y space operatic").
+// Nada de ondas cuadradas ni sawtooth arcade: todo son apilados de senos en
+// razones armónicas (como los registros de un órgano de tubos), intervalos
+// de quinta/octava, ataques lentos tipo swell y drones graves tipo monolito.
+// El laser del alfil se conserva INTACTO — es el único timbre aprobado tal cual.
 //
-// Identidad sonora por ARMA (weapon), espejando 1:1 la identidad visual de
-// WEAPON_BY_ATTACKER: cada pieza que captura ya dispara un arma distinta en
-// pantalla (ráfaga/misil/rayo/barrage/campo), y ahora también SUENA distinta,
-// no solo el mismo "capture" genérico con volumen distinto. Diseño de cada
-// timbre:
-//  - bullets  (peón): ráfaga corta de clics agudos (square, muy breve) — como
-//    varios impactos de proyectil ligero en sucesión.
-//  - missile  (caballo/torre): silbido descendente (sawtooth) + golpe grave
-//    final — sube y cae como un misil que impacta.
-//  - laser    (alfil): un solo tono agudo y sostenido (sine) con leve subida
-//    de frecuencia — el "pew" de precisión.
-//  - barrage  (dama): combina bullets + missile encimados — arma total.
-//  - field    (rey): tres pulsos graves y espaciados (triangle) — un campo
-//    de contención, no un disparo.
+// Formato de cada entrada del spec:
+//  f: frecuencia Hz · d: duración s · t: offset de inicio s · type: onda
+//  (default 'sine') · slideTo: glide de frecuencia hasta ese Hz ·
+//  g: multiplicador de ganancia relativo al peak (armónicos van a 0.2-0.5) ·
+//  a: tiempo de ataque s (default 0.012; subirlo = swell orquestal)
+//
+// Identidad por ARMA (weapon), espejando 1:1 la visual de WEAPON_BY_ATTACKER:
+//  - bullets  (peón): tres pulsos de sonar descendentes E5→D5→C5, cada uno
+//    con su octava tenue encima — telégrafo del vacío, staccato elegante.
+//  - missile  (caballo/torre): descenso grave con armónico (una nave que pasa
+//    y cae) rematado por un DO profundo con quinta — impacto de masa, no silbido.
+//  - laser    (alfil): INTACTO. Tono sine sostenido 1100→1300 Hz. NO TOCAR.
+//  - barrage  (dama): acorde Zarathustra — fundamental + quinta + octava
+//    (C3·G3·C4·C5) entrando escalonadas en swell. La dama es la orquesta entera.
+//  - field    (rey): drone de monolito — C2 + G2 sostenidos con respiración
+//    lenta y un shimmer de C4 arriba. Un campo de contención, no un disparo.
 let audioCtx = null;
-function synthWeaponHit(t0, weapon, peak){
-  const specs = {
-    bullets: [{f:900,d:0.045,type:'square',t:0},{f:820,d:0.045,type:'square',t:0.05},{f:760,d:0.05,type:'square',t:0.1}],
-    missile: [{f:700,d:0.16,type:'sawtooth',t:0,slideTo:180},{f:150,d:0.14,type:'sine',t:0.15}],
-    laser:   [{f:1100,d:0.16,type:'sine',t:0,slideTo:1300}],
-    barrage: [{f:900,d:0.045,type:'square',t:0},{f:820,d:0.045,type:'square',t:0.05},{f:700,d:0.16,type:'sawtooth',t:0.1,slideTo:180},{f:150,d:0.14,type:'sine',t:0.26}],
-    field:   [{f:180,d:0.13,type:'triangle',t:0},{f:180,d:0.13,type:'triangle',t:0.16},{f:180,d:0.13,type:'triangle',t:0.32}]
-  };
-  const seq = specs[weapon] || specs.bullets;
-  seq.forEach(({f,d,type,t,slideTo})=>{
-    const start = t0 + t;
+// Sintetizador genérico de secuencias — lo usan armas Y move/check/checkmate.
+function synthSeq(t0, seq, peak){
+  seq.forEach(({f,d,type,t,slideTo,g,a})=>{
+    const start = t0 + (t||0);
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = type;
+    osc.type = type || 'sine';
     osc.frequency.setValueAtTime(f, start);
     if(slideTo) osc.frequency.linearRampToValueAtTime(slideTo, start+d);
     gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(peak, start+0.01);
+    gain.gain.linearRampToValueAtTime(peak*(g||1), start+(a||0.012));
     gain.gain.exponentialRampToValueAtTime(0.0001, start+d);
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(start); osc.stop(start+d);
   });
 }
-function synthBeep(type, weapon){
+const WEAPON_SOUND_SPECS = {
+  bullets: [
+    {f:659.3,d:0.07,t:0},   {f:1318.5,d:0.07,t:0,   g:0.25},
+    {f:587.3,d:0.07,t:0.08},{f:1174.7,d:0.07,t:0.08,g:0.25},
+    {f:523.3,d:0.09,t:0.16},{f:1046.5,d:0.09,t:0.16,g:0.25}
+  ],
+  missile: [
+    {f:196,  d:0.34,t:0,   type:'triangle',slideTo:49, g:1.1},
+    {f:392,  d:0.34,t:0,   slideTo:98,  g:0.35},
+    {f:65.4, d:0.28,t:0.3, g:1.3},
+    {f:130.8,d:0.28,t:0.3, g:0.4}
+  ],
+  // APROBADO POR JFC 2026-07-11 — NO MODIFICAR este timbre.
+  laser:   [{f:1100,d:0.16,type:'sine',t:0,slideTo:1300}],
+  barrage: [
+    {f:130.8,d:0.5, t:0,   type:'triangle',a:0.12,g:1.1},
+    {f:196.0,d:0.5, t:0.04,a:0.12,g:0.8},
+    {f:261.6,d:0.55,t:0.08,a:0.12,g:0.9},
+    {f:523.3,d:0.55,t:0.08,a:0.12,g:0.3}
+  ],
+  field: [
+    {f:65.4, d:0.6,t:0,   a:0.18,g:1.3},
+    {f:98.0, d:0.6,t:0.05,a:0.18,g:0.7},
+    {f:261.6,d:0.5,t:0.15,a:0.2, g:0.22}
+  ]
+};
+function synthWeaponHit(t0, weapon, peak){
+  synthSeq(t0, WEAPON_SOUND_SPECS[weapon] || WEAPON_SOUND_SPECS.bullets, peak);
+}
+// move/check/checkmate — misma estética de órgano espacial que las armas:
+//  - move: pip discreto C5 con su octava tenue — suena decenas de veces por
+//    partida, así que es lo más corto y neutro de toda la paleta.
+//  - check: quinta ascendente A4 → tritono D#5 (el "diabolus in musica",
+//    tensión clásica de space opera) con octavas de shimmer.
+//  - checkmate: réquiem — dos acordes descendentes (Am → F) y un drone final
+//    grave D2+A2+D3 en swell largo. Cierre operático, no un game-over arcade.
+function synthBeep(type, weapon, scale){
   try{
     if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
     if(type === 'capture'){
-      // Variedad real por arma en vez de un único "capture" genérico.
-      synthWeaponHit(audioCtx.currentTime, weapon || 'bullets', 0.02);
+      // Variedad real por arma + volumen según magnitud de la captura
+      // (peón caza dama = pega más fuerte, igual que el shake visual).
+      const mag = (typeof scale === 'number') ? scale : 1;
+      synthWeaponHit(audioCtx.currentTime, weapon || 'bullets', 0.014 + mag*0.012);
       return;
     }
     const SPECS = {
-      move:      [{f:520, d:0.09}],
-      check:     [{f:640, d:0.10},{f:520,d:0.12}],
-      checkmate: [{f:520,d:0.14},{f:420,d:0.14},{f:340,d:0.14},{f:220,d:0.24}],
+      move: [
+        {f:523.3,d:0.07},{f:1046.5,d:0.07,g:0.25}
+      ],
+      check: [
+        {f:440,  d:0.1, t:0},   {f:880,   d:0.1, t:0,   g:0.25},
+        {f:622.3,d:0.13,t:0.11},{f:1244.5,d:0.13,t:0.11,g:0.25}
+      ],
+      checkmate: [
+        {f:220,  d:0.22,t:0},        {f:330,  d:0.22,t:0,   g:0.5},
+        {f:174.6,d:0.22,t:0.24},     {f:261.6,d:0.22,t:0.24,g:0.5},
+        {f:146.8,d:0.7, t:0.48,a:0.06,g:1.1},
+        {f:220,  d:0.7, t:0.5, a:0.08,g:0.6},
+        {f:73.4, d:0.7, t:0.5, a:0.1, g:0.9}
+      ],
     };
-    const seq = SPECS[type] || SPECS.move;
-    let t = audioCtx.currentTime;
-    seq.forEach(({f,d})=>{
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = f;
-      const peak = 0.018; // tenue a propósito, FX de fondo, no una alarma
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(peak, t+0.012); // ataque suave, sin click
-      gain.gain.exponentialRampToValueAtTime(0.0001, t+d);
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.start(t); osc.stop(t+d);
-      t += d;
-    });
+    // tenue a propósito, FX de fondo, no una alarma
+    synthSeq(audioCtx.currentTime, SPECS[type] || SPECS.move, 0.018);
   }catch(e){ /* si ni el beep sintetizado funciona, silencio total: nunca romper el juego por audio */ }
 }
 
-// Punto de entrada único. 'checkmate' no tiene archivo CDN confirmado en el
-// set libre, así que va directo al beep (distintivo, 4 tonos descendentes).
-// Para el resto: intenta el audio de CDN ya cacheado; si no está listo
-// (primera vez, aún cargando) o falló, usa el beep sin que se note el corte.
-// scale: 0..1, opcional — solo lo usan las capturas (según CHESS_SHAKING_SCALE
-// por tipo de pieza). El resto de sonidos (move/check/checkmate) ignora el
-// parámetro y suena siempre igual.
-// weapon: opcional, solo capturas — mismo valor que WEAPON_BY_ATTACKER según
-// quién ataca, para que el respaldo sintetizado tenga la MISMA variedad que
-// ya existe en pantalla (bullets/missile/laser/barrage/field). El CDN solo
-// trae un Capture.mp3 único, así que esa variedad vive en synthBeep; cuando
-// el mp3 SÍ carga, sigue sonando el mp3 (variedad visual+de volumen, no de
-// timbre) para no perder la calidad de audio real del set "futuristic".
+// Punto de entrada único. Desde 2026-07-11 el sintetizador Web Audio es EL
+// sonido canónico de la app (paleta de órgano espacial diseñada a medida,
+// aprobada por JFC): identidad por arma en capturas, misma estética en
+// move/check/checkmate, cero dependencia de red — offline-safe de verdad.
+// scale: 0..1, opcional — solo capturas (según CHESS_SHAKING_SCALE por tipo
+// de pieza víctima; upset peón-caza-dama pega más fuerte).
+// weapon: opcional, solo capturas — mismo valor que WEAPON_BY_ATTACKER.
+//
+// CDN DORMANT (deshabilitado por JFC 2026-07-11: los mp3 de lichess no
+// encajan con la paleta y además cargaban de red). NO BORRAR lazyLoadSound/
+// soundCache/SOUND_CANDIDATES. Para re-habilitar los mp3: restaurar aquí el
+// bloque "cached = soundCache[type] ... inst.play()" (ver git history,
+// commit anterior a esta fecha) y reactivar la precarga de abajo.
 function playChessSound(type, scale, weapon){
-  if(!soundEnabled) return; // mute total: ni mp3 de CDN ni beep sintetizado
-  if(type === 'checkmate'){ synthBeep('checkmate'); return; }
-  const mag = (typeof scale === 'number') ? scale : 1;
-  lazyLoadSound(type);
-  const cached = soundCache[type];
-  if(cached && cached !== 'failed'){
-    try{
-      const inst = cached.cloneNode(); // permite solaparse si hay jugadas rápidas
-      const base = 0.22; // tenue a propósito, FX de fondo, no una alarma
-      // piezas menores suenan más discretas, dama/rey/torre pegan más fuerte —
-      // rango acotado (0.6x-1x del volumen base) para no romper el diseño "lowkey".
-      inst.volume = type === 'capture' ? base * (0.6 + mag * 0.4) : base;
-      const p = inst.play();
-      if(p && p.catch) p.catch(()=>synthBeep(type, weapon));
-    }catch(e){ synthBeep(type, weapon); }
-  } else {
-    synthBeep(type, weapon);
-  }
+  if(!soundEnabled) return; // mute total
+  synthBeep(type, weapon, scale);
 }
 
 function pickMoveSound(capturedPiece){
@@ -3519,9 +3536,9 @@ function captureSoundWeapon(attackerPiece, capturedPiece){
   return WEAPON_BY_ATTACKER[attackerType] || 'bullets';
 }
 
-// Precarga perezosa de los 3 sonidos básicos apenas arranca la página —
-// asíncrona, no bloquea el render ni el resto del boot.
-['move','capture','check'].forEach(lazyLoadSound);
+// Precarga de mp3 del CDN — DORMANT (deshabilitada junto con el CDN, ver
+// playChessSound). NO BORRAR. Para re-habilitar: descomentar esta línea.
+// ['move','capture','check'].forEach(lazyLoadSound);
 
 const LEVELS = [
   { label:"400",  skill:0,  depth:2,  movetime:100, randomness:0.35, localDepth:3 },
