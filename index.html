@@ -848,10 +848,11 @@ button:disabled{ opacity:0.35; cursor:default; }
    son casi invisibles contra el fondo oscuro — se sobreescriben abajo */
 .psq.light{ background:var(--sq-a); }
 .psq.dark{ background:var(--sq-b); }
-/* periscopio: casillas visibles aunque estén vacías */
+/* periscopio: casillas visibles aunque estén vacías; font más chico para que
+   las piezas no revienten la celda (board 28u / 8 celdas = 3.5u por celda) */
 #periscope-board .psq.light{ background:#1a2e1a; }
 #periscope-board .psq.dark { background:#0a1208; }
-#periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); }
+#periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); font-size:calc(var(--u)*3); }
 #board.flipped{ transform:rotate(180deg); }
 #board.flipped .pc, #board.flipped .dot, #board.flipped .coord{ display:inline-block; transform:rotate(180deg); }
 
@@ -1189,11 +1190,6 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
     </div>
     <div id="moves-log">aún no hay jugadas.</div>
 
-    <section class="ai-log-card">
-      <span class="ai-label" id="ai-log-label">Defensas de la IA vistas hoy</span>
-      <div id="ai-defense-log" class="chip-list"><span class="chip-empty">Aún no has visto ninguna. Juega para que la IA responda y aparezcan aquí.</span></div>
-    </section>
-
     <button class="context-toggle" id="context-toggle-btn" onclick="toggleContext()">+ historia, partidas y perfil de jugador</button>
     <div class="context-box" id="context-box">
       <h3>Historia</h3>
@@ -1203,6 +1199,11 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
       <h3>Perfil de jugador</h3>
       <div id="temperament">Elige una apertura y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí — y qué debes vigilar.</div>
     </div>
+
+    <section class="ai-log-card">
+      <span class="ai-label" id="ai-log-label">Defensas de la IA vistas hoy</span>
+      <div id="ai-defense-log" class="chip-list"><span class="chip-empty">Aún no has visto ninguna. Juega para que la IA responda y aparezcan aquí.</span></div>
+    </section>
   </div>
 
 </div>
@@ -4246,7 +4247,7 @@ function updatePredictions(hist){
 
   if(hist.length===0){
     countEl.textContent = ALL_LINES.length + ' ' + termPl + ' en el radar';
-    listEl.innerHTML = '<span class="chip-empty">Mueve una pieza y la lista de '+termPl+' posibles ira mutando en vivo.</span>';
+    listEl.innerHTML = '<span class="chip-empty">Mueve una pieza y la lista de '+termPl+' posibles irá mutando en vivo.</span>';
     return;
   }
 
