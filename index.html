@@ -472,7 +472,7 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*4.5); pad
            chico, a la derecha, para no competir por espacio vertical. -->
       <section class="opening-card">
         <div class="opening-top-row">
-          <span class="opening-kicker">Tu apertura</span>
+          <span class="opening-kicker" id="opening-kicker">Tu apertura</span>
           <span id="status-bar">cargando motor…</span>
         </div>
         <div id="eco-badge-wrap"></div>
@@ -2352,6 +2352,7 @@ let thinking = false;
 let aiDefenseSeen = new Set();   // claves "eco|name" ya vistas en esta sesión
 let aiDefenseLog = [];           // [{eco,name}] en orden de aparición, para el chip-list
 let humanColor = 'w';            // 'w' o 'b' — de qué lado juega la persona
+let boardEpoch = 0;               // se incrementa en cada reset/deshacer/cambio de color; invalida timers de motor obsoletos
 function humanTurnMsg(){ return 'Tu turno ('+(humanColor==='w'?'blancas':'negras')+').'; }
 
 const LEVELS = [
@@ -3748,10 +3749,11 @@ function onSquareClick(squareName){
   if(selectedSq){
     const move = legalTargets.find(m=>m.to===squareName);
     if(move){
+      const epoch = boardEpoch;
       makeMoveWithFx(selectedSq, squareName, ()=>{
         selectedSq = null; legalTargets = [];
         renderBoard();
-        setTimeout(engineTurn, 250);
+        setTimeout(()=>{ if(epoch===boardEpoch) engineTurn(); }, 250);
       });
       return;
     }
@@ -3846,7 +3848,17 @@ function checkGameOver(){
     bar.textContent = (game.turn()==='w'?'Negras':'Blancas') + ' dan JAQUE MATE.';
     bar.className='check'; return true;
   }
-  if(game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()){
+  // in_draw() ya evalúa 50 jugadas, ahogado, material insuficiente Y triple repetición
+  // (con cortocircuito: la repetición, la más cara, solo se calcula si nada más aplicó).
+  // Antes se volvía a llamar in_threefold_repetition() aparte -> doble escaneo del
+  // historial completo en CADA jugada. Además, la repetición es imposible antes de la
+  // jugada 8 (ningún bando tuvo tiempo de repetir posición), así que la saltamos hasta
+  // entonces para no pagar ese costo en cada apertura.
+  const hist = game.history();
+  const drawn = hist.length < 8
+    ? (game.in_stalemate() || game.insufficient_material())
+    : game.in_draw();
+  if(drawn){
     bar.textContent = 'Tablas.'; bar.className=''; return true;
   }
   if(game.in_check()){
@@ -4151,14 +4163,19 @@ function updateAiDefensePanel(hist, best){
   const nameEl = document.getElementById('ai-defense-name');
   const tipEl = document.getElementById('ai-defense-tip');
 
-  const blackJustMoved = hist.length>0 && hist.length%2===0;
+  // La IA juega del color CONTRARIO a humanColor. "Acaba de mover la IA"
+  // se define por eso, no asumiendo que la IA siempre es negras.
+  const aiColor = humanColor === 'w' ? 'b' : 'w';
+  const lastMoverWasWhite = hist.length>0 && (hist.length%2===1);
+  const aiJustMoved = hist.length>0 && ((lastMoverWasWhite && aiColor==='w') || (!lastMoverWasWhite && aiColor==='b'));
+  const aiColorWord = aiColor==='w' ? 'blancas' : 'negras';
 
-  if(!blackJustMoved || !best){
+  if(!aiJustMoved || !best){
     badge.innerHTML='';
     if(hist.length===0){
       nameEl.textContent = 'Aún no ha respondido — juega tu primera jugada.';
-    } else if(!blackJustMoved){
-      nameEl.textContent = 'Esperando la respuesta de las negras…';
+    } else if(!aiJustMoved){
+      nameEl.textContent = 'Esperando la respuesta de las '+aiColorWord+'…';
     } else {
       nameEl.textContent = 'Respondió con una línea poco común, aún sin identificar.';
     }
@@ -4293,16 +4310,19 @@ function setHumanColor(c){
   if(c===humanColor) return;
   if(thinking){
     const bar = document.getElementById('status-bar');
-    bar.textContent = 'Esperá a que la IA termine de pensar…';
+    bar.textContent = 'Espera a que la IA termine de pensar…';
     bar.className = 'thinking';
     return;
   }
   humanColor = c;
+  boardEpoch++; // invalida cualquier setTimeout de motor programado antes de este cambio
   document.getElementById('color-w').classList.toggle('active', c==='w');
   document.getElementById('color-b').classList.toggle('active', c==='b');
   const aiColorWord = c==='w' ? 'negras' : 'blancas';
+  const rivalColorWord = c==='w' ? 'negras' : 'blancas';
   document.getElementById('ai-label-turn').textContent = 'Respuesta de las '+aiColorWord+' (IA)';
-  document.getElementById('periscope-label').innerHTML = 'PERISCOPIO<br>su media cancha, espejada';
+  document.getElementById('periscope-label').innerHTML = 'PERISCOPIO<br>su media cancha ('+rivalColorWord+'), espejada';
+  document.getElementById('opening-kicker').textContent = c==='w' ? 'Tu apertura' : 'Tu Defensa';
   resetGame();
 }
 
@@ -4400,12 +4420,16 @@ async function engineTurn(){
 
   try{
     if(engineMode === 'local' || engineMode === 'loading'){
-      candidateMoves = localCandidates();
-      candidateIdx = 0;
       const legalMoves = game.moves({verbose:true});
       if(currentLevel===0 && Math.random() < L.randomness){
+        // Jugada al azar: no vale la pena correr negamax solo para descartarlo.
+        // Igual dejamos algunas legales a mano para que "Otra respuesta" tenga con qué trabajar.
         chosen = legalMoves[Math.floor(Math.random()*legalMoves.length)];
+        candidateMoves = legalMoves.slice(0,3);
+        candidateIdx = 0;
       } else {
+        candidateMoves = localCandidates();
+        candidateIdx = 0;
         chosen = candidateMoves[0] || legalMoves[0];
       }
     } else {
@@ -4503,9 +4527,12 @@ function rerollMove(){
 function undoMove(){
   if(thinking) return;
   if(game.history().length===0) return;
+  boardEpoch++; // invalida cualquier jugada de motor programada antes de este deshacer
   game.undo();
   if(game.history().length>0) game.undo();
   selectedSq=null; legalTargets=[]; lastMove=null;
+  candidateMoves=[]; candidateIdx=0; wikiCurrentOpening=null; wikiExtractCache=null;
+  document.getElementById('btn-reroll').disabled = true;
   renderBoard(); logMoves(); updateOpeningPanel();
   if(game.turn() === humanColor){
     document.getElementById('status-bar').textContent = humanTurnMsg();
@@ -4513,19 +4540,22 @@ function undoMove(){
   } else {
     document.getElementById('status-bar').textContent = 'Pensando…';
     document.getElementById('status-bar').className = 'thinking';
-    setTimeout(engineTurn, 200);
+    const epoch = boardEpoch;
+    setTimeout(()=>{ if(epoch===boardEpoch) engineTurn(); }, 200);
   }
 }
 
 function resetGame(){
   if(thinking){
     const bar = document.getElementById('status-bar');
-    bar.textContent = 'Esperá a que la IA termine de pensar…';
+    bar.textContent = 'Espera a que la IA termine de pensar…';
     bar.className = 'thinking';
     return;
   }
+  boardEpoch++; // invalida cualquier jugada de motor programada antes de este reinicio
   game.reset();
-  selectedSq=null; legalTargets=[]; lastMove=null; candidateMoves=[]; wikiCurrentOpening=null; wikiExtractCache=null;
+  selectedSq=null; legalTargets=[]; lastMove=null; candidateMoves=[]; candidateIdx=0; wikiCurrentOpening=null; wikiExtractCache=null;
+  document.getElementById('btn-reroll').disabled = true;
   renderBoard(); logMoves(); updateOpeningPanel();
   if(game.turn() === humanColor){
     document.getElementById('status-bar').textContent = humanTurnMsg();
@@ -4533,7 +4563,8 @@ function resetGame(){
   } else {
     document.getElementById('status-bar').textContent = 'Pensando…';
     document.getElementById('status-bar').className = 'thinking';
-    setTimeout(engineTurn, 200);
+    const epoch = boardEpoch;
+    setTimeout(()=>{ if(epoch===boardEpoch) engineTurn(); }, 200);
   }
 }
 
