@@ -467,6 +467,129 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 .sq.fx-matrix .pc{ animation: fx-matrix-kf 0.76s cubic-bezier(.5,0,.75,0) forwards; }
 
+/* 10) REWIND — la pieza se smear hacia la derecha como cinta VHS en rebobinado:
+   sesgo creciente, blur, luego aplastada a una línea naranja brillante que desaparece. */
+@keyframes fx-rewind-kf{
+  0%  { opacity:1; transform:scaleX(1) skewX(0deg); filter:brightness(1); }
+  18% { transform:scaleX(1.9) skewX(-18deg); filter:brightness(1.5) blur(0.4px); }
+  38% { transform:scaleX(2.5) skewX(-26deg); filter:brightness(2.4) blur(0.9px); opacity:0.85; }
+  56% { transform:scaleX(1.4) skewX(-8deg); filter:brightness(3.5) blur(0.4px); opacity:0.7; }
+  72% { transform:scaleX(2.8) skewX(-30deg); filter:brightness(5) blur(1.2px); opacity:0.5; }
+  84% { transform:scaleX(3.2) scaleY(0.1) skewX(0deg); filter:brightness(7); opacity:1; }
+  100%{ transform:scaleX(0) scaleY(0); opacity:0; filter:brightness(9); }
+}
+@keyframes fx-rewind-bar-kf{
+  0%,35%{ opacity:0; }
+  55% { opacity:0.8; transform:scaleX(1); }
+  78% { opacity:1; transform:scaleX(1.4); }
+  90% { opacity:1; transform:scaleX(2); }
+  100%{ opacity:0; }
+}
+.sq.fx-rewind .pc{ animation: fx-rewind-kf 0.76s steps(11) forwards; }
+.sq.fx-rewind::before{
+  content:""; position:absolute; top:50%; left:0; right:0; height:2px;
+  transform-origin:left center; pointer-events:none;
+  background:var(--orange); box-shadow:0 0 6px rgba(255,127,0,0.9);
+  animation: fx-rewind-bar-kf 0.76s steps(9) forwards;
+}
+
+/* 11) PORTAL — se abre un vórtice: clip-path circular se cierra desde afuera hacia el centro,
+   con rotación y un anillo de luz que pulsa antes de tragarse la pieza. */
+@keyframes fx-portal-kf{
+  0%  { clip-path:circle(72% at 50% 50%); transform:rotate(0deg) scale(1); filter:brightness(1); opacity:1; }
+  22% { clip-path:circle(56% at 50% 50%); transform:rotate(-18deg) scale(1.04); filter:hue-rotate(40deg) brightness(1.4); }
+  44% { clip-path:circle(38% at 50% 50%); transform:rotate(-42deg) scale(0.92); filter:hue-rotate(90deg) brightness(1.9); }
+  66% { clip-path:circle(20% at 50% 50%); transform:rotate(-70deg) scale(0.72); filter:hue-rotate(170deg) brightness(2.6); }
+  84% { clip-path:circle(7% at 50% 50%);  transform:rotate(-100deg) scale(0.4); filter:hue-rotate(240deg) brightness(4); opacity:0.7; }
+  100%{ clip-path:circle(0% at 50% 50%);  transform:rotate(-130deg) scale(0); opacity:0; }
+}
+@keyframes fx-portal-ring-kf{
+  0%  { opacity:0; transform:scale(0.25); }
+  28% { opacity:1;  transform:scale(0.85); }
+  55% { opacity:0.65; transform:scale(1.1); }
+  100%{ opacity:0;  transform:scale(1.55); }
+}
+.sq.fx-portal .pc{ animation: fx-portal-kf 0.76s cubic-bezier(.5,0,.8,0) forwards; }
+.sq.fx-portal::before{
+  content:""; position:absolute; inset:12%; border-radius:50%; pointer-events:none;
+  border:2px solid var(--green); box-shadow:0 0 7px rgba(57,255,20,0.85);
+  animation: fx-portal-ring-kf 0.76s ease-out forwards;
+}
+
+/* 12) BURNOUT — fósforo quemado de CRT: el brillo sube a blanco incandescente y corta
+   a negro dejando un fantasma que se desvanece, igual que la imagen que "queda grabada". */
+@keyframes fx-burnout-kf{
+  0%  { opacity:1; filter:brightness(1) sepia(0); }
+  22% { filter:brightness(2.5) sepia(0.4); }
+  45% { filter:brightness(5.5) sepia(0.9) saturate(4); }
+  62% { filter:brightness(10) sepia(1) saturate(6); opacity:1; }
+  70% { filter:brightness(14) saturate(0); }
+  76% { filter:brightness(0.4) saturate(0); opacity:0.5; }
+  88% { filter:brightness(0.5) saturate(0); opacity:0.18; }
+  100%{ opacity:0; filter:brightness(0); }
+}
+@keyframes fx-burnout-flare-kf{
+  0%,55%{ opacity:0; }
+  65% { opacity:1; background:rgba(255,255,220,0.92); }
+  74% { opacity:0; }
+  100%{ opacity:0; }
+}
+.sq.fx-burnout .pc{ animation: fx-burnout-kf 0.76s ease-in forwards; }
+.sq.fx-burnout::before{
+  content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen;
+  animation: fx-burnout-flare-kf 0.76s ease-in forwards;
+}
+
+/* 13) OVERCLOCK — centrifugado: la pieza gira cada vez más rápido, se desplaza hacia
+   una esquina por la fuerza centrífuga y se desvanece como partícula escapando. */
+@keyframes fx-overclock-kf{
+  0%  { transform:rotate(0deg) scale(1) translate(0,0); opacity:1; filter:blur(0); }
+  20% { transform:rotate(80deg) scale(1.06) translate(5%,-3%); filter:blur(0.3px); }
+  40% { transform:rotate(200deg) scale(0.95) translate(12%,-8%); filter:blur(1px); opacity:0.9; }
+  60% { transform:rotate(380deg) scale(0.78) translate(28%,-18%); filter:blur(2px); opacity:0.7; }
+  80% { transform:rotate(600deg) scale(0.45) translate(60%,-38%); filter:blur(4px); opacity:0.4; }
+  100%{ transform:rotate(800deg) scale(0.05) translate(110%,-70%); filter:blur(7px); opacity:0; }
+}
+@keyframes fx-overclock-spin-kf{
+  0%  { opacity:0; transform:scale(0.5) rotate(0deg); }
+  30% { opacity:0.75; transform:scale(0.9) rotate(120deg); }
+  65% { opacity:0.4; transform:scale(1.3) rotate(260deg); }
+  100%{ opacity:0; transform:scale(1.8) rotate(400deg); }
+}
+.sq.fx-overclock .pc{ animation: fx-overclock-kf 0.76s cubic-bezier(.25,.7,.55,1) forwards; }
+.sq.fx-overclock::before{
+  content:""; position:absolute; inset:16%; border-radius:50%; pointer-events:none;
+  border:2px solid var(--orange); box-shadow:0 0 6px rgba(255,127,0,0.7);
+  animation: fx-overclock-spin-kf 0.76s ease-in forwards;
+}
+
+/* 14) KERNEL PANIC — crash del sistema: la pieza se congela, pantalla azul BSOD,
+   artefactos de corrupción, y la pieza muere en bloques pixelados. */
+@keyframes fx-kernelpanic-kf{
+  0%,6% { opacity:1; transform:translate(0,0) skewX(0); filter:brightness(1); }
+  12%   { transform:translate(1px,0) skewX(2deg); filter:brightness(0.05); } /* freeze */
+  18%   { transform:translate(-1px,0) skewX(-2deg); filter:brightness(0.1); }
+  24%   { transform:translate(0,1px); filter:brightness(0); }
+  32%   { filter:brightness(2.5) hue-rotate(200deg); transform:skewX(5deg); } /* corrupción */
+  42%   { filter:brightness(0.6) hue-rotate(220deg); opacity:0.85; }
+  54%   { filter:brightness(3.5) hue-rotate(240deg); opacity:0.65; transform:scaleX(1.12); }
+  68%   { filter:brightness(1.2) hue-rotate(210deg); opacity:0.35; transform:scale(0.85) skewX(-5deg); }
+  84%   { opacity:0.12; transform:scale(0.45); }
+  100%  { opacity:0; transform:scale(0); }
+}
+@keyframes fx-bsod-kf{
+  0%,16%{ opacity:0; }
+  22%   { opacity:0.88; background:#0000cc; }
+  34%   { opacity:0.88; }
+  40%   { opacity:0; }
+  100%  { opacity:0; }
+}
+.sq.fx-kernelpanic .pc{ animation: fx-kernelpanic-kf 0.76s steps(13) forwards; }
+.sq.fx-kernelpanic::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  animation: fx-bsod-kf 0.76s steps(9) forwards;
+}
+
 /* ============================================================
    IMPACTO DE TABLERO COMPLETO — sin esto, el fx queda encerrado
    en una casilla de ~37px y se pierde dentro de un tablero de
@@ -474,24 +597,26 @@ button:disabled{ opacity:0.35; cursor:default; }
    que el golpe se sienta a escala real, no solo en la casilla.
    ============================================================ */
 @keyframes board-shake-soft-kf{
+  /* Reducido a 33% del original — el saccade era demasiado agresivo */
   0%,100%{ transform:translate(0,0); }
-  10%{ transform:translate(-1px,0.5px); }
-  25%{ transform:translate(1px,-0.5px); }
-  40%{ transform:translate(-0.5px,1px); }
-  55%{ transform:translate(0.5px,-1px); }
-  70%{ transform:translate(-0.5px,0.5px); }
-  85%{ transform:translate(0.5px,0); }
+  10%{ transform:translate(-0.33px,0.17px); }
+  25%{ transform:translate(0.33px,-0.17px); }
+  40%{ transform:translate(-0.17px,0.33px); }
+  55%{ transform:translate(0.17px,-0.33px); }
+  70%{ transform:translate(-0.17px,0.17px); }
+  85%{ transform:translate(0.17px,0); }
 }
 @keyframes board-shake-hard-kf{
+  /* Reducido a 33% del original */
   0%,100%{ transform:translate(0,0) rotate(0deg); }
-  8% { transform:translate(-2px,1px) rotate(-0.2deg); }
-  18%{ transform:translate(2px,-1.5px) rotate(0.25deg); }
-  28%{ transform:translate(-2px,1.5px) rotate(-0.25deg); }
-  38%{ transform:translate(1.5px,-1px) rotate(0.15deg); }
-  50%{ transform:translate(-1.5px,1px) rotate(-0.15deg); }
-  62%{ transform:translate(1px,-0.5px); }
-  75%{ transform:translate(-0.5px,0.5px); }
-  88%{ transform:translate(0.5px,0); }
+  8% { transform:translate(-0.67px,0.33px) rotate(-0.07deg); }
+  18%{ transform:translate(0.67px,-0.5px) rotate(0.08deg); }
+  28%{ transform:translate(-0.67px,0.5px) rotate(-0.08deg); }
+  38%{ transform:translate(0.5px,-0.33px) rotate(0.05deg); }
+  50%{ transform:translate(-0.5px,0.33px) rotate(-0.05deg); }
+  62%{ transform:translate(0.33px,-0.17px); }
+  75%{ transform:translate(-0.17px,0.17px); }
+  88%{ transform:translate(0.17px,0); }
 }
 @keyframes board-flash-green-kf{
   0%{ box-shadow:0 0 0 0 rgba(57,255,20,0), inset 0 0 0 0 rgba(57,255,20,0); }
@@ -519,6 +644,21 @@ button:disabled{ opacity:0.35; cursor:default; }
 #board.impact-vaporize{ animation: board-shake-soft-kf 0.76s ease-out; }
 #board.impact-static{ animation: board-shake-hard-kf 0.76s steps(16), board-desync-kf 0.76s steps(16); }
 #board.impact-matrix{ animation: board-shake-soft-kf 0.76s ease-in-out, board-flash-green-kf 0.76s ease-in; }
+@keyframes board-flash-white-kf{
+  0%{ box-shadow:0 0 0 0 rgba(255,255,220,0), inset 0 0 0 0 rgba(255,255,220,0); }
+  50%{ box-shadow:0 0 calc(var(--u)*10) 2px rgba(255,255,220,0.9), inset 0 0 calc(var(--u)*14) rgba(255,255,220,0.4); }
+  100%{ box-shadow:0 0 0 0 rgba(255,255,220,0), inset 0 0 0 0 rgba(255,255,220,0); }
+}
+@keyframes board-flash-blue-kf{
+  0%{ box-shadow:0 0 0 0 rgba(0,0,200,0), inset 0 0 0 0 rgba(0,0,200,0); }
+  50%{ box-shadow:0 0 calc(var(--u)*10) 2px rgba(0,0,200,0.7), inset 0 0 calc(var(--u)*14) rgba(0,80,255,0.3); }
+  100%{ box-shadow:0 0 0 0 rgba(0,0,200,0), inset 0 0 0 0 rgba(0,0,200,0); }
+}
+#board.impact-rewind{ animation: board-shake-hard-kf 0.76s steps(11), board-flash-orange-kf 0.76s ease-out; }
+#board.impact-portal{ animation: board-flash-green-kf 0.76s ease-out; }
+#board.impact-burnout{ animation: board-shake-soft-kf 0.76s ease-in, board-flash-white-kf 0.76s ease-in; }
+#board.impact-overclock{ animation: board-shake-hard-kf 0.76s steps(10), board-desync-kf 0.76s steps(10); }
+#board.impact-kernelpanic{ animation: board-shake-hard-kf 0.76s steps(12), board-flash-blue-kf 0.76s ease-in; }
 
 /* ============================================================
    VUELO DE PIEZA — cada jugada (con o sin captura) desliza la
@@ -570,10 +710,11 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 .traj-line path{ animation: traj-draw-kf 0.42s steps(14) forwards; }
 @keyframes board-shake-tiny-kf{
+  /* Reducido a 33% del original */
   0%,100%{ transform:translate(0,0); }
-  30%{ transform:translate(-0.75px,0.5px); }
-  60%{ transform:translate(0.75px,-0.5px); }
-  85%{ transform:translate(-0.25px,0.25px); }
+  30%{ transform:translate(-0.25px,0.17px); }
+  60%{ transform:translate(0.25px,-0.17px); }
+  85%{ transform:translate(-0.08px,0.08px); }
 }
 #board.board-impact-soft{ animation: board-shake-tiny-kf 0.3s ease-out; }
 
@@ -4453,7 +4594,7 @@ function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSqu
 
 let lastFxEffect = null;
 function pickFxEffect(){
-  const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch','fx-implode','fx-vaporize','fx-static','fx-matrix'];
+  const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch','fx-implode','fx-vaporize','fx-static','fx-matrix','fx-rewind','fx-portal','fx-burnout','fx-overclock','fx-kernelpanic'];
   let pool = lastFxEffect ? effects.filter(e=>e!==lastFxEffect) : effects;
   const pick = pool[Math.floor(Math.random()*pool.length)];
   lastFxEffect = pick;
