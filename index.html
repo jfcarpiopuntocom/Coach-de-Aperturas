@@ -1253,25 +1253,6 @@ a{ color:var(--green); } a:hover{ color:var(--orange); }
 .lore-credits{ color:#4a8c3a; font-size:calc(var(--u)*3.5); white-space:nowrap; }
 .lore-credits a{ color:#4a8c3a; text-decoration:none; border-bottom:1px dashed #4a8c3a; }
 .lore-credits a:hover{ color:var(--orange); border-color:var(--orange); }
-.lore-sheet{
-  display:none; position:fixed; left:50%; bottom:calc(var(--u)*12); transform:translateX(-50%);
-  width:min(560px, calc(100vw - var(--u)*8)); z-index:55;
-  background:var(--bg-panel); border:1px solid var(--green-dim);
-  box-shadow:0 0 calc(var(--u)*8) rgba(0,0,0,0.9), 0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
-  padding:calc(var(--u)*4) calc(var(--u)*3); max-height:60dvh; overflow-y:auto;
-}
-.lore-sheet.open{ display:block; }
-.lore-label{
-  font-family:var(--font-term); font-size:calc(var(--u)*4.5); color:var(--green);
-  letter-spacing:1px; margin-bottom:calc(var(--u)*2);
-}
-.lore-text{
-  font-size:calc(var(--u)*4.5); color:var(--green); line-height:1.6;
-}
-.lore-text .cursor{ display:inline-block; width:calc(var(--u)*2); background:var(--green-dim);
-  animation:blink 1s steps(1) infinite; }
-@keyframes blink{ 50%{ opacity:0; } }
-
 /* ============================================================
    PROPUESTA B — CRT PREMIUM: fósforo, aberración, brillo táctil
    ============================================================ */
@@ -1427,23 +1408,17 @@ button:active{ transform:translateY(1px); }
         <div id="opening-moves" style="display:none"></div>
       </section>
 
-      <!-- PREDICTOR — CORE FEATURE. Reubicado aqui, pegado a la apertura
-           reconocida: ambos responden "que es esto / que puede pasar" y
-           antes vivian en columnas opuestas, forzando salto de vista. -->
-      <section class="predict-card">
-        <span class="predict-label" id="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
-        <div id="predict-count" class="predict-count">&mdash;</div>
-        <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; las aperturas posibles aparecen aquí.</span></div>
-      </section>
-
-      <!-- PERISCOPIO — reubicado junto al tablero principal: su valor es
-           la comparacion visual instantanea (misma posicion, volteada),
-           que se pierde si esta lejos en otra columna. -->
-      <section class="periscope-card">
-        <span class="periscope-label" id="periscope-label">PERISCOPIO</span>
-        <div id="periscope-board"></div>
-      </section>
       </div><!-- /board-stack -->
+
+      <!-- REVERTIDO 2026-07-11: predict-card y periscope-card SE PROBARON
+           aqui dentro (pegados al tablero) pero .col-center usa
+           overflow:clip (sin scroll, disenado para que TODO quepa en un
+           viewport con los game-controls sticky). Meter dos tarjetas mas
+           disparo el alto del stage muy por encima del alto disponible y
+           el contenido de mas quedaba invisible (recortado, no scrolleable).
+           Vuelven a col-left/col-right, que SI tienen overflow-y:auto
+           propio y estan disenadas para absorber contenido variable.
+           NO MOVER predict-card / periscope-card de vuelta a col-center. -->
 
       <div class="game-controls">
         <button id="btn-reroll" onclick="rerollMove()" disabled>OTRA RESPUESTA</button>
@@ -1456,6 +1431,13 @@ button:active{ transform:translateY(1px); }
   <!-- IZQUIERDA (desktop) — A UN LADO DEL TABLERO: defensa IA.
        DOM order 2 => en mobile aparece JUSTO debajo de la apertura. -->
   <div class="col-left">
+    <!-- PREDICTOR — CORE FEATURE. Al lado del tablero en desktop, bajo la apertura en mobile. -->
+    <section class="predict-card">
+      <span class="predict-label" id="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
+      <div id="predict-count" class="predict-count">&mdash;</div>
+      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; las aperturas posibles aparecen aquí.</span></div>
+    </section>
+
     <section class="ai-card">
       <span class="ai-label" id="ai-label-turn">Respuesta de las negras (IA)</span>
       <div id="ai-badge-wrap"></div>
@@ -1464,8 +1446,14 @@ button:active{ transform:translateY(1px); }
     </section>
   </div>
 
-  <!-- DERECHA (desktop) — AL OTRO LADO DEL TABLERO: consejo + registro + defensas vistas. -->
+  <!-- DERECHA (desktop) — AL OTRO LADO DEL TABLERO: periscopio + consejo + registro + defensas vistas. -->
   <div class="col-right">
+    <!-- PERISCOPIO — el tablero COMPLETO (8x8), visto desde el lado del rival. A UN LADO, no debajo. -->
+    <section class="periscope-card">
+      <span class="periscope-label" id="periscope-label">PERISCOPIO</span>
+      <div id="periscope-board"></div>
+    </section>
+
     <section class="tip-card">
       <span class="tip-label">Consejo de la variante</span>
       <div id="tactic-tip">Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.</div>
@@ -1514,18 +1502,12 @@ button:active{ transform:translateY(1px); }
 
 <div class="lore-bar">
   <span class="lore-title">COACH DE APERTURAS</span>
-  <button class="lore-toggle" id="lore-toggle-btn" onclick="toggleLore()">+ // registro de a bordo</button>
   <button class="lore-toggle" id="battlefx-toggle-btn" onclick="toggleBattleFx()">⚡ FX: ON</button>
   <button class="lore-toggle" id="sound-toggle-btn" onclick="toggleSound()">🔊 Sonidos: ON</button>
   <span class="lore-credits">chess.js · offline-safe · MIT · <a href="https://www.paypal.com/paypalme/jfcarpio" target="_blank" rel="noopener">apoya el proyecto</a></span>
   <button id="help-btn" class="help-btn" onclick="openHelpModal()" aria-label="Acerca de este tablero espacial pedagógico" title="Acerca de este tablero espacial pedagógico">?</button>
 </div>
 </div><!-- /.screen -->
-
-<div class="lore-sheet" id="lore-sheet">
-  <div class="lore-label">// registro de a bordo</div>
-  <div class="lore-text" id="introText"></div>
-</div>
 
 <div class="help-overlay" id="help-overlay">
   <div class="help-box">
@@ -3291,35 +3273,11 @@ if (typeof define !== 'undefined')
 
 </script>
 <script>
-/* ============================================================
-   LORE (sci-fi, discreto, al fondo — no es parte del hero)
-   ============================================================ */
-const INTRO_LINES = [
-  "SISTEMA DE HIBERNACIÓN — REINICIO COMPLETO.",
-  "Los sensores biométricos parpadean antes que tus propios ojos.",
-  "Cien años de crionización se cierran detrás de ti como una escotilla que no recuerdas haber abierto.",
-  "La nave está en silencio. En el puente, alguien dejó un tablero encendido — como si el ajedrez fuera la única señal que sobrevive al tiempo.",
-  "Es tuyo ahora. Blancas empiezan."
-];
-function typeIntro(){
-  const el = document.getElementById('introText');
-  let full = INTRO_LINES.join('<br><br>');
-  el.innerHTML = full + '<span class="cursor">&nbsp;</span>';
-}
-typeIntro();
-
 function toggleContext(){
   const box = document.getElementById('context-box');
   const open = box.classList.toggle('open');
   document.getElementById('context-toggle-btn').textContent =
     (open?'− ':'+ ')+'historia, partidas y perfil de jugador';
-}
-
-function toggleLore(){
-  const sheet = document.getElementById('lore-sheet');
-  const open = sheet.classList.toggle('open');
-  document.getElementById('lore-toggle-btn').textContent =
-    (open?'− ':'+ ')+'// registro de a bordo';
 }
 
 function openHelpModal(){ document.getElementById('help-overlay').classList.add('open'); }
