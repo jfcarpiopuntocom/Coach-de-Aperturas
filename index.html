@@ -5986,7 +5986,7 @@ function updateOpeningPanel(){
       tempEl.textContent='Elige una apertura y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí.';
       tipEl.textContent='Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.';
     } else if(nearest && nearestLim>=1){
-      badge.innerHTML = '<span class="eco-badge">'+nearest.eco+'</span>';
+      badge.innerHTML = '';
       nameEl.classList.add('approx');
       nameEl.innerHTML = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.'+winPctToggleHtml(nearest);
       movesEl.style.display='none';
@@ -6007,7 +6007,7 @@ function updateOpeningPanel(){
   const bestIsStale = best.moves.split(' ').length < hist.length && nearest && nearestLim >= best.moves.split(' ').length;
 
   if(bestIsStale){
-    badge.innerHTML = '<span class="eco-badge">'+nearest.eco+'</span>';
+    badge.innerHTML = '';
     nameEl.classList.add('approx');
     nameEl.innerHTML = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.'+winPctToggleHtml(nearest);
     movesEl.style.display='none';
@@ -6040,7 +6040,7 @@ function updateOpeningPanel(){
     return;
   }
 
-  badge.innerHTML = '<span class="eco-badge">'+best.eco+'</span>';
+  badge.innerHTML = '';
   nameEl.classList.remove('approx');
   nameEl.innerHTML = best.name + winPctToggleHtml(best);
   movesEl.style.display='inline-block';
@@ -6097,7 +6097,7 @@ function updateAiDefensePanel(hist, best){
     return;
   }
 
-  badge.innerHTML = '<span class="eco-badge-ai">'+best.eco+'</span>';
+  badge.innerHTML = '';
   nameEl.innerHTML = best.name + winPctToggleHtml(best);
   tipEl.textContent = 'La IA está jugando esta línea como '+aiColorWord+'.';
 
