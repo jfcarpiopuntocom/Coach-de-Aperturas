@@ -304,6 +304,14 @@ body::after{
 #stage{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*2); }
 
 .levels{ display:flex; gap:var(--u); width:100%; justify-content:center; flex-wrap:nowrap; }
+/* Resumen de una linea de tendencia tactica, junto a los botones de nivel.
+   Oculto por defecto (display:none inline en el HTML) hasta que haya datos
+   de sesion — lo alterna updateTendencia() vía JS. */
+.tendencia-mini{
+  font-family:var(--font-term); font-size:calc(var(--u)*4); color:var(--green-dim);
+  text-align:center; letter-spacing:0.5px; padding:0 calc(var(--u)*2);
+}
+.tendencia-mini b{ color:var(--green); }
 button{
   font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   background:var(--bg-panel); color:var(--green);
@@ -1389,6 +1397,12 @@ button:active{ transform:translateY(1px); }
         <button id="color-b" class="color-btn" onclick="setHumanColor('b')">JUGAR NEGRAS</button>
       </div>
 
+      <!-- Resumen de una linea de la tendencia tactica de la sesion, fijo
+           junto a los botones de nivel. El detalle completo sigue viviendo
+           en #tendencia-sesion dentro del panel expandible (context-box) —
+           esto es solo el "de un vistazo", se llena via updateTendencia(). -->
+      <div class="tendencia-mini" id="tendencia-mini" style="display:none"></div>
+
       <!-- board-stack: envuelve tablero + apertura para que ambos tengan
            el mismo ancho. Sin esto opening-card se estira al ancho de la
            columna (hasta 660px) mientras el tablero se queda en ~540px
@@ -1408,6 +1422,23 @@ button:active{ transform:translateY(1px); }
         <div id="opening-name">—</div>
         <div id="opening-moves" style="display:none"></div>
       </section>
+
+      <!-- PREDICTOR — CORE FEATURE. Reubicado aqui, pegado a la apertura
+           reconocida: ambos responden "que es esto / que puede pasar" y
+           antes vivian en columnas opuestas, forzando salto de vista. -->
+      <section class="predict-card">
+        <span class="predict-label" id="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
+        <div id="predict-count" class="predict-count">&mdash;</div>
+        <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; las aperturas posibles aparecen aquí.</span></div>
+      </section>
+
+      <!-- PERISCOPIO — reubicado junto al tablero principal: su valor es
+           la comparacion visual instantanea (misma posicion, volteada),
+           que se pierde si esta lejos en otra columna. -->
+      <section class="periscope-card">
+        <span class="periscope-label" id="periscope-label">PERISCOPIO</span>
+        <div id="periscope-board"></div>
+      </section>
       </div><!-- /board-stack -->
 
       <div class="game-controls">
@@ -1418,16 +1449,9 @@ button:active{ transform:translateY(1px); }
     </section>
   </div>
 
-  <!-- IZQUIERDA (desktop) — A UN LADO DEL TABLERO: predictor CORE + defensa IA.
+  <!-- IZQUIERDA (desktop) — A UN LADO DEL TABLERO: defensa IA.
        DOM order 2 => en mobile aparece JUSTO debajo de la apertura. -->
   <div class="col-left">
-    <!-- PREDICTOR — CORE FEATURE. Al lado del tablero en desktop, bajo la apertura en mobile. -->
-    <section class="predict-card">
-      <span class="predict-label" id="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
-      <div id="predict-count" class="predict-count">&mdash;</div>
-      <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; las aperturas posibles aparecen aquí.</span></div>
-    </section>
-
     <section class="ai-card">
       <span class="ai-label" id="ai-label-turn">Respuesta de las negras (IA)</span>
       <div id="ai-badge-wrap"></div>
@@ -1436,14 +1460,8 @@ button:active{ transform:translateY(1px); }
     </section>
   </div>
 
-  <!-- DERECHA (desktop) — AL OTRO LADO DEL TABLERO: periscopio + consejo + registro + defensas vistas. -->
+  <!-- DERECHA (desktop) — AL OTRO LADO DEL TABLERO: consejo + registro + defensas vistas. -->
   <div class="col-right">
-    <!-- PERISCOPIO — el tablero COMPLETO (8x8, 64 casillas), visto desde el lado del rival. A UN LADO, no debajo. -->
-    <section class="periscope-card">
-      <span class="periscope-label" id="periscope-label">PERISCOPIO</span>
-      <div id="periscope-board"></div>
-    </section>
-
     <section class="tip-card">
       <span class="tip-label">Consejo de la variante</span>
       <div id="tactic-tip">Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.</div>
@@ -5638,9 +5656,11 @@ function winPctToggleHtml(o){
    y genera un texto descriptivo del estilo dominante del jugador. */
 function updateTendencia(){
   const el = document.getElementById('tendencia-sesion');
+  const mini = document.getElementById('tendencia-mini');
   if(!el) return;
   if(sessionTagLog.length < 2){
     el.textContent = 'Juega más variantes para que tu tendencia táctica emerja.';
+    if(mini) mini.style.display = 'none';
     return;
   }
   const counts = {};
@@ -5650,6 +5670,10 @@ function updateTendencia(){
   const [topTag, topN] = sorted[0];
   const topT = TEMPERAMENT[topTag] || TEMPERAMENT.solid;
   const pct = Math.round(topN/total*100);
+  if(mini){
+    mini.innerHTML = 'Tendencia: <b>'+topT.label+'</b> — '+pct+'%';
+    mini.style.display = 'block';
+  }
   let txt = 'Esta sesión ('+total+' variantes): tendencia dominante <b>'+topT.label+'</b> — '+pct+'% de tus líneas.';
   if(sorted.length > 1){
     const rest = sorted.slice(1).map(([tag,n]) => {
