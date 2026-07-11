@@ -493,7 +493,7 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*4.5); pad
   <div class="col-left">
     <!-- PREDICTOR — CORE FEATURE. Al lado del tablero en desktop, bajo la apertura en mobile. -->
     <section class="predict-card">
-      <span class="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
+      <span class="predict-label" id="predict-label">APERTURAS POSIBLES DESDE AQUÍ</span>
       <div id="predict-count" class="predict-count">&mdash;</div>
       <div id="predict-list" class="chip-list"><span class="chip-empty">Mueve una pieza &mdash; las aperturas posibles aparecen aquí.</span></div>
     </section>
@@ -532,7 +532,7 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*4.5); pad
     <div id="moves-log">aún no hay jugadas.</div>
 
     <section class="ai-log-card">
-      <span class="ai-label">Defensas de la IA vistas hoy</span>
+      <span class="ai-label" id="ai-log-label">Defensas de la IA vistas hoy</span>
       <div id="ai-defense-log" class="chip-list"><span class="chip-empty">Aún no has visto ninguna. Juega para que la IA responda y aparezcan aquí.</span></div>
     </section>
 
@@ -3558,12 +3558,21 @@ const ALL_LINES = OPENINGS.map(function(o){ return {eco:o.eco, name:o.name, move
 function updatePredictions(hist){
   const countEl = document.getElementById('predict-count');
   const listEl = document.getElementById('predict-list');
+  const labelEl = document.getElementById('predict-label');
   if(!countEl || !listEl) return;
   const MAX = 20;
 
+  // Jugando negras, esta lista es SOBRE TUS DEFENSAS, no aperturas ajenas
+  // en abstracto. Todo el texto de este panel se adapta al color humano.
+  const isBlack = humanColor === 'b';
+  const term = isBlack ? 'defensa' : 'apertura';
+  const termPl = isBlack ? 'defensas' : 'aperturas';
+  const termPlCap = isBlack ? 'DEFENSAS' : 'APERTURAS';
+  if(labelEl) labelEl.textContent = termPlCap + ' POSIBLES DESDE AQUÍ';
+
   if(hist.length===0){
-    countEl.textContent = ALL_LINES.length + ' aperturas en el radar';
-    listEl.innerHTML = '<span class="chip-empty">Mueve una pieza y la lista de aperturas posibles ira mutando en vivo.</span>';
+    countEl.textContent = ALL_LINES.length + ' ' + termPl + ' en el radar';
+    listEl.innerHTML = '<span class="chip-empty">Mueve una pieza y la lista de '+termPl+' posibles ira mutando en vivo.</span>';
     return;
   }
 
@@ -3588,7 +3597,7 @@ function updatePredictions(hist){
   }
 
   if(live.length){
-    countEl.textContent = live.length + (live.length===1?' apertura posible':' aperturas posibles');
+    countEl.textContent = live.length + (live.length===1?' '+term+' posible':' '+termPl+' posibles');
     let html = live.slice(0,MAX).map(function(c){
       return '<span class="chip"><span class="chip-next">+'+c.next+' = </span><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+'</span>';
     }).join('');
@@ -3618,7 +3627,7 @@ function updatePredictions(hist){
   }
 
   // Solo si NADA coincide (primera jugada rarisima).
-  countEl.textContent = 'Sin coincidencias — apertura propia';
+  countEl.textContent = 'Sin coincidencias — ' + term + ' propia';
   listEl.innerHTML = '<span class="chip-empty">Ninguna del repertorio empieza asi. Sigue jugando: si transpone, la detecto al instante.</span>';
 }
 
@@ -4028,9 +4037,73 @@ function genericTacticalTip(hist){
 /* ============================================================
    DETECTOR DE APERTURA — el propósito central del tablero.
    ============================================================ */
+function updateOpeningKicker(){
+  const kicker = document.getElementById('opening-kicker');
+  if(!kicker) return;
+  // fijo segun el color del humano: esta caja es SIEMPRE su apertura/defensa,
+  // nunca la de la IA. Que la IA haya movido primero (humano=negras) no
+  // cambia de quien es esta caja — solo cambia si ya hay contenido que
+  // mostrar (eso lo decide updateOpeningPanel, no el kicker).
+  kicker.textContent = humanColor==='w' ? 'Tu apertura' : 'Tu Defensa';
+}
+
 function updateOpeningPanel(){
   const hist = game.history();
+  updateOpeningKicker();
   updatePredictions(hist);
+
+  // Espejo perfecto con el caso blancas: cuando el humano juega negras y
+  // blancas (IA) ya movio pero el humano TODAVIA no ha jugado NI UNA sola
+  // vez en la partida, esta caja es "Tu Defensa" pero el humano aun no
+  // tiene ninguna — no se debe mostrar la apertura de la IA aqui (eso vive
+  // en el panel lateral "ai-card"). Importante: esto se evalua sobre "el
+  // humano ya jugo alguna vez", NO sobre "quien jugo la ultima jugada" —
+  // si se evaluara por ultimo jugador, la caja volveria a "Esperando" cada
+  // vez que le toca mover a la IA de nuevo, quedandose pegada en espera
+  // en la practica en vez de mostrar tu defensa ya identificada.
+  let humanHasMoved = false;
+  for(let i=0;i<hist.length;i++){
+    const plyIsWhite = (i % 2 === 0); // ply 0 = primera jugada = blancas
+    if((plyIsWhite && humanColor==='w') || (!plyIsWhite && humanColor==='b')){ humanHasMoved = true; break; }
+  }
+  const waitingForHuman = hist.length>0 && !humanHasMoved;
+  if(waitingForHuman){
+    const badge0 = document.getElementById('eco-badge-wrap');
+    const nameEl0 = document.getElementById('opening-name');
+    const movesEl0 = document.getElementById('opening-moves');
+    const histEl0 = document.getElementById('opening-history');
+    const gamesEl0 = document.getElementById('opening-games');
+    const tempEl0 = document.getElementById('temperament');
+    const tipEl0 = document.getElementById('tactic-tip');
+    badge0.innerHTML = '';
+    nameEl0.textContent = humanColor==='w' ? 'Esperando tu apertura — juega tu primera jugada.' : 'Esperando tu Defensa — responde a la IA.';
+    movesEl0.style.display = 'none';
+    histEl0.textContent = '—';
+    gamesEl0.textContent = '—';
+    tempEl0.textContent = 'Elige tu jugada y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí.';
+    tipEl0.textContent = 'Responde en el tablero y aquí aparecerá el consejo táctico clave de tu línea.';
+    // recalcula el best-match del turno de la IA solo para el panel lateral,
+    // sin tocar la caja principal (que se queda en estado de espera)
+    let bestForAi = null, bestCompleteAi = -1, bestLimAi = 0, nearestAi = null, nearestLimAi = 0;
+    for(const o of OPENINGS){
+      const seq = o.moves.split(' ');
+      const lim = Math.min(seq.length, hist.length);
+      let ok = true;
+      for(let i=0;i<lim;i++){ if(seq[i] !== hist[i]){ ok=false; break; } }
+      if(!ok){
+        let common=0; while(common<lim && seq[common]===hist[common]) common++;
+        if(common > nearestLimAi){ nearestLimAi = common; nearestAi = o; }
+        continue;
+      }
+      const complete = seq.length <= hist.length ? seq.length : -1;
+      if(complete > bestCompleteAi || (complete === -1 && bestCompleteAi === -1 && lim > bestLimAi)){
+        bestForAi = o; bestCompleteAi = complete; bestLimAi = lim;
+      }
+    }
+    updateAiDefensePanel(hist, bestForAi);
+    return;
+  }
+
   /* criterio de "mejor": entre lineas cuyo prefijo coincide con hist,
      preferir la MAS ESPECIFICA ya totalmente revelada (seq.length<=hist.length,
      maximizando seq.length). Si ninguna esta completa aun, usar la de mayor
@@ -4110,7 +4183,7 @@ function updateOpeningPanel(){
       gamesEl.textContent='—';
       tipEl.textContent=genericTacticalTip(hist);
     } else {
-      badge.innerHTML=''; nameEl.textContent='Tu apertura — explorando variantes.';
+      badge.innerHTML=''; nameEl.textContent = (humanColor==='w' ? 'Tu apertura' : 'Tu Defensa') + ' — explorando variantes.';
       movesEl.style.display='none';
       histEl.textContent='Variante personal. Si transpone a una apertura conocida, aparece al instante.';
       gamesEl.textContent='—';
@@ -4131,6 +4204,26 @@ function updateOpeningPanel(){
     tempEl.innerHTML = '';
     tipEl.textContent=genericTacticalTip(hist);
     updateAiDefensePanel(hist, null);
+    return;
+  }
+
+  // "best" puede ser una linea catalogada que TERMINA antes de que el
+  // humano haya movido siquiera una vez (ej. "a3" en la base, catalogada
+  // solo como jugada de blancas). Si ya jugaste y ese match no incluye
+  // NINGUNA jugada tuya, mostrar ese nombre bajo "Tu Defensa" es enganoso:
+  // estaria mostrando la apertura ajena como si fuera la tuya. En ese caso,
+  // se reemplaza por el mensaje de variante propia sin catalogar.
+  const firstHumanPlyIdx = humanColor==='w' ? 0 : 1;
+  const bestCoversHumanMove = best.moves.split(' ').length > firstHumanPlyIdx;
+  if(humanHasMoved && !bestCoversHumanMove){
+    badge.innerHTML='';
+    nameEl.textContent = humanColor==='w' ? 'Tu apertura — explorando variantes.' : 'Tu Defensa — explorando variantes.';
+    movesEl.style.display='none';
+    histEl.textContent='No hay una defensa catalogada con nombre propio contra esta jugada de la IA. Tu respuesta es variante personal; si transpone a una línea conocida, la detecto al instante.';
+    gamesEl.textContent='—';
+    tempEl.innerHTML='';
+    tipEl.textContent=genericTacticalTip(hist);
+    updateAiDefensePanel(hist, best);
     return;
   }
 
@@ -4185,7 +4278,7 @@ function updateAiDefensePanel(hist, best){
 
   badge.innerHTML = '<span class="eco-badge-ai">'+best.eco+'</span>';
   nameEl.innerHTML = best.name + winPctToggleHtml(best);
-  tipEl.textContent = 'La IA está jugando esta línea como negras.';
+  tipEl.textContent = 'La IA está jugando esta línea como '+aiColorWord+'.';
 
   const key = best.eco+'|'+best.name;
   if(!aiDefenseSeen.has(key)){
@@ -4195,10 +4288,19 @@ function updateAiDefensePanel(hist, best){
   }
 }
 
+function updateAiColorLabels(){
+  const aiColor = humanColor === 'w' ? 'b' : 'w';
+  const aiTermPl = aiColor==='w' ? 'Aperturas' : 'Defensas';
+  const logLabel = document.getElementById('ai-log-label');
+  if(logLabel) logLabel.textContent = aiTermPl + ' de la IA vistas hoy';
+}
+
 function renderAiDefenseLog(){
   const el = document.getElementById('ai-defense-log');
+  const aiColor = humanColor === 'w' ? 'b' : 'w';
+  const aiTerm = aiColor==='w' ? 'apertura' : 'defensa';
   if(aiDefenseLog.length===0){
-    el.innerHTML = '<span class="chip-empty">Aún no has visto ninguna. Juega para que la IA responda y aparezcan aquí.</span>';
+    el.innerHTML = '<span class="chip-empty">Aún no has visto ninguna '+aiTerm+'. Juega para que la IA responda y aparezcan aquí.</span>';
     return;
   }
   el.innerHTML = aiDefenseLog.map(d =>
@@ -4322,7 +4424,7 @@ function setHumanColor(c){
   const rivalColorWord = c==='w' ? 'negras' : 'blancas';
   document.getElementById('ai-label-turn').textContent = 'Respuesta de las '+aiColorWord+' (IA)';
   document.getElementById('periscope-label').innerHTML = 'PERISCOPIO<br>su media cancha ('+rivalColorWord+'), espejada';
-  document.getElementById('opening-kicker').textContent = c==='w' ? 'Tu apertura' : 'Tu Defensa';
+  updateAiColorLabels();
   resetGame();
 }
 
@@ -4574,6 +4676,7 @@ function resetGame(){
 renderBoard();
 logMoves();
 updateOpeningPanel();
+updateAiColorLabels();
 loadEngine();
 </script>
 </body>
