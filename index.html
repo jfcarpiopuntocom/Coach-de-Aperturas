@@ -1015,6 +1015,10 @@ button:disabled{ opacity:0.35; cursor:default; }
   font-size:calc(var(--u)*5.5); color:var(--green); font-weight:bold; line-height:1.25;
   text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.35);
 }
+/* Fallback "Se aproxima a X, aunque diverge..." — mismo tamaño que los
+   botones (DESHACER etc, var(--u)*4.5), no el gigante de #opening-name:
+   es un texto secundario/tentativo, no LA apertura confirmada. */
+#opening-name.approx{ font-size:calc(var(--u)*4.5); font-weight:normal; }
 #opening-moves{
   display:inline-block; margin-top:calc(var(--u)*2); font-family:var(--font-term);
   font-size:calc(var(--u)*4); color:var(--green); letter-spacing:1px;
@@ -5881,6 +5885,7 @@ function updateOpeningPanel(){
     const tempEl0 = document.getElementById('temperament');
     const tipEl0 = document.getElementById('tactic-tip');
     badge0.innerHTML = '';
+    nameEl0.classList.remove('approx');
     nameEl0.textContent = humanColor==='w' ? 'Esperando tu apertura — juega tu primera jugada.' : 'Esperando tu Defensa — responde a la IA.';
     movesEl0.style.display = 'none';
     histEl0.textContent = '—';
@@ -5976,19 +5981,20 @@ function updateOpeningPanel(){
 
   if(!best){
     if(hist.length===0){
-      badge.innerHTML=''; nameEl.textContent='—';
+      badge.innerHTML=''; nameEl.classList.remove('approx'); nameEl.textContent='—';
       movesEl.style.display='none'; histEl.textContent='—'; gamesEl.textContent='—';
       tempEl.textContent='Elige una apertura y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí.';
       tipEl.textContent='Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.';
     } else if(nearest && nearestLim>=1){
       badge.innerHTML = '<span class="eco-badge">'+nearest.eco+'</span>';
+      nameEl.classList.add('approx');
       nameEl.innerHTML = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.'+winPctToggleHtml(nearest);
       movesEl.style.display='none';
       histEl.textContent='Comparte las primeras '+nearestLim+(nearestLim===1?' jugada':' jugadas')+' con '+nearest.name+', pero luego diverge. Si transpone de nuevo a una línea conocida, lo detecto al instante.';
       gamesEl.textContent='—';
       tipEl.textContent=genericTacticalTip(hist);
     } else {
-      badge.innerHTML=''; nameEl.textContent = (humanColor==='w' ? 'Tu apertura' : 'Tu Defensa') + ' — explorando variantes.';
+      badge.innerHTML=''; nameEl.classList.remove('approx'); nameEl.textContent = (humanColor==='w' ? 'Tu apertura' : 'Tu Defensa') + ' — explorando variantes.';
       movesEl.style.display='none';
       histEl.textContent='Variante personal. Si transpone a una apertura conocida, aparece al instante.';
       gamesEl.textContent='—';
@@ -6002,6 +6008,7 @@ function updateOpeningPanel(){
 
   if(bestIsStale){
     badge.innerHTML = '<span class="eco-badge">'+nearest.eco+'</span>';
+    nameEl.classList.add('approx');
     nameEl.innerHTML = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.'+winPctToggleHtml(nearest);
     movesEl.style.display='none';
     histEl.textContent='Comparte las primeras '+nearestLim+(nearestLim===1?' jugada':' jugadas')+' con '+nearest.name+', pero luego diverge. Si transpone de nuevo a una línea conocida, lo detecto al instante.';
@@ -6022,6 +6029,7 @@ function updateOpeningPanel(){
   const bestCoversHumanMove = best.moves.split(' ').length > firstHumanPlyIdx;
   if(humanHasMoved && !bestCoversHumanMove){
     badge.innerHTML='';
+    nameEl.classList.remove('approx');
     nameEl.innerHTML = (humanColor==='w' ? 'Tu apertura — explorando variantes.' : 'Tu Defensa — explorando variantes.') + winPctToggleHtml(best);
     movesEl.style.display='none';
     histEl.textContent='No hay una defensa catalogada con nombre propio contra esta jugada de la IA. Tu respuesta es variante personal; si transpone a una línea conocida, la detecto al instante.';
@@ -6033,6 +6041,7 @@ function updateOpeningPanel(){
   }
 
   badge.innerHTML = '<span class="eco-badge">'+best.eco+'</span>';
+  nameEl.classList.remove('approx');
   nameEl.innerHTML = best.name + winPctToggleHtml(best);
   movesEl.style.display='inline-block';
   movesEl.textContent = best.moves;
