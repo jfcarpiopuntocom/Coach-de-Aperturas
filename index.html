@@ -1198,6 +1198,8 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
       <div id="opening-games">—</div>
       <h3>Perfil de jugador</h3>
       <div id="temperament">Elige una apertura y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí — y qué debes vigilar.</div>
+      <h3>Tendencia de la sesión</h3>
+      <div id="tendencia-sesion">Juega más variantes para que tu tendencia táctica emerja.</div>
     </div>
 
     <section class="ai-log-card">
@@ -3019,6 +3021,8 @@ let candidateIdx = 0;
 let thinking = false;
 let aiDefenseSeen = new Set();   // claves "eco|name" ya vistas en esta sesión
 let aiDefenseLog = [];           // [{eco,name}] en orden de aparición, para el chip-list
+let sessionTagLog = [];          // tags de aperturas reconocidas esta sesión (para tendencia táctica)
+let lastRecognizedEco = null;    // evita re-loguear la misma apertura en cada jugada
 let humanColor = 'w';            // 'w' o 'b' — de qué lado juega la persona
 let boardEpoch = 0;               // se incrementa en cada reset/deshacer/cambio de color; invalida timers de motor obsoletos
 function humanTurnMsg(){ return 'Tu turno ('+(humanColor==='w'?'blancas':'negras')+').'; }
@@ -4274,7 +4278,7 @@ function updatePredictions(hist){
   if(live.length){
     countEl.textContent = live.length + (live.length===1?' '+term+' posible':' '+termPl+' posibles');
     let html = live.slice(0,MAX).map(function(c){
-      return '<span class="chip"><span class="chip-next">+'+c.next+' = </span><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+'</span>';
+      return '<span class="chip"><span class="chip-next">+'+c.next+' = </span><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+winPctToggleHtml(c.o)+'</span>';
     }).join('');
     if(live.length>MAX) html += '<span class="chip">+'+(live.length-MAX)+' m&aacute;s&hellip;</span>';
     listEl.innerHTML = html;
@@ -4736,18 +4740,50 @@ function approxWinPct(o){
   let h = 0;
   const s = o.eco+o.name;
   for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
+  // draws por estilo: gambits menos tablas, posicional más tablas
+  const drawBase = {gambit:21, aggressive:25, solid:33, positional:34, hypermodern:28}[o.tag] || 28;
   const jitter = (h % 9) - 4; // -4..+4, determinístico por apertura
   const w = Math.max(38, Math.min(63, base + jitter));
-  const b = 100 - w;
-  return {w, b};
+  const dj = ((h >> 4) % 7) - 3;
+  const d = Math.max(14, Math.min(42, drawBase + dj));
+  const b = 100 - w - d;
+  return {w, d, b};
 }
 let wpUid = 0;
 function winPctToggleHtml(o){
-  const {w,b} = approxWinPct(o);
+  const {w,d,b} = approxWinPct(o);
   const id = 'wp'+(wpUid++);
-  return '<span class="wp-toggle" onclick="toggleWinPct(this)">≈%</span>'+
-         '<span class="wp-detail" id="'+id+'">Esta apertura tiene un '+w+'% de victorias históricas jugando blancas (y '+b+'% jugando negras)</span>';
+  return '<span class="wp-toggle" onclick="toggleWinPct(this)">w%</span>'+
+         '<span class="wp-detail" id="'+id+'">♔ '+w+'% &nbsp;½ '+d+'% &nbsp;♚ '+b+'%</span>';
 }
+/* Tendencia táctica de sesión: acumula los tags de las aperturas reconocidas
+   y genera un texto descriptivo del estilo dominante del jugador. */
+function updateTendencia(){
+  const el = document.getElementById('tendencia-sesion');
+  if(!el) return;
+  if(sessionTagLog.length < 2){
+    el.textContent = 'Juega más variantes para que tu tendencia táctica emerja.';
+    return;
+  }
+  const counts = {};
+  sessionTagLog.forEach(t => counts[t] = (counts[t]||0)+1);
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const total = sessionTagLog.length;
+  const [topTag, topN] = sorted[0];
+  const topT = TEMPERAMENT[topTag] || TEMPERAMENT.solid;
+  const pct = Math.round(topN/total*100);
+  let txt = 'Esta sesión ('+total+' variantes): tendencia dominante <b>'+topT.label+'</b> — '+pct+'% de tus líneas.';
+  if(sorted.length > 1){
+    const rest = sorted.slice(1).map(([tag,n]) => {
+      const lab = (TEMPERAMENT[tag]||TEMPERAMENT.solid).label;
+      return lab+' ('+Math.round(n/total*100)+'%)';
+    });
+    txt += ' También: '+rest.join(', ')+'.';
+  }
+  txt += '<br><small style="color:#999;font-size:calc(var(--u)*3.5)">'+topT.watch+'</small>';
+  el.innerHTML = txt;
+}
+
 function toggleWinPct(el){
   const detail = el.nextElementSibling;
   if(!detail) return;
@@ -5086,6 +5122,13 @@ function updateOpeningPanel(){
   const t = TEMPERAMENT[best.tag] || TEMPERAMENT.solid;
   tempEl.innerHTML = '<b>'+t.label+'</b><br>'+t.text+'<div class="watch-box"><b>Cuidado con:</b> '+t.watch+'</div>';
   tipEl.innerHTML = best.tip;
+
+  // acumula tag para la tendencia de sesión (solo cuando cambia la apertura reconocida)
+  if(best.eco !== lastRecognizedEco){
+    lastRecognizedEco = best.eco;
+    sessionTagLog.push(best.tag || 'solid');
+    updateTendencia();
+  }
 
   tryLiveWikipedia(best.name);
 
@@ -5555,6 +5598,7 @@ function resetGame(){
   }
   boardEpoch++; // invalida cualquier jugada de motor programada antes de este reinicio
   game.reset();
+  lastRecognizedEco = null; // permite re-loguear la misma apertura en la nueva partida
   selectedSq=null; legalTargets=[]; lastMove=null; candidateMoves=[]; candidateIdx=0; wikiCurrentOpening=null; wikiExtractCache=null;
   document.getElementById('btn-reroll').disabled = true;
   renderBoard(); logMoves(); updateOpeningPanel();
