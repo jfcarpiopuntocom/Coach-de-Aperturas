@@ -124,7 +124,7 @@
      tablero -> apertura -> consejo -> contexto (opcional) -> lore.
    ============================================================ */
 :root{
-  --u: 4px;
+  --u: 3.5px;
   --bg:        #050705;
   --bg-panel:  #080c08;
   --green:     #39ff14;
@@ -415,6 +415,58 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.fx-glitch .pc::before{ color:#ff2b4a; animation: fx-rgbsplit-a-kf 0.76s steps(8) forwards; }
 .sq.fx-glitch .pc::after { color:#20e0ff; animation: fx-rgbsplit-b-kf 0.76s steps(8) forwards; }
 
+/* 6) IMPLOSION — lo opuesto al degauss: en vez de colapsar en linea,
+   la pieza es succionada hacia su propio centro desde los 4 lados,
+   como un agujero negro de bolsillo, con un punto final brillante. */
+@keyframes fx-implode-kf{
+  0%  { opacity:1; transform:scale(1); filter:blur(0) brightness(1); }
+  35% { transform:scale(0.7) rotate(8deg); filter:blur(0.3px) brightness(1.3); }
+  60% { transform:scale(0.35) rotate(-10deg); filter:blur(0.6px) brightness(2.2); opacity:1; }
+  82% { transform:scale(0.08) rotate(20deg); filter:blur(0px) brightness(5); }
+  100%{ transform:scale(0) rotate(30deg); filter:brightness(7); opacity:0; }
+}
+.sq.fx-implode .pc{ animation: fx-implode-kf 0.76s cubic-bezier(.6,0,.9,0) forwards; }
+
+/* 7) VAPORIZE — la pieza se eleva como vapor, perdiendo densidad y
+   ganando desenfoque a medida que sube, hasta esfumarse del todo. */
+@keyframes fx-vaporize-kf{
+  0%  { opacity:1; transform:translateY(0) scale(1); filter:blur(0); }
+  30% { transform:translateY(-0.15em) scale(1.04); filter:blur(0.3px); }
+  60% { opacity:0.6; transform:translateY(-0.55em) scale(0.92); filter:blur(1.2px); }
+  100%{ opacity:0; transform:translateY(-1.3em) scale(0.7); filter:blur(3px); }
+}
+.sq.fx-vaporize .pc{ animation: fx-vaporize-kf 0.76s ease-out forwards; }
+
+/* 8) STATIC BURST — la pieza es devorada por nieve/estatica de TV:
+   parpadeo rapido de brillo/contraste (steps altos = ruido crudo)
+   antes de apagarse del todo, como perdida de señal analogica. */
+@keyframes fx-static-kf{
+  0%  { opacity:1; filter:contrast(1) brightness(1); transform:translate(0,0); }
+  8%  { filter:contrast(3) brightness(2.5); transform:translate(1px,-1px); }
+  16% { filter:contrast(1) brightness(0.6); transform:translate(-1px,1px); }
+  24% { filter:contrast(4) brightness(3); transform:translate(-1px,-1px); opacity:0.9; }
+  33% { filter:contrast(1) brightness(0.5); transform:translate(1px,1px); opacity:0.8; }
+  42% { filter:contrast(3.5) brightness(2.8); opacity:0.7; }
+  55% { opacity:0.4; filter:brightness(3); }
+  68% { opacity:0.55; filter:brightness(0.7); transform:translate(1px,0); }
+  80% { opacity:0.2; filter:brightness(3); }
+  100%{ opacity:0; filter:brightness(1); transform:translate(0,0); }
+}
+.sq.fx-static .pc{ animation: fx-static-kf 0.76s steps(16) forwards; }
+
+/* 9) MATRIX COLLAPSE — estiramiento vertical extremo tipo "codigo
+   cayendo", que luego se aplasta contra el piso de la casilla y
+   se apaga: el gesto clasico de columna de caracteres digital. */
+@keyframes fx-matrix-kf{
+  0%  { opacity:1; transform:scaleY(1) translateY(0); filter:brightness(1); }
+  25% { transform:scaleY(1.7) translateY(-0.1em); filter:brightness(1.8); }
+  50% { transform:scaleY(2.1) translateY(0.05em); filter:brightness(2.4); opacity:0.9; }
+  72% { transform:scaleY(0.4) translateY(0.42em); filter:brightness(3.2); opacity:0.8; }
+  88% { transform:scaleY(0.06) translateY(0.48em); filter:brightness(4); opacity:0.6; }
+  100%{ transform:scaleY(0.02) translateY(0.5em); filter:brightness(5); opacity:0; }
+}
+.sq.fx-matrix .pc{ animation: fx-matrix-kf 0.76s cubic-bezier(.5,0,.75,0) forwards; }
+
 /* ============================================================
    IMPACTO DE TABLERO COMPLETO — sin esto, el fx queda encerrado
    en una casilla de ~37px y se pierde dentro de un tablero de
@@ -423,23 +475,23 @@ button:disabled{ opacity:0.35; cursor:default; }
    ============================================================ */
 @keyframes board-shake-soft-kf{
   0%,100%{ transform:translate(0,0); }
-  10%{ transform:translate(-2px,1px); }
-  25%{ transform:translate(2px,-1px); }
-  40%{ transform:translate(-1px,2px); }
-  55%{ transform:translate(1px,-2px); }
-  70%{ transform:translate(-1px,1px); }
-  85%{ transform:translate(1px,0); }
+  10%{ transform:translate(-1px,0.5px); }
+  25%{ transform:translate(1px,-0.5px); }
+  40%{ transform:translate(-0.5px,1px); }
+  55%{ transform:translate(0.5px,-1px); }
+  70%{ transform:translate(-0.5px,0.5px); }
+  85%{ transform:translate(0.5px,0); }
 }
 @keyframes board-shake-hard-kf{
   0%,100%{ transform:translate(0,0) rotate(0deg); }
-  8% { transform:translate(-4px,2px) rotate(-0.4deg); }
-  18%{ transform:translate(4px,-3px) rotate(0.5deg); }
-  28%{ transform:translate(-4px,3px) rotate(-0.5deg); }
-  38%{ transform:translate(3px,-2px) rotate(0.3deg); }
-  50%{ transform:translate(-3px,2px) rotate(-0.3deg); }
-  62%{ transform:translate(2px,-1px); }
-  75%{ transform:translate(-1px,1px); }
-  88%{ transform:translate(1px,0); }
+  8% { transform:translate(-2px,1px) rotate(-0.2deg); }
+  18%{ transform:translate(2px,-1.5px) rotate(0.25deg); }
+  28%{ transform:translate(-2px,1.5px) rotate(-0.25deg); }
+  38%{ transform:translate(1.5px,-1px) rotate(0.15deg); }
+  50%{ transform:translate(-1.5px,1px) rotate(-0.15deg); }
+  62%{ transform:translate(1px,-0.5px); }
+  75%{ transform:translate(-0.5px,0.5px); }
+  88%{ transform:translate(0.5px,0); }
 }
 @keyframes board-flash-green-kf{
   0%{ box-shadow:0 0 0 0 rgba(57,255,20,0), inset 0 0 0 0 rgba(57,255,20,0); }
@@ -463,6 +515,10 @@ button:disabled{ opacity:0.35; cursor:default; }
 #board.impact-flash{ animation: board-shake-hard-kf 0.76s steps(13), board-flash-orange-kf 0.76s ease-out; }
 #board.impact-scanwipe{ animation: board-flash-green-kf 0.76s ease-out; }
 #board.impact-glitch{ animation: board-shake-hard-kf 0.76s steps(10), board-desync-kf 0.76s steps(10); }
+#board.impact-implode{ animation: board-shake-soft-kf 0.76s ease-in, board-flash-green-kf 0.76s ease-in; }
+#board.impact-vaporize{ animation: board-shake-soft-kf 0.76s ease-out; }
+#board.impact-static{ animation: board-shake-hard-kf 0.76s steps(16), board-desync-kf 0.76s steps(16); }
+#board.impact-matrix{ animation: board-shake-soft-kf 0.76s ease-in-out, board-flash-green-kf 0.76s ease-in; }
 
 /* ============================================================
    VUELO DE PIEZA — cada jugada (con o sin captura) desliza la
@@ -515,9 +571,9 @@ button:disabled{ opacity:0.35; cursor:default; }
 .traj-line path{ animation: traj-draw-kf 0.42s steps(14) forwards; }
 @keyframes board-shake-tiny-kf{
   0%,100%{ transform:translate(0,0); }
-  30%{ transform:translate(-1.5px,1px); }
-  60%{ transform:translate(1.5px,-1px); }
-  85%{ transform:translate(-0.5px,0.5px); }
+  30%{ transform:translate(-0.75px,0.5px); }
+  60%{ transform:translate(0.75px,-0.5px); }
+  85%{ transform:translate(-0.25px,0.25px); }
 }
 #board.board-impact-soft{ animation: board-shake-tiny-kf 0.3s ease-out; }
 
@@ -532,13 +588,13 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #moves-log{
   width:100%; background:var(--bg-panel); border:1px solid var(--green-dim);
-  padding:calc(var(--u)*2); font-size:calc(var(--u)*4.5); max-height:calc(var(--u)*14);
-  overflow-y:auto; line-height:1.6; color:var(--green);
+  padding:calc(var(--u)*2); font-size:calc(var(--u)*4); max-height:calc(var(--u)*14);
+  overflow-y:auto; line-height:1.85; color:var(--green);
 }
 #moves-log .mv-num{ color:#888888; margin-right:calc(var(--u)*0.5); }
 #moves-log .mv-you{ color:var(--green); }
 #moves-log .mv-ai{ color:#E86040; }
-#moves-log .mv-row{ display:inline-block; margin-right:calc(var(--u)*2.5); white-space:nowrap; }
+#moves-log .mv-row{ display:inline-block; margin-right:calc(var(--u)*2.5); margin-bottom:calc(var(--u)*0.5); white-space:nowrap; }
 
 /* ---------- Última jugada de cada bando — el dato que de verdad importa ---------- */
 .last-move-row{ display:flex; gap:calc(var(--u)*2); }
@@ -574,21 +630,21 @@ button:disabled{ opacity:0.35; cursor:default; }
   gap:calc(var(--u)*2); margin-bottom:calc(var(--u)*1.5);
 }
 .opening-kicker{
-  font-size:calc(var(--u)*4.5); color:var(--green-dim);
+  font-size:calc(var(--u)*4); color:var(--green-dim);
   letter-spacing:2px; text-transform:uppercase; white-space:nowrap;
 }
 .eco-badge{
-  display:inline-block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
+  display:inline-block; font-family:var(--font-term); font-size:calc(var(--u)*4);
   background:var(--green-dim); color:#000; padding:calc(var(--u)*1) calc(var(--u)*2);
   margin-bottom:calc(var(--u)*2);
 }
 #opening-name{
-  font-size:calc(var(--u)*6); color:var(--green); font-weight:bold; line-height:1.2;
+  font-size:calc(var(--u)*5.5); color:var(--green); font-weight:bold; line-height:1.25;
   text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.35);
 }
 #opening-moves{
   display:inline-block; margin-top:calc(var(--u)*2); font-family:var(--font-term);
-  font-size:calc(var(--u)*4.5); color:var(--green); letter-spacing:1px;
+  font-size:calc(var(--u)*4); color:var(--green); letter-spacing:1px;
 }
 
 /* ---------- % de victorias histórico, opcional y discreto ---------- */
@@ -939,7 +995,7 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
   <div class="col-right">
     <!-- PERISCOPIO — recorte del propio tablero, espejado, como lo ve el rival. A UN LADO, no debajo. -->
     <section class="periscope-card">
-      <span class="periscope-label" id="periscope-label">PERISCOPIO<br>su media cancha, espejada</span>
+      <span class="periscope-label" id="periscope-label">PERISCOPIO<br>su vista del tablero, espejada</span>
       <div id="periscope-board"></div>
     </section>
 
@@ -4395,9 +4451,16 @@ function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSqu
   }, cleanupDelay);
 }
 
+let lastFxEffect = null;
+function pickFxEffect(){
+  const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch','fx-implode','fx-vaporize','fx-static','fx-matrix'];
+  let pool = lastFxEffect ? effects.filter(e=>e!==lastFxEffect) : effects;
+  const pick = pool[Math.floor(Math.random()*pool.length)];
+  lastFxEffect = pick;
+  return pick;
+}
 function triggerCaptureFx(toEl, capturedPiece, isEnPassant, epSquare, after){
-  const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch'];
-  const effClass = effects[capturedPiece.type.charCodeAt(0) % effects.length];
+  const effClass = pickFxEffect();
   if(toEl){
     toEl.classList.add(effClass);
     const boardEl = document.getElementById('board');
@@ -5066,7 +5129,7 @@ function setHumanColor(c){
   const aiColorWord = c==='w' ? 'negras' : 'blancas';
   const rivalColorWord = c==='w' ? 'negras' : 'blancas';
   document.getElementById('ai-label-turn').textContent = 'Respuesta de las '+aiColorWord+' (IA)';
-  document.getElementById('periscope-label').innerHTML = 'PERISCOPIO<br>su media cancha ('+rivalColorWord+'), espejada';
+  document.getElementById('periscope-label').innerHTML = 'PERISCOPIO<br>su vista del tablero ('+rivalColorWord+'), espejada';
   updateAiColorLabels();
   resetGame();
 }
