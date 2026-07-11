@@ -943,7 +943,13 @@ button:disabled{ opacity:0.35; cursor:default; }
 #status-bar.thinking{ color:var(--orange); }
 #status-bar.check{ color:var(--orange); font-weight:bold; }
 
-.game-controls{ display:flex; gap:var(--u); flex-wrap:wrap; justify-content:center; }
+/* sticky al fondo del viewport visible: nunca se cae bajo la pantalla.
+   background tapa el contenido que queda debajo al hacer scroll corto. */
+.game-controls{
+  display:flex; gap:var(--u); flex-wrap:wrap; justify-content:center;
+  position:sticky; bottom:0; z-index:10;
+  background:var(--bg); padding:calc(var(--u)*1.5) 0 calc(var(--u)*1);
+}
 
 #moves-log{
   width:100%; background:var(--bg-panel); border:1px solid var(--green-dim);
@@ -1281,7 +1287,10 @@ button:active{ transform:translateY(1px); }
 .opening-card{ padding:calc(var(--u)*2) calc(var(--u)*2); }
 @media (min-width:960px){
   .wrap{ overflow:hidden; gap:calc(var(--u)*4); }
-  .col-center{ max-height:100%; overflow:hidden; }
+  /* overflow:clip en vez de hidden: recorta igual pero NO crea scroll-container,
+     así position:sticky en .game-controls sigue funcionando (sticky requiere que
+     el ancestro NO sea el scroll-container, cosa que clip no es). */
+  .col-center{ max-height:100%; overflow:clip; overflow-x:clip; }
   .col-left, .col-right{ max-height:100%; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--green-dim) transparent; }
 }
 @media (max-width:959px){
@@ -1479,7 +1488,7 @@ button:active{ transform:translateY(1px); }
   <button class="lore-toggle" id="lore-toggle-btn" onclick="toggleLore()">+ // registro de a bordo</button>
   <button class="lore-toggle" id="battlefx-toggle-btn" onclick="toggleBattleFx()">⚡ FX: ON</button>
   <button class="lore-toggle" id="sound-toggle-btn" onclick="toggleSound()">🔊 Sonidos: ON</button>
-  <span class="lore-credits">chess.js · offline-safe · MIT · <a href="https://www.paypal.com/donate?business=jfcarpio%40gmail.com&currency_code=USD" target="_blank" rel="noopener">apoya el proyecto</a></span>
+  <span class="lore-credits">chess.js · offline-safe · MIT · <a href="https://www.paypal.com/paypalme/jfcarpio" target="_blank" rel="noopener">apoya el proyecto</a></span>
   <button id="help-btn" class="help-btn" onclick="openHelpModal()" aria-label="Acerca de este tablero espacial pedagógico" title="Acerca de este tablero espacial pedagógico">?</button>
 </div>
 </div><!-- /.screen -->
