@@ -1401,7 +1401,7 @@ button:active{ transform:translateY(1px); }
       <section class="opening-card">
         <div class="opening-top-row">
           <span class="opening-kicker" id="opening-kicker">Tu apertura</span>
-          <span id="status-bar">cargando motor…</span>
+          <span id="status-bar" aria-live="polite">cargando motor…</span>
         </div>
         <div id="eco-badge-wrap"></div>
         <div id="opening-name">—</div>
@@ -5065,6 +5065,11 @@ function renderPeriscope(){
 function onSquareClick(squareName){
   if(thinking) return;
   if(game.turn() !== humanColor) return;
+  // MICROCIRUGIA: defensa en profundidad. El overlay de promocion ya
+  // bloquea clicks fisicamente (backdrop opaco position:fixed), pero si
+  // algun cambio futuro de CSS/z-index lo debilitara, esto evita que un
+  // click "se cuele" al tablero mientras se espera la eleccion Q/R/B/N.
+  if(document.getElementById('promo-overlay')) return;
 
   if(selectedSq){
     const move = legalTargets.find(m=>m.to===squareName);
@@ -6342,6 +6347,13 @@ async function engineTurn(){
   if(game.turn() === humanColor) return;
   if(checkGameOver()) return;
 
+  // MICROCIRUGIA: epoch capturado ANTES de pensar. Hoy thinking=true ya
+  // bloquea undo/reset/reroll/color mientras el motor calcula, pero esto
+  // es una segunda capa de seguridad: si algun path futuro llega a bumpear
+  // boardEpoch sin pasar por el guard de 'thinking', la jugada calculada
+  // aqui se descarta en vez de aplicarse sobre un tablero que ya no es
+  // el que la origino (el bug que se sentiria como "la reina se rompio").
+  const epoch = boardEpoch;
   thinking = true;
   document.getElementById('status-bar').textContent = 'Pensando…';
   document.getElementById('status-bar').className = 'thinking';
@@ -6406,6 +6418,9 @@ async function engineTurn(){
     chosen = legal[0] || null;
   }
 
+  // Segunda capa (ver comentario arriba): si boardEpoch cambio durante el
+  // await, esta jugada quedo huerfana — descartar en vez de aplicarla.
+  if(epoch !== boardEpoch){ thinking = false; return; }
   playEngineMove(chosen);
 }
 
@@ -6466,6 +6481,12 @@ function rerollMove(){
   boardEpoch++; // invalida cualquier setTimeout de engineTurn programado antes de este reroll
   game.undo();
   if(game.turn() === humanColor) return; // no era jugada del motor: nada que rerollear
+  // MICROCIRUGIA: si el humano tenia una pieza seleccionada (resaltado de
+  // jugadas legales) antes de tocar "OTRA RESPUESTA", esa seleccion queda
+  // obsoleta tras la nueva jugada del motor — sin esto, el resaltado de
+  // "legal" en el tablero podia sobrevivir apuntando a casillas que ya no
+  // corresponden a ninguna jugada real (undoMove/resetGame ya lo hacian).
+  selectedSq = null; legalTargets = [];
   candidateIdx = (candidateIdx+1) % Math.max(candidateMoves.length,1);
   const mv = candidateMoves[candidateIdx];
   if(mv){
@@ -6478,6 +6499,11 @@ function rerollMove(){
 function undoMove(){
   if(thinking) return;
   if(game.history().length===0) return;
+  // MICROCIRUGIA: limpieza defensiva — si por cualquier via el overlay de
+  // promocion quedo abierto (nunca deberia, ver el guard nuevo en
+  // onSquareClick), un deshacer no debe dejarlo huerfano sobre el tablero.
+  const stalePromo = document.getElementById('promo-overlay');
+  if(stalePromo) stalePromo.remove();
   boardEpoch++; // invalida cualquier jugada de motor programada antes de este deshacer
   game.undo();
   if(game.history().length>0) game.undo();
@@ -6503,6 +6529,8 @@ function resetGame(){
     bar.className = 'thinking';
     return;
   }
+  const stalePromo = document.getElementById('promo-overlay');
+  if(stalePromo) stalePromo.remove();
   boardEpoch++; // invalida cualquier jugada de motor programada antes de este reinicio
   game.reset();
   lastRecognizedEco = null; // permite re-loguear la misma apertura en la nueva partida
