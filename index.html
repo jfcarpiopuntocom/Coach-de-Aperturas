@@ -149,6 +149,28 @@
     de renderPeriscope() para que quede imposible de mal-interpretar en
     futuras sesiones.
   ============================================================
+  AUDITORÍA — sesión 2026-07-11 (corrección de la "tercera pasada")
+  ============================================================
+  - Reportado por el usuario y confirmado: el periscopio salía RECORTADO
+    en el render inicial y recién después se expandía a su tamaño
+    correcto. Causa: el fix de la tercera pasada usó container queries
+    (container-type:inline-size en .periscope-card + 92cqw/11cqw en
+    #periscope-board) para atar el ancho del board al espacio real de la
+    tarjeta. Las container queries exigen que el navegador primero mida
+    el contenedor y RECIÉN EN UNA PASADA APARTE resuelva lo que depende
+    de esa medida — ese hueco entre pasadas es justo el "sale chico y
+    después expande" que se reportó. #board (el tablero principal) nunca
+    tuvo este problema porque usa un % simple, no un container query.
+  - Fix: se revirtió el mecanismo. #periscope-board vuelve a usar
+    width:min(28*--u, 100%) — un % contra el ancho YA DEFINIDO de
+    .periscope-card (viene de una columna de grid con track explícito),
+    que se resuelve en la MISMA pasada de layout que ese ancho, sin la
+    indirección de medir-y-recalcular. Se quita container-type de
+    .periscope-card y el font-size de .psq vuelve a un calc(--u) plano
+    (ya no depende de cqw). El comportamiento buscado (nunca más ancho
+    que la columna disponible) se mantiene intacto — cambia solo el
+    mecanismo, a uno de una sola pasada y sin parpadeo inicial.
+  ============================================================
 -->
 <!DOCTYPE html>
 <html lang="es">
@@ -1006,13 +1028,6 @@ button:disabled{ opacity:0.35; cursor:default; }
   background:#020402; border:1px solid var(--green-dim); padding:calc(var(--u)*1.5) calc(var(--u)*2);
   position:relative; overflow:hidden; display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
   gap:calc(var(--u)*2.5);
-  /* container query: #periscope-board se mide contra ESTE ancho real
-     (el de la tarjeta, ya restado el padding), no contra el viewport.
-     Es la pieza que faltaba para que el periscopio sea de verdad líquido:
-     --u ya es fluido en ALTURA (clamp con vh), pero nunca reaccionaba a
-     que el ANCHO de la columna se achique — que es justo lo que pasa
-     cuando la ventana queda angosta por tener otras apps al lado. */
-  container-type:inline-size;
 }
 .periscope-label{
   display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
@@ -1029,11 +1044,16 @@ button:disabled{ opacity:0.35; cursor:default; }
      que lo dejaba recortado por el overflow:hidden de la tarjeta en
      columnas angostas (multitarea, ventana partida entre varias apps).
      width usa min(): nunca más grande que el ideal por altura (28*--u)
-     NI más grande que el 92% del contenedor real (92cqw, con margen para
-     el propio padding). aspect-ratio mantiene el cuadrado sin necesitar
-     un height fijo aparte. flex-shrink:1 es la red de seguridad final. */
+     NI más grande que el 100% del ancho ya-definido de .periscope-card
+     (un % simple en un ítem flex se resuelve en la MISMA pasada de layout
+     que el propio ancho del contenedor — a diferencia de un container
+     query, que exige medir el contenedor y RECIÉN DESPUÉS, en una pasada
+     aparte, resolver lo que depende de esa medida; ese hueco entre
+     pasadas es justo lo que se veía como "sale chico y después expande").
+     aspect-ratio mantiene el cuadrado sin necesitar un height fijo aparte.
+     flex-shrink:1 es la red de seguridad final. */
   flex:0 1 auto; flex-shrink:1; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
-  width:min(calc(var(--u)*28), 92cqw);
+  width:min(calc(var(--u)*28), 100%);
   aspect-ratio:1/1;
   min-width:calc(var(--u)*10);
   border:1px solid var(--green-dim);
@@ -1050,12 +1070,10 @@ button:disabled{ opacity:0.35; cursor:default; }
 .psq.light{ background:var(--sq-a); }
 .psq.dark{ background:var(--sq-b); }
 /* periscopio: casillas visibles aunque estén vacías; font más chico para que
-   las piezas no revienten la celda (board 28u / 8 celdas = 3.5u por celda).
-   min() con cqw: si el board se achica al 92cqw (columna angosta), el glifo
-   se achica con él en vez de quedar más grande que su propia celda. */
+   las piezas no revienten la celda (board 28u / 8 celdas = 3.5u por celda). */
 #periscope-board .psq.light{ background:#1a2e1a; }
 #periscope-board .psq.dark { background:#0a1208; }
-#periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); font-size:min(calc(var(--u)*3), 11cqw); }
+#periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); font-size:calc(var(--u)*3); }
 #board.flipped{ transform:rotate(180deg); }
 #board.flipped .pc, #board.flipped .dot, #board.flipped .coord{ display:inline-block; transform:rotate(180deg); }
 
