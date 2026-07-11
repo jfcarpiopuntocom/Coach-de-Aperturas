@@ -1269,6 +1269,13 @@ button{ transition:box-shadow .15s, background .15s, color .15s, border-color .1
 button:hover{ box-shadow:0 0 calc(var(--u)*2.5) rgba(57,255,20,0.4); }
 button.warn:hover{ box-shadow:0 0 calc(var(--u)*2.5) rgba(255,127,0,0.45); }
 button:active{ transform:translateY(1px); }
+/* Pulso de confirmación al cambiar nivel — feedback visual de que el cambio tomó efecto */
+@keyframes level-confirm-kf{
+  0%  { box-shadow:0 0 0 0 rgba(57,255,20,0.9); }
+  60% { box-shadow:0 0 0 calc(var(--u)*4) rgba(57,255,20,0.3); }
+  100%{ box-shadow:0 0 0 calc(var(--u)*6) rgba(57,255,20,0); }
+}
+.lvl-btn.level-confirm{ animation:level-confirm-kf 0.55s ease-out; }
 #board{ box-shadow:0 0 calc(var(--u)*8) rgba(57,255,20,0.22), inset 0 0 calc(var(--u)*8) rgba(0,0,0,0.65); }
 .opening-card{ position:relative; border:1px solid var(--green-dim); box-shadow:inset 0 0 calc(var(--u)*4) rgba(57,255,20,0.07), 0 0 calc(var(--u)*3) rgba(57,255,20,0.14); }
 .opening-card::before, .opening-card::after{ content:""; position:absolute; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5); pointer-events:none; }
@@ -1373,7 +1380,7 @@ button:active{ transform:translateY(1px); }
   <div class="col-center">
     <section id="stage">
       <div class="levels">
-        <button id="lvl-400" class="lvl-btn active" onclick="setLevel(0)">NIVEL 400</button>
+        <button id="lvl-400" class="lvl-btn active" onclick="setLevel(0)">NIVEL 500</button>
         <button id="lvl-1500" class="lvl-btn" onclick="setLevel(1)">NIVEL 1500</button>
         <button id="lvl-2600" class="lvl-btn" onclick="setLevel(2)">NIVEL 2600</button>
       </div>
@@ -3552,7 +3559,10 @@ function captureSoundWeapon(attackerPiece, capturedPiece){
 // ['move','capture','check'].forEach(lazyLoadSound);
 
 const LEVELS = [
-  { label:"400",  skill:0,  depth:2,  movetime:100, randomness:0.35, localDepth:3 },
+  // Nivel 500: skill 3 (comete errores claros pero no mueve al azar),
+  // depth 3, movetime 220ms, randomness 0.22 — practica real sin condescendencia.
+  // Antes era skill:0/depth:2 (casi aleatorio), subido por pedido de JFC.
+  { label:"500",  skill:3,  depth:3,  movetime:220, randomness:0.22, localDepth:3 },
   { label:"1500", skill:8,  depth:8,  movetime:400, randomness:0.08, localDepth:3 },
   { label:"2600", skill:20, depth:15, movetime:900, randomness:0.0,  localDepth:2 }
 ];
@@ -6234,8 +6244,27 @@ function setHumanColor(c){
 function setLevel(i){
   if(!LEVELS[i]) return; // indice invalido: ignora, no corrompe currentLevel
   currentLevel = i;
-  document.querySelectorAll('.lvl-btn').forEach((b,idx)=>b.classList.toggle('active', idx===i));
+  const btns = document.querySelectorAll('.lvl-btn');
+  btns.forEach((b,idx)=>b.classList.toggle('active', idx===i));
   applyLevel();
+
+  // UX: pulso en el botón activo + mensaje fugaz en status bar.
+  // La IA asume el nuevo nivel DESDE ESTE MOMENTO — sin reiniciar.
+  const activeBtn = btns[i];
+  if(activeBtn){
+    activeBtn.classList.remove('level-confirm');
+    void activeBtn.offsetWidth; // fuerza reflow para reiniciar la animación
+    activeBtn.classList.add('level-confirm');
+    activeBtn.addEventListener('animationend', ()=>activeBtn.classList.remove('level-confirm'), {once:true});
+  }
+  const bar = document.getElementById('status-bar');
+  if(bar && !thinking){
+    const prev = bar.textContent;
+    const prevClass = bar.className;
+    bar.textContent = '✓ Nivel ' + LEVELS[i].label + ' activo — la IA jugará así desde ahora';
+    bar.className = '';
+    setTimeout(()=>{ if(bar.textContent.startsWith('✓')) { bar.textContent = prev; bar.className = prevClass; } }, 2400);
+  }
 }
 
 function askEngineExternal(){
