@@ -179,8 +179,17 @@ body::after{
 header.hero{
   display:flex; align-items:center; justify-content:center;
   gap:calc(var(--u)*3); padding:calc(var(--u)*1.5) calc(var(--u)*4);
-  border-bottom:2px solid var(--green-dim); flex-shrink:0;
+  border-bottom:2px solid var(--green-dim); flex-shrink:0; position:relative;
 }
+.help-btn{
+  position:absolute; right:calc(var(--u)*4); top:50%; transform:translateY(-50%);
+  width:calc(var(--u)*7); height:calc(var(--u)*7); border-radius:50%;
+  background:transparent; border:1px solid var(--green-dim); color:var(--green);
+  font-family:var(--font-term); font-size:calc(var(--u)*4.5); font-weight:bold;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  line-height:1;
+}
+.help-btn:hover{ border-color:var(--green); box-shadow:0 0 calc(var(--u)*3) rgba(57,255,20,0.4); }
 @media (max-width:640px){
   .title-ascii{ font-size:calc(var(--u)*4.5); white-space:normal; text-align:center; }
 }
@@ -797,6 +806,81 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 #board.board-impact-soft{ animation: board-shake-tiny-kf 0.3s ease-out; }
 
+/* Bonus de EMBOSCADA — pieza barata derriba pieza cara (ej. peón caza
+   dama). Va en un ::after aparte para no pisar la propiedad `animation`
+   que ya usa #board.impact-* en el elemento base. */
+@keyframes board-upset-glow-kf{
+  0%{ opacity:1; }
+  100%{ opacity:0; }
+}
+#board.board-impact-upset::after{
+  content:''; position:absolute; inset:0; pointer-events:none; z-index:45;
+  box-shadow:0 0 calc(var(--u)*14) 4px rgba(255,215,0,0.85), inset 0 0 calc(var(--u)*20) rgba(255,215,0,0.4);
+  animation: board-upset-glow-kf 0.5s ease-out;
+}
+
+/* ---------- Escenas de batalla: partículas + onda de choque direccional ---------- */
+.battle-particle{
+  position:absolute; z-index:46; pointer-events:none; border-radius:1px;
+  width:calc(var(--u)*1); height:calc(var(--u)*1);
+}
+.battle-particle.w{ background:var(--green); box-shadow:0 0 calc(var(--u)*1.5) var(--green); }
+.battle-particle.b{ background:var(--orange); box-shadow:0 0 calc(var(--u)*1.5) var(--orange); }
+.battle-shock{
+  position:absolute; z-index:44; pointer-events:none; border-radius:2px; box-sizing:border-box;
+  border:calc(var(--u)*0.75) solid; animation: battle-shock-kf 0.42s ease-out forwards;
+}
+.battle-shock.w{ border-color:var(--green); box-shadow:0 0 calc(var(--u)*6) rgba(57,255,20,0.7); }
+.battle-shock.b{ border-color:var(--orange); box-shadow:0 0 calc(var(--u)*6) rgba(255,127,0,0.7); }
+@keyframes battle-shock-kf{
+  0%{ opacity:0.9; transform:scale(0.4); }
+  100%{ opacity:0; transform:scale(2.4); }
+}
+
+/* Disparo entrante — variedad de armamento por pieza atacante */
+.battle-shot{
+  position:absolute; z-index:47; pointer-events:none; border-radius:1px;
+  transform-origin:center;
+}
+.battle-shot.w{ background:var(--green); box-shadow:0 0 calc(var(--u)*1.2) var(--green); }
+.battle-shot.b{ background:var(--orange); box-shadow:0 0 calc(var(--u)*1.2) var(--orange); }
+
+.battle-smoke{
+  position:absolute; z-index:43; pointer-events:none; width:calc(var(--u)*1.5); height:calc(var(--u)*1.5);
+  border-radius:50%; filter:blur(1px); transform:translate(-50%,-50%);
+  animation: battle-smoke-kf 0.3s ease-out forwards;
+}
+.battle-smoke.w{ background:rgba(57,255,20,0.5); }
+.battle-smoke.b{ background:rgba(255,127,0,0.5); }
+@keyframes battle-smoke-kf{
+  0%{ opacity:0.55; transform:translate(-50%,-50%) scale(1); }
+  100%{ opacity:0; transform:translate(-50%,-50%) scale(2.2); }
+}
+
+.battle-beam{
+  position:absolute; z-index:47; height:2px; pointer-events:none; transform-origin:0 50%;
+  animation: battle-beam-kf 0.22s ease-out forwards;
+}
+.battle-beam.w{ background:var(--green); box-shadow:0 0 calc(var(--u)*2) var(--green); }
+.battle-beam.b{ background:var(--orange); box-shadow:0 0 calc(var(--u)*2) var(--orange); }
+@keyframes battle-beam-kf{
+  0%{ opacity:0; }
+  25%{ opacity:1; }
+  100%{ opacity:0; }
+}
+
+/* Campo magnético defensivo — solo el rey; contiene, no dispara */
+.battle-field-ring{
+  position:absolute; z-index:44; pointer-events:none; border-radius:50%; box-sizing:border-box;
+  border:calc(var(--u)*0.5) dashed; animation: battle-field-kf 0.5s ease-out forwards;
+}
+.battle-field-ring.w{ border-color:var(--green); box-shadow:0 0 calc(var(--u)*3) rgba(57,255,20,0.5); }
+.battle-field-ring.b{ border-color:var(--orange); box-shadow:0 0 calc(var(--u)*3) rgba(255,127,0,0.5); }
+@keyframes battle-field-kf{
+  0%{ opacity:0.9; transform:scale(0.5) rotate(0deg); }
+  100%{ opacity:0; transform:scale(1.9) rotate(70deg); }
+}
+
 #status-bar{
   font-size:calc(var(--u)*4.5); color:var(--green-dim); text-align:right;
   min-width:0; flex-shrink:1;
@@ -882,6 +966,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 .wp-detail .wp-w{ color:var(--green); }
 .wp-detail .wp-d{ color:var(--green-dim); }
 .wp-detail .wp-b{ color:var(--orange); }
+.wp-detail .wp-note{ display:block; color:var(--green-dim); font-size:calc(var(--u)*3.5); margin-top:calc(var(--u)*1); }
 
 /* ---------- 1b. PERISCOPIO — micro-vista espejada/invertida del rival ----------
    A propósito chico: es un "ojo de cerradura" al tablero del rival, no un
@@ -941,6 +1026,35 @@ button:disabled{ opacity:0.35; cursor:default; }
 .promo-choice:hover{ border-color:var(--green); background:var(--sq-b); }
 .promo-choice .pc.w{ color:var(--green); }
 .promo-choice .pc.b{ color:var(--orange); }
+
+/* ---------- Modal de ayuda / "acerca de" (?) ---------- */
+.help-overlay{
+  display:none; position:fixed; inset:0; z-index:70; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.8); padding:calc(var(--u)*4);
+}
+.help-overlay.open{ display:flex; }
+.help-box{
+  background:var(--bg-panel); border:calc(var(--u)*0.75) solid var(--green);
+  box-shadow:0 0 calc(var(--u)*8) rgba(57,255,20,0.3);
+  width:min(480px, 100%); max-height:80dvh; overflow-y:auto;
+  padding:calc(var(--u)*4) calc(var(--u)*4);
+}
+.help-box h2{
+  font-family:var(--font-term); font-size:calc(var(--u)*5); color:var(--green);
+  letter-spacing:1px; margin:0 0 calc(var(--u)*2);
+}
+.help-box h3{
+  font-family:var(--font-term); font-size:calc(var(--u)*4.5); color:var(--orange);
+  letter-spacing:1px; margin:calc(var(--u)*3) 0 calc(var(--u)*1); text-transform:uppercase;
+}
+.help-box p{ font-size:calc(var(--u)*4.5); line-height:1.55; color:#bdf3b0; margin:0 0 calc(var(--u)*2); }
+.help-box .help-signature{ color:var(--green-dim); font-size:calc(var(--u)*3.5); margin-top:calc(var(--u)*3); }
+.help-close{
+  display:block; margin-top:calc(var(--u)*3); width:100%;
+  background:transparent; border:1px dashed var(--green-dim); color:var(--green);
+  font-family:var(--font-term); font-size:calc(var(--u)*4.5); padding:calc(var(--u)*2); cursor:pointer;
+}
+.help-close:hover{ border-color:var(--green); }
 
 /* ---------- 2b. DEFENSA DE LA IA (lo que responden las negras) ---------- */
 .ai-card{
@@ -1023,7 +1137,7 @@ a{ color:var(--green); } a:hover{ color:var(--orange); }
 .lore-bar{
   flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
   gap:calc(var(--u)*3); padding:calc(var(--u)*1.5) calc(var(--u)*4);
-  border-top:1px dashed var(--green-dim);
+  border-top:1px dashed var(--green-dim); flex-wrap:wrap;
 }
 .lore-toggle{
   background:transparent; border:none; padding:0; color:var(--green-dim);
@@ -1053,7 +1167,7 @@ a{ color:var(--green); } a:hover{ color:var(--orange); }
 /* ============================================================
    PROPUESTA B — CRT PREMIUM: fósforo, aberración, brillo táctil
    ============================================================ */
-@keyframes crt-flicker{ 0%,91%,94%,100%{ opacity:1; } 92%{ opacity:0.88; } 96%{ opacity:0.95; } }
+@keyframes crt-flicker{ 0%,91%,94%,100%{ opacity:1; } 92%{ opacity:0.83; } 96%{ opacity:0.90; } }
 .screen{ animation:crt-flicker 9s steps(1) infinite; }
 .title-ascii{
   text-shadow:0 0 calc(var(--u)*2.5) var(--green),
@@ -1163,7 +1277,8 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
 <!-- PANTALLA CORE: un viewport exacto, sin scroll interno -->
 <div class="screen">
 <header class="hero">
-  <div class="title-ascii"><span class="side-w">♕</span> COACH DE APERTURAS <span class="side-b">♟</span></div>
+  <div class="title-ascii">COACH DE APERTURAS</div>
+  <button id="help-btn" class="help-btn" onclick="openHelpModal()" aria-label="Acerca de esta app" title="Acerca de esta app">?</button>
 </header>
 
 <div class="wrap">
@@ -1276,6 +1391,7 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
 
 <div class="lore-bar">
   <button class="lore-toggle" id="lore-toggle-btn" onclick="toggleLore()">+ // registro de a bordo</button>
+  <button class="lore-toggle" id="battlefx-toggle-btn" onclick="toggleBattleFx()">⚡ escenas de batalla: ON</button>
   <span class="lore-credits">chess.js + motor externo/local · offline-safe</span>
 </div>
 </div><!-- /.screen -->
@@ -1283,6 +1399,16 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
 <div class="lore-sheet" id="lore-sheet">
   <div class="lore-label">// registro de a bordo</div>
   <div class="lore-text" id="introText"></div>
+</div>
+
+<div class="help-overlay" id="help-overlay">
+  <div class="help-box">
+    <h2>// ACERCA DE ESTA NAVE</h2>
+    <p>¡Despertaste tras 100 años de crionización — un tablero encendido en el puente es lo único que quedó funcional en la nave, fijada con autopiloto de vuelta a la Tierra. Esta app es tu oficial de a bordo: te pone al día con las aperturas y defensas para que al llegar a la Tierra empieces a ganar tus partidas!</p>
+    <p>Estética inspirada en las space operas de Asimov y Heinlein y la película War Games (1983).</p>
+    <p class="help-signature">v1.0 · Made in Cuenca, Ecuador.</p>
+    <button class="help-close" onclick="closeHelpModal()">CERRAR</button>
+  </div>
 </div>
 
 <script>
@@ -3070,6 +3196,26 @@ function toggleLore(){
     (open?'− ':'+ ')+'// registro de a bordo';
 }
 
+function openHelpModal(){ document.getElementById('help-overlay').classList.add('open'); }
+function closeHelpModal(){ document.getElementById('help-overlay').classList.remove('open'); }
+
+// Escenas de batalla (partículas + onda de choque direccional en cada
+// captura) — ON por defecto, se recuerda entre sesiones. El toggle solo
+// afecta esta capa extra; el sacudido/flash de tablero de siempre sigue
+// funcionando igual con esto apagado, así nunca se rompe el feedback base.
+let battleFxEnabled = true;
+try{ battleFxEnabled = localStorage.getItem('battleFxEnabled') !== '0'; }catch(e){ /* almacenamiento no disponible: sigue ON por defecto */ }
+function updateBattleFxToggleLabel(){
+  const btn = document.getElementById('battlefx-toggle-btn');
+  if(btn) btn.textContent = '⚡ escenas de batalla: ' + (battleFxEnabled ? 'ON' : 'OFF');
+}
+function toggleBattleFx(){
+  battleFxEnabled = !battleFxEnabled;
+  try{ localStorage.setItem('battleFxEnabled', battleFxEnabled ? '1' : '0'); }catch(e){ /* sin persistencia, no rompe nada */ }
+  updateBattleFxToggleLabel();
+}
+updateBattleFxToggleLabel();
+
 /* ============================================================
    ESTADO DEL JUEGO
    ============================================================ */
@@ -3168,14 +3314,21 @@ function synthBeep(type){
 // set libre, así que va directo al beep (distintivo, 4 tonos descendentes).
 // Para el resto: intenta el audio de CDN ya cacheado; si no está listo
 // (primera vez, aún cargando) o falló, usa el beep sin que se note el corte.
-function playChessSound(type){
+// scale: 0..1, opcional — solo lo usan las capturas (según CHESS_SHAKING_SCALE
+// por tipo de pieza). El resto de sonidos (move/check/checkmate) ignora el
+// parámetro y suena siempre igual.
+function playChessSound(type, scale){
   if(type === 'checkmate'){ synthBeep('checkmate'); return; }
+  const mag = (typeof scale === 'number') ? scale : 1;
   lazyLoadSound(type);
   const cached = soundCache[type];
   if(cached && cached !== 'failed'){
     try{
       const inst = cached.cloneNode(); // permite solaparse si hay jugadas rápidas
-      inst.volume = 0.22; // tenue a propósito, FX de fondo, no una alarma
+      const base = 0.22; // tenue a propósito, FX de fondo, no una alarma
+      // piezas menores suenan más discretas, dama/rey/torre pegan más fuerte —
+      // rango acotado (0.6x-1x del volumen base) para no romper el diseño "lowkey".
+      inst.volume = type === 'capture' ? base * (0.6 + mag * 0.4) : base;
       const p = inst.play();
       if(p && p.catch) p.catch(()=>synthBeep(type));
     }catch(e){ synthBeep(type); }
@@ -3189,6 +3342,17 @@ function pickMoveSound(capturedPiece){
   if(game.in_check()) return 'check';
   if(capturedPiece) return 'capture';
   return 'move';
+}
+
+// Igual criterio que triggerCaptureFx: victima define el volumen base,
+// y una pieza barata derribando una cara (peón caza dama) suena más fuerte.
+function captureSoundScale(attackerPiece, capturedPiece){
+  if(!capturedPiece) return undefined;
+  const victimType = capturedPiece.type;
+  const attackerType = attackerPiece ? attackerPiece.type : victimType;
+  const base = CHESS_SHAKING_SCALE[victimType] != null ? CHESS_SHAKING_SCALE[victimType] : 0.3;
+  const isUpset = (VALUES[attackerType]||0) < (VALUES[victimType]||0);
+  return isUpset ? Math.min(1, base + 0.25) : base;
 }
 
 // Precarga perezosa de los 3 sonidos básicos apenas arranca la página —
@@ -4803,16 +4967,16 @@ function makeMoveWithFx(from, to, after, promotion){
   const moveObj = game.move({from, to, promotion: promotion || 'q'});
   if(!moveObj) return;
   lastMove = {from,to};
-  playChessSound(pickMoveSound(capturedPiece));
+  playChessSound(pickMoveSound(capturedPiece), captureSoundScale(movingPiece, capturedPiece));
 
   const canFly = !!(fromEl && toEl && pcEl && boardEl);
   if(canFly){
-    flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after);
+    flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after, movingPiece);
     return;
   }
   if(capturedPiece){
     const fxEl = isEnPassant ? document.querySelector('.sq[data-sq="'+epSquare+'"]') : toEl;
-    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, after);
+    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, after, movingPiece);
     return;
   }
   finishMove(after);
@@ -4822,7 +4986,7 @@ function makeMoveWithFx(from, to, after, promotion){
    ecos de fosforo rezagados y una linea de trayectoria HUD que se dibuja
    debajo. Si hay captura, coordina con la destruccion existente (fx-*)
    para que el atacante aterrice mientras el objetivo se desintegra. */
-function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after){
+function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after, movingPiece){
   const boardRect = boardEl.getBoundingClientRect();
   const fromRect = fromEl.getBoundingClientRect();
   const toRect = toEl.getBoundingClientRect();
@@ -4880,7 +5044,7 @@ function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSqu
 
   if(isCapture){
     const fxEl = isEnPassant ? document.querySelector('.sq[data-sq="'+epSquare+'"]') : toEl;
-    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, null);
+    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, null, movingPiece, Math.atan2(dy, dx));
   }
 
   setTimeout(()=>{
@@ -4905,23 +5069,212 @@ function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSqu
   }, cleanupDelay);
 }
 
+/* ============================================================
+   ARMERO DE CAPTURA — inspirado en el ajedrez táctico "battle chess"
+   pero con una estética de space opera dura, entre el rigor técnico
+   de Asimov y la ingeniería de campo de Heinlein (nunca se nombran
+   dentro del juego — el jugador solo ve el género, no la referencia;
+   la cita completa vive en el popup de ayuda, ver helpModalContent).
+
+   Dos ejes independientes, como pidió el diseño:
+   1) QUIÉN dispara define la FAMILIA de efecto — cada pieza "come"
+      distinto (peón = arma ligera/pulso, caballo = salto errático/
+      teletransporte táctico, alfil = rayo de precisión diagonal,
+      torre = artillería pesada, dama = arma total, rey = campo de
+      fuerza de última instancia).
+   2) A QUIÉN se dispara define la MAGNITUD del sacudido y el volumen
+      — piezas menores caen con un golpe leve (30%), la torre con uno
+      medio (60%), dama/rey con el máximo (100%). Un peón comiéndose
+      una dama es un evento MAYOR que un peón comiéndose un peón,
+      sin importar qué disparó.
+   3) BONUS DE EMBOSCADA: si la pieza que dispara vale MENOS que la
+      capturada (el caso favorito: peón caza dama), el impacto recibe
+      un extra dramático — el "upset" se siente más grande que la
+      suma de sus partes, como debe ser.
+   ============================================================ */
+const CHESS_SHAKING_SCALE = {
+  p: 0.3, n: 0.3, b: 0.3,  // piezas menores: golpe leve
+  r: 0.6,                   // torre: golpe medio
+  q: 1.0, k: 1.0            // dama/rey: golpe máximo
+};
+
+// Familia de efectos por PIEZA QUE ATACA — identidad "battle chess":
+// selección determinística por tipo, con rotación anti-repetición
+// dentro de su propio pool (nunca el mismo efecto dos veces seguidas).
+const FX_POOL_BY_ATTACKER = {
+  p: ['fx-static','fx-scanwipe','fx-dissolve'],     // pulso de arma ligera
+  n: ['fx-glitch','fx-portal','fx-rewind'],          // salto errático / parpadeo táctico
+  b: ['fx-flash','fx-vaporize','fx-matrix'],         // rayo de precisión diagonal
+  r: ['fx-shatter','fx-overclock','fx-implode'],     // artillería pesada
+  q: ['fx-kernelpanic','fx-burnout','fx-shatter'],   // arma total
+  k: ['fx-kernelpanic','fx-burnout']                 // campo de fuerza de última instancia
+};
+
+// Qué DISPARA cada pieza antes del impacto — variedad real de armamento,
+// no solo láser: ráfaga de balas, misil con estela de humo, rayo de
+// precisión (solo el alfil) y, para el rey, un campo magnético DEFENSIVO
+// en vez de un arma ofensiva (el rey no dispara, contiene).
+const WEAPON_BY_ATTACKER = {
+  p: 'bullets',  // ráfaga corta de proyectiles
+  n: 'missile',  // un misil táctico con estela
+  b: 'laser',    // el único que sigue siendo rayo de precisión
+  r: 'missile',  // artillería pesada, misil más grande
+  q: 'barrage',  // balas + misil a la vez — arma total
+  k: 'field'     // campo magnético defensivo, no ofensivo
+};
+
 let lastFxEffect = null;
-function pickFxEffect(){
-  const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch','fx-implode','fx-vaporize','fx-static','fx-matrix','fx-rewind','fx-portal','fx-burnout','fx-overclock','fx-kernelpanic'];
+function pickFxEffect(attackerType){
+  const effects = FX_POOL_BY_ATTACKER[attackerType] || FX_POOL_BY_ATTACKER.p;
   let pool = lastFxEffect ? effects.filter(e=>e!==lastFxEffect) : effects;
+  if(pool.length === 0) pool = effects;
   const pick = pool[Math.floor(Math.random()*pool.length)];
   lastFxEffect = pick;
   return pick;
 }
-function triggerCaptureFx(toEl, capturedPiece, isEnPassant, epSquare, after){
-  const effClass = pickFxEffect();
+
+// ESCENA DE BATALLA — debris real animándose hacia afuera (no un simple
+// filtro de color), más una onda de choque direccional. Dura ~400-450ms
+// a propósito: es una escaramuza, no una cinemática. Toggleable via
+// battleFxEnabled (ver toggleBattleFx), pero el shake/flash de siempre
+// sigue funcionando igual con esto apagado.
+function spawnBattleParticles(boardEl, toEl, colorClass, magnitude, impactAngle){
+  const boardRect = boardEl.getBoundingClientRect();
+  const r = toEl.getBoundingClientRect();
+  const cx = (r.left - boardRect.left) + r.width/2;
+  const cy = (r.top - boardRect.top) + r.height/2;
+  const count = 6 + Math.round(magnitude * 6); // 6..12 según severidad de la captura
+  for(let i=0;i<count;i++){
+    const p = document.createElement('span');
+    p.className = 'battle-particle ' + colorClass;
+    p.style.left = cx+'px'; p.style.top = cy+'px';
+    p.style.transform = 'translate(-50%,-50%)';
+    boardEl.appendChild(p);
+    const baseAngle = (impactAngle != null) ? impactAngle : (Math.random()*Math.PI*2);
+    const angle = baseAngle + (Math.random()-0.5) * 2.4; // debris se dispersa en cono, no en línea recta
+    const dist = (16 + Math.random()*24) * (0.6 + magnitude);
+    const dx = Math.cos(angle)*dist, dy = Math.sin(angle)*dist;
+    const dur = 260 + Math.random()*180;
+    p.animate([
+      { transform:'translate(-50%,-50%) scale(1)', opacity:1 },
+      { transform:`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.2)`, opacity:0 }
+    ], { duration: dur, easing:'cubic-bezier(.2,.7,.3,1)', fill:'forwards' });
+    setTimeout(()=>{ if(p.remove) p.remove(); }, dur + 40);
+  }
+}
+function spawnBattleShock(boardEl, toEl, colorClass){
+  const boardRect = boardEl.getBoundingClientRect();
+  const r = toEl.getBoundingClientRect();
+  const ring = document.createElement('div');
+  ring.className = 'battle-shock ' + colorClass;
+  ring.style.left = (r.left - boardRect.left) + 'px';
+  ring.style.top = (r.top - boardRect.top) + 'px';
+  ring.style.width = r.width + 'px';
+  ring.style.height = r.height + 'px';
+  boardEl.appendChild(ring);
+  setTimeout(()=>{ if(ring.remove) ring.remove(); }, 460);
+}
+
+// DISPARO ENTRANTE — lo que viaja HACIA el objetivo justo antes del
+// impacto, según WEAPON_BY_ATTACKER. Nace a una distancia acotada
+// (22% del tablero) detrás del objetivo en línea con impactAngle, para
+// no salirse del área visible (#board tiene overflow:hidden).
+function spawnIncomingFire(boardEl, toEl, attackerType, colorClass, magnitude, impactAngle){
+  const boardRect = boardEl.getBoundingClientRect();
+  const r = toEl.getBoundingClientRect();
+  const cx = (r.left - boardRect.left) + r.width/2;
+  const cy = (r.top - boardRect.top) + r.height/2;
+  const angle = (impactAngle != null) ? impactAngle : (Math.random()*Math.PI*2);
+  const weapon = WEAPON_BY_ATTACKER[attackerType] || 'bullets';
+  const travel = Math.min(boardRect.width, boardRect.height) * 0.22;
+  const rotDeg = angle * 180 / Math.PI;
+  const sx = cx - Math.cos(angle)*travel;
+  const sy = cy - Math.sin(angle)*travel;
+
+  function fireStreak(delay, length, dur, thickness){
+    const s = document.createElement('span');
+    s.className = 'battle-shot ' + colorClass;
+    s.style.width = length+'px';
+    s.style.height = thickness+'px';
+    s.style.left = sx+'px'; s.style.top = sy+'px';
+    boardEl.appendChild(s);
+    s.animate([
+      { transform:`translate(-50%,-50%) rotate(${rotDeg}deg) translateX(0)`, opacity:0 },
+      { offset:0.15, opacity:1 },
+      { transform:`translate(-50%,-50%) rotate(${rotDeg}deg) translateX(${travel}px)`, opacity:0 }
+    ], { duration:dur, delay, easing:'linear', fill:'forwards' });
+    setTimeout(()=>{ if(s.remove) s.remove(); }, delay+dur+40);
+  }
+  function fireSmoke(t){
+    const puff = document.createElement('span');
+    puff.className = 'battle-smoke ' + colorClass;
+    puff.style.left = (sx + Math.cos(angle)*travel*t) + 'px';
+    puff.style.top = (sy + Math.sin(angle)*travel*t) + 'px';
+    boardEl.appendChild(puff);
+    setTimeout(()=>{ if(puff.remove) puff.remove(); }, 320);
+  }
+
+  if(weapon === 'bullets' || weapon === 'barrage'){
+    const n = 3 + Math.round(magnitude*2); // más balas cuanto más grande la captura
+    for(let i=0;i<n;i++) fireStreak(i*34, 7, 150, 2);
+  }
+  if(weapon === 'missile' || weapon === 'barrage'){
+    fireStreak(0, 14, 220, 4);
+    for(let i=0;i<3;i++) setTimeout(()=>fireSmoke(0.3+i*0.2), i*65);
+  }
+  if(weapon === 'laser'){
+    const beam = document.createElement('div');
+    beam.className = 'battle-beam ' + colorClass;
+    beam.style.left = sx+'px'; beam.style.top = sy+'px';
+    beam.style.width = travel+'px';
+    beam.style.transform = `rotate(${rotDeg}deg)`;
+    boardEl.appendChild(beam);
+    setTimeout(()=>{ if(beam.remove) beam.remove(); }, 220);
+  }
+  if(weapon === 'field'){
+    // El rey no dispara: contiene. 3 anillos magnéticos concéntricos,
+    // defensivos, en vez de proyectiles.
+    for(let i=0;i<3;i++){
+      setTimeout(()=>{
+        const ring = document.createElement('div');
+        ring.className = 'battle-field-ring ' + colorClass;
+        ring.style.left = (r.left - boardRect.left) + 'px';
+        ring.style.top = (r.top - boardRect.top) + 'px';
+        ring.style.width = r.width + 'px';
+        ring.style.height = r.height + 'px';
+        boardEl.appendChild(ring);
+        setTimeout(()=>{ if(ring.remove) ring.remove(); }, 500);
+      }, i*90);
+    }
+  }
+}
+
+function triggerCaptureFx(toEl, capturedPiece, isEnPassant, epSquare, after, attackerPiece, impactAngle){
+  const victimType = (capturedPiece && capturedPiece.type) ? capturedPiece.type : 'p';
+  const attackerType = (attackerPiece && attackerPiece.type) ? attackerPiece.type : victimType;
+  const baseMag = CHESS_SHAKING_SCALE[victimType] != null ? CHESS_SHAKING_SCALE[victimType] : 0.3;
+  // Bonus de emboscada: pieza barata derriba pieza cara → golpe extra.
+  const isUpset = (VALUES[attackerType]||0) < (VALUES[victimType]||0);
+  const shakeMag = isUpset ? Math.min(1, baseMag + 0.25) : baseMag;
+  const effClass = pickFxEffect(attackerType);
   if(toEl){
     toEl.classList.add(effClass);
     const boardEl = document.getElementById('board');
+    // Fija la magnitud ANTES de aplicar las clases de impacto, para que
+    // los keyframes ya lean el valor correcto desde el primer frame.
+    boardEl.style.setProperty('--shake-mag', shakeMag);
     const impactClass = 'impact-' + effClass.replace('fx-','');
     boardEl.classList.add('board-impact', impactClass);
+    if(isUpset) boardEl.classList.add('board-impact-upset');
+    if(battleFxEnabled){
+      const attackerColorClass = attackerPiece ? attackerPiece.color : (capturedPiece && capturedPiece.color==='w' ? 'b' : 'w');
+      spawnIncomingFire(boardEl, toEl, attackerType, attackerColorClass, shakeMag, impactAngle);
+      spawnBattleParticles(boardEl, toEl, attackerColorClass, shakeMag, impactAngle);
+      spawnBattleShock(boardEl, toEl, attackerColorClass);
+    }
     setTimeout(()=>{
-      boardEl.classList.remove('board-impact', impactClass);
+      boardEl.classList.remove('board-impact', impactClass, 'board-impact-upset');
+      boardEl.style.removeProperty('--shake-mag');
       if(after !== null) finishMove(after);
     }, 760);
     return;
@@ -5035,11 +5388,12 @@ let wpUid = 0;
 function winPctToggleHtml(o){
   const {w,d,b} = approxWinPct(o);
   const id = 'wp'+(wpUid++);
-  return '<span class="wp-toggle" onclick="toggleWinPct(this)">w%</span>'+
+  return '<span class="wp-toggle" onclick="toggleWinPct(this)" title="Estimación de qué tan seguido gana cada bando cuando se juega esta línea — no es una garantía, solo una referencia histórica de estilo.">¿quién suele ganar esta línea?</span>'+
          '<span class="wp-detail" id="'+id+'">'+
-           '<span class="wp-w">♔Bl '+w+'%</span> &nbsp;'+
-           '<span class="wp-d">½Tb '+d+'%</span> &nbsp;'+
-           '<span class="wp-b">♚Ng '+b+'%</span>'+
+           '<span class="wp-w">Blancas ganan ≈ '+w+'%</span> &nbsp;'+
+           '<span class="wp-d">Tablas ≈ '+d+'%</span> &nbsp;'+
+           '<span class="wp-b">Negras ganan ≈ '+b+'%</span>'+
+           '<span class="wp-note"> (estimado por estilo de apertura, no de una base de datos real — cuanto más la practiques, más importa tu juego que esta cifra)</span>'+
          '</span>';
 }
 /* Tendencia táctica de sesión: acumula los tags de las aperturas reconocidas
@@ -5825,16 +6179,16 @@ function playEngineMove(moveObj){
   }
   lastMove = {from:applied.from, to:applied.to};
   thinking = false;
-  playChessSound(pickMoveSound(capturedPiece));
+  playChessSound(pickMoveSound(capturedPiece), captureSoundScale(movingPieceBefore, capturedPiece));
   document.getElementById('btn-reroll').disabled = (candidateMoves.length<=1);
 
   const after = ()=>{ renderBoard(); logMoves(); updateOpeningPanel(); checkGameOver(); };
 
   if(fromEl && toEl && pcEl && boardEl){
-    flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after);
+    flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after, movingPieceBefore);
   } else if(capturedPiece){
     const fxEl = isEnPassant ? document.querySelector('.sq[data-sq="'+epSquare+'"]') : toEl;
-    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, after);
+    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, after, movingPieceBefore);
   } else {
     after();
   }
