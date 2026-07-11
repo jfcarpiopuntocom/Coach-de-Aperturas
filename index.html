@@ -244,7 +244,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   width:min(max(calc(100dvh - 340px), 240px), 81vw, 620px); aspect-ratio:1/1;
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
-  overflow:hidden; min-height:0; min-width:0;
+  overflow:hidden; min-height:0; min-width:0; position:relative;
 }
 .sq{
   position:relative; display:flex; align-items:center; justify-content:center;
@@ -269,42 +269,257 @@ button:disabled{ opacity:0.35; cursor:default; }
 .coord.file{ bottom:1px; right:2px; }
 .coord.rank{ top:1px; left:2px; }
 
-@keyframes fx-dissolve-kf{
-  0%{ opacity:1; filter:blur(0); transform:scale(1); }
-  100%{ opacity:0; filter:blur(3px); transform:scale(0.15); }
+/* ============================================================
+   FX DE CAPTURA — 5 animaciones "imposibles" para un tablero
+   de terminal verde/naranja. 0.76s cada una (2x el original).
+   Cada .sq.fx-* dispara la animacion del glifo (.pc) y además
+   un ::before de cuerpo completo para el efecto de pantalla
+   (flash, onda de choque, barrido, ruido). ::after queda libre
+   para .legal/.capture, que pueden coexistir en el mismo cuadro.
+   ============================================================ */
+
+/* 1) DEGAUSS — colapso estilo "apagado de TV CRT": la pieza se
+   aplasta a una linea horizontal brillante y esa linea se traga
+   a si misma hasta un punto, con un fogonazo de pantalla. */
+@keyframes fx-degauss-kf{
+  0%  { opacity:1; transform:scaleX(1) scaleY(1); filter:brightness(1) blur(0); }
+  30% { transform:scaleX(1.35) scaleY(0.22); filter:brightness(2.4) blur(0.3px); }
+  50% { transform:scaleX(1.6) scaleY(0.05); filter:brightness(4) blur(0.5px); opacity:1; }
+  68% { transform:scaleX(1.15) scaleY(0.02); filter:brightness(6) blur(0px); }
+  86% { transform:scaleX(0.25) scaleY(0.015); filter:brightness(8); opacity:1; }
+  100%{ transform:scaleX(0) scaleY(0); filter:brightness(10); opacity:0; }
 }
-@keyframes fx-shatter-kf{
-  0%{ opacity:1; transform:rotate(0) translate(0,0); }
-  25%{ transform:rotate(-12deg) translate(-3px,-2px); }
-  50%{ transform:rotate(10deg) translate(3px,2px); opacity:0.7; }
-  75%{ transform:rotate(-16deg) translate(-4px,3px); opacity:0.35; }
-  100%{ opacity:0; transform:rotate(25deg) translate(8px,8px) scale(0.3); }
+@keyframes fx-degauss-flash-kf{
+  0%  { opacity:0; background:var(--green); }
+  48% { opacity:0; }
+  56% { opacity:0.9; }
+  64% { opacity:0; }
+  100%{ opacity:0; }
 }
+.sq.fx-dissolve .pc{ animation: fx-degauss-kf 0.76s cubic-bezier(.7,0,.84,0) forwards; }
+.sq.fx-dissolve::before{
+  content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen;
+  animation: fx-degauss-flash-kf 0.76s ease-out forwards;
+}
+
+/* 2) PIXEL SHATTER — el glifo se rompe en 3 "esquirlas" (copias
+   de si mismo via data-glyph) que salen disparadas en direcciones
+   distintas con rotacion entrecortada, como sprites de 8-bit. */
+@keyframes fx-shatter-core-kf{
+  0% { opacity:1; transform:rotate(0) translate(0,0) scale(1); }
+  20%{ transform:rotate(-6deg) translate(-1px,-1px) scale(1.05); }
+  100%{ opacity:0; transform:rotate(8deg) translate(2px,10px) scale(0.2); }
+}
+@keyframes fx-shard-a-kf{
+  0%  { opacity:0.95; transform:translate(0,0) rotate(0deg) scale(0.92); }
+  100%{ opacity:0; transform:translate(-1.6em,-1.3em) rotate(-140deg) scale(0.35); }
+}
+@keyframes fx-shard-b-kf{
+  0%  { opacity:0.9; transform:translate(0,0) rotate(0deg) scale(0.88); }
+  100%{ opacity:0; transform:translate(1.7em,-0.6em) rotate(160deg) scale(0.3); }
+}
+@keyframes fx-shard-c-kf{
+  0%  { opacity:0.85; transform:translate(0,0) rotate(0deg) scale(0.8); }
+  100%{ opacity:0; transform:translate(0.2em,1.7em) rotate(200deg) scale(0.25); }
+}
+.sq.fx-shatter .pc{ animation: fx-shatter-core-kf 0.76s steps(9) forwards; position:relative; z-index:2; }
+.sq.fx-shatter .pc::before, .sq.fx-shatter .pc::after, .sq.fx-shatter::before{
+  content: attr(data-glyph); position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  pointer-events:none; color:inherit; text-shadow:inherit; font:inherit;
+}
+.sq.fx-shatter .pc::before{ animation: fx-shard-a-kf 0.76s steps(7) forwards; }
+.sq.fx-shatter .pc::after { animation: fx-shard-b-kf 0.76s steps(7) forwards; }
+.sq.fx-shatter::before   { animation: fx-shard-c-kf 0.76s steps(7) forwards; z-index:1; }
+.sq.fx-shatter:has(.pc.w)::before{ color:var(--green); text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.7); }
+.sq.fx-shatter:has(.pc.b)::before{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1.5) rgba(255,127,0,0.7); }
+
+/* 3) EMP PULSE — inversion estroboscopica (varios "latidos") mas
+   una onda de choque cuadrada que se expande desde la casilla,
+   como un pulso electromagnetico friendo la pieza. */
 @keyframes fx-flash-kf{
-  0%{ filter:invert(0); opacity:1; }
-  30%{ filter:invert(1); opacity:1; }
-  60%{ filter:invert(0); opacity:1; }
-  100%{ filter:invert(0); opacity:0; transform:scale(0.5); }
+  0%  { filter:invert(0) brightness(1); opacity:1; transform:scale(1); }
+  10% { filter:invert(1) brightness(2); }
+  20% { filter:invert(0) brightness(1); }
+  30% { filter:invert(1) brightness(2.4); }
+  40% { filter:invert(0) brightness(1); }
+  52% { filter:invert(1) brightness(3); transform:scale(1.08); }
+  64% { filter:invert(0) brightness(1); transform:scale(1); }
+  100%{ filter:invert(0) brightness(1); opacity:0; transform:scale(0.4); }
 }
+@keyframes fx-shockwave-kf{
+  0%  { opacity:0.9; transform:scale(0.2); border-width:calc(var(--u)*1.5); }
+  60% { opacity:0.55; }
+  100%{ opacity:0; transform:scale(2.6); border-width:0; }
+}
+.sq.fx-flash .pc{ animation: fx-flash-kf 0.76s steps(12) forwards; }
+.sq.fx-flash::before{
+  content:""; position:absolute; inset:0; pointer-events:none; border:calc(var(--u)*1.5) solid var(--orange);
+  animation: fx-shockwave-kf 0.76s ease-out forwards;
+}
+
+/* 4) PHOSPHOR SCAN BURN — una barra de barrido baja quemando el
+   glifo a su paso (clip-path siguiendo el mismo progreso) y deja
+   una estela de fosforo que se apaga lentamente, como un monitor
+   Hercules recien apagado. */
 @keyframes fx-scanwipe-kf{
-  0%{ opacity:1; clip-path:inset(0 0 0 0); filter:brightness(1); }
-  40%{ opacity:1; clip-path:inset(0 0 60% 0); filter:brightness(2.2); }
-  70%{ clip-path:inset(0 0 90% 0); filter:brightness(3); }
-  100%{ opacity:0; clip-path:inset(0 0 100% 0); filter:brightness(3); }
+  0%  { opacity:1; clip-path:inset(0 0 0 0); filter:brightness(1); }
+  35% { opacity:1; clip-path:inset(0 0 55% 0); filter:brightness(2.6); }
+  55% { clip-path:inset(0 0 80% 0); filter:brightness(3.4); }
+  80% { clip-path:inset(0 0 96% 0); filter:brightness(4); opacity:0.6; }
+  100%{ opacity:0; clip-path:inset(0 0 100% 0); filter:brightness(4); }
 }
+@keyframes fx-scanbar-kf{
+  0%  { top:-8%; opacity:0; box-shadow:0 0 0 rgba(57,255,20,0); }
+  8%  { opacity:1; }
+  85% { opacity:1; }
+  100%{ top:104%; opacity:0; box-shadow:0 0 calc(var(--u)*3) 2px rgba(57,255,20,0.9); }
+}
+.sq.fx-scanwipe .pc{ animation: fx-scanwipe-kf 0.76s linear forwards; }
+.sq.fx-scanwipe::before{
+  content:""; position:absolute; left:0; right:0; height:14%; pointer-events:none;
+  background:linear-gradient(to bottom, rgba(57,255,20,0), rgba(57,255,20,0.95), rgba(57,255,20,0));
+  animation: fx-scanbar-kf 0.76s linear forwards;
+}
+
+/* 5) DATAMOSH — aberracion cromatica digital: fantasmas rojo/cian
+   del glifo se separan y tiemblan a saltos (steps) antes de que
+   todo colapse en ruido estatico y desaparezca. Lo mas "hacker"
+   de las cinco, a proposito, para el golpe de sorpresa. */
 @keyframes fx-glitch-kf{
-  0%{ opacity:1; transform:translate(0,0); filter:hue-rotate(0deg); }
-  20%{ transform:translate(-3px,1px); filter:hue-rotate(30deg); }
-  40%{ transform:translate(3px,-2px) scaleX(1.1); opacity:0.8; }
-  60%{ transform:translate(-2px,2px) scaleX(0.9); filter:hue-rotate(-20deg); opacity:0.6; }
-  80%{ transform:translate(2px,-1px); opacity:0.3; }
-  100%{ opacity:0; transform:translate(0,4px) scaleX(1); }
+  0%  { opacity:1; transform:translate(0,0) skewX(0); filter:hue-rotate(0deg) contrast(1); }
+  15% { transform:translate(-4px,1px) skewX(4deg); filter:hue-rotate(40deg) contrast(1.4); }
+  30% { transform:translate(4px,-2px) skewX(-6deg) scaleX(1.08); opacity:0.9; }
+  45% { transform:translate(-5px,2px) skewX(3deg) scaleX(0.9); filter:hue-rotate(-30deg) contrast(1.8); opacity:0.75; }
+  60% { transform:translate(3px,-3px) skewX(-3deg); filter:hue-rotate(60deg); opacity:0.55; }
+  75% { transform:translate(-2px,3px) skewX(5deg); opacity:0.35; }
+  90% { transform:translate(2px,-1px); opacity:0.15; }
+  100%{ opacity:0; transform:translate(0,5px) skewX(0); }
 }
-.sq.fx-dissolve .pc{ animation: fx-dissolve-kf 0.38s ease-out forwards; }
-.sq.fx-shatter .pc{ animation: fx-shatter-kf 0.38s steps(6) forwards; }
-.sq.fx-flash .pc{ animation: fx-flash-kf 0.38s ease-in forwards; }
-.sq.fx-scanwipe .pc{ animation: fx-scanwipe-kf 0.38s steps(8) forwards; }
-.sq.fx-glitch .pc{ animation: fx-glitch-kf 0.38s steps(5) forwards; }
+@keyframes fx-rgbsplit-a-kf{
+  0%  { opacity:0.75; transform:translate(0,0); }
+  40% { transform:translate(-3px,0.5px); opacity:0.6; }
+  70% { transform:translate(-2px,-1px); opacity:0.3; }
+  100%{ opacity:0; transform:translate(-4px,1px); }
+}
+@keyframes fx-rgbsplit-b-kf{
+  0%  { opacity:0.75; transform:translate(0,0); }
+  40% { transform:translate(3px,-0.5px); opacity:0.6; }
+  70% { transform:translate(2px,1px); opacity:0.3; }
+  100%{ opacity:0; transform:translate(4px,-1px); }
+}
+.sq.fx-glitch .pc{ animation: fx-glitch-kf 0.76s steps(10) forwards; position:relative; z-index:2; }
+.sq.fx-glitch .pc::before, .sq.fx-glitch .pc::after{
+  content: attr(data-glyph); position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  pointer-events:none; font:inherit;
+}
+.sq.fx-glitch .pc::before{ color:#ff2b4a; animation: fx-rgbsplit-a-kf 0.76s steps(8) forwards; }
+.sq.fx-glitch .pc::after { color:#20e0ff; animation: fx-rgbsplit-b-kf 0.76s steps(8) forwards; }
+
+/* ============================================================
+   IMPACTO DE TABLERO COMPLETO — sin esto, el fx queda encerrado
+   en una casilla de ~37px y se pierde dentro de un tablero de
+   500-600px. Cada captura sacude/flashea el #board ENTERO para
+   que el golpe se sienta a escala real, no solo en la casilla.
+   ============================================================ */
+@keyframes board-shake-soft-kf{
+  0%,100%{ transform:translate(0,0); }
+  10%{ transform:translate(-2px,1px); }
+  25%{ transform:translate(2px,-1px); }
+  40%{ transform:translate(-1px,2px); }
+  55%{ transform:translate(1px,-2px); }
+  70%{ transform:translate(-1px,1px); }
+  85%{ transform:translate(1px,0); }
+}
+@keyframes board-shake-hard-kf{
+  0%,100%{ transform:translate(0,0) rotate(0deg); }
+  8% { transform:translate(-4px,2px) rotate(-0.4deg); }
+  18%{ transform:translate(4px,-3px) rotate(0.5deg); }
+  28%{ transform:translate(-4px,3px) rotate(-0.5deg); }
+  38%{ transform:translate(3px,-2px) rotate(0.3deg); }
+  50%{ transform:translate(-3px,2px) rotate(-0.3deg); }
+  62%{ transform:translate(2px,-1px); }
+  75%{ transform:translate(-1px,1px); }
+  88%{ transform:translate(1px,0); }
+}
+@keyframes board-flash-green-kf{
+  0%{ box-shadow:0 0 0 0 rgba(57,255,20,0), inset 0 0 0 0 rgba(57,255,20,0); }
+  50%{ box-shadow:0 0 calc(var(--u)*10) 2px rgba(57,255,20,0.85), inset 0 0 calc(var(--u)*14) rgba(57,255,20,0.35); }
+  100%{ box-shadow:0 0 0 0 rgba(57,255,20,0), inset 0 0 0 0 rgba(57,255,20,0); }
+}
+@keyframes board-flash-orange-kf{
+  0%{ box-shadow:0 0 0 0 rgba(255,127,0,0), inset 0 0 0 0 rgba(255,127,0,0); }
+  50%{ box-shadow:0 0 calc(var(--u)*10) 2px rgba(255,127,0,0.85), inset 0 0 calc(var(--u)*14) rgba(255,127,0,0.35); }
+  100%{ box-shadow:0 0 0 0 rgba(255,127,0,0), inset 0 0 0 0 rgba(255,127,0,0); }
+}
+@keyframes board-desync-kf{
+  0%,100%{ filter:none; }
+  20%{ filter:hue-rotate(15deg) contrast(1.15); }
+  45%{ filter:hue-rotate(-10deg) contrast(1.3); }
+  70%{ filter:hue-rotate(8deg) contrast(1.1); }
+}
+#board.board-impact{ animation: board-shake-soft-kf 0.76s ease-in-out; }
+#board.impact-dissolve{ animation: board-shake-soft-kf 0.76s ease-in-out, board-flash-green-kf 0.76s ease-out; }
+#board.impact-shatter{ animation: board-shake-hard-kf 0.76s steps(11); }
+#board.impact-flash{ animation: board-shake-hard-kf 0.76s steps(13), board-flash-orange-kf 0.76s ease-out; }
+#board.impact-scanwipe{ animation: board-flash-green-kf 0.76s ease-out; }
+#board.impact-glitch{ animation: board-shake-hard-kf 0.76s steps(10), board-desync-kf 0.76s steps(10); }
+
+/* ============================================================
+   VUELO DE PIEZA — cada jugada (con o sin captura) desliza la
+   pieza de origen a destino: un clon absoluto viaja por encima
+   del tablero, con 2 ecos de fosforo rezagados (estela retro) y
+   una linea de trayectoria tipo HUD que se "dibuja" debajo, mas
+   un aterrizaje con micro-onda de choque. Lowkey pero con clase.
+   ============================================================ */
+.pc-fly{
+  position:absolute; z-index:42; display:flex; align-items:center; justify-content:center;
+  pointer-events:none; font-family:var(--font-term); will-change:transform;
+}
+.pc-fly.w{ color:var(--green); text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.7); }
+.pc-fly.b{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1.5) rgba(255,127,0,0.7); }
+.pc-fly.echo{ z-index:41; }
+.pc-fly.echo1{ opacity:0.34; filter:blur(0.5px); }
+.pc-fly.echo2{ opacity:0.16; filter:blur(1px); }
+@keyframes pc-land-kf{
+  0%{ transform:scale(1); }
+  100%{ transform:scale(1); }
+}
+.pc-fly.landing{ animation: pc-squash-kf 0.26s ease-out; }
+@keyframes pc-squash-kf{
+  0%{ transform:scale(1,1); }
+  35%{ transform:scale(1.22,0.78); }
+  65%{ transform:scale(0.9,1.1); }
+  100%{ transform:scale(1,1); }
+}
+.landing-ring{
+  position:absolute; z-index:40; pointer-events:none; border-radius:2px;
+  border:calc(var(--u)*0.75) solid var(--green); box-sizing:border-box;
+}
+.landing-ring.b{ border-color:var(--orange); }
+@keyframes landing-ring-kf{
+  0%{ opacity:0.85; transform:scale(0.35); }
+  100%{ opacity:0; transform:scale(1.9); }
+}
+.landing-ring{ animation: landing-ring-kf 0.4s ease-out forwards; }
+.traj-line{ position:absolute; z-index:39; pointer-events:none; overflow:visible; }
+.traj-line path{
+  fill:none; stroke:var(--green); stroke-width:2; stroke-linecap:round;
+  filter:drop-shadow(0 0 3px rgba(57,255,20,0.9));
+}
+.traj-line.b path{ stroke:var(--orange); filter:drop-shadow(0 0 3px rgba(255,127,0,0.9)); }
+@keyframes traj-draw-kf{
+  0%{ stroke-dashoffset:var(--len); opacity:0.95; }
+  70%{ stroke-dashoffset:0; opacity:0.7; }
+  100%{ stroke-dashoffset:0; opacity:0; }
+}
+.traj-line path{ animation: traj-draw-kf 0.42s steps(14) forwards; }
+@keyframes board-shake-tiny-kf{
+  0%,100%{ transform:translate(0,0); }
+  30%{ transform:translate(-1.5px,1px); }
+  60%{ transform:translate(1.5px,-1px); }
+  85%{ transform:translate(-0.5px,0.5px); }
+}
+#board.board-impact-soft{ animation: board-shake-tiny-kf 0.3s ease-out; }
 
 #status-bar{
   font-size:calc(var(--u)*4.5); color:var(--green-dim); text-align:right;
@@ -614,7 +829,7 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
   .eco-badge{ margin-bottom:var(--u); padding:calc(var(--u)*0.5) calc(var(--u)*1.5); }
   #opening-name{ font-size:calc(var(--u)*5); }
   .game-controls button{ padding:calc(var(--u)*0.5) calc(var(--u)*2); font-size:calc(var(--u)*4); }
-  #board{ width:min(max(calc(100dvh - 440px), 200px), 81vw, 560px); }
+  #board{ width:min(max(calc(100dvh - 380px), 200px), 81vw, 560px); }
 }
 
 /* Pendiente explicito de la nota: <600px de alto. Chrome al minimo
@@ -627,7 +842,7 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
   .opening-card{ padding:var(--u) calc(var(--u)*2); }
   #opening-name{ font-size:calc(var(--u)*4.5); }
   .game-controls button{ padding:calc(var(--u)*0.4) calc(var(--u)*1.5); font-size:calc(var(--u)*3.5); }
-  #board{ width:min(max(calc(100dvh - 460px), 168px), 81vw, 560px); }
+  #board{ width:min(max(calc(100dvh - 400px), 168px), 81vw, 560px); }
   .col-left, .col-right{ gap:calc(var(--u)*2); }
   .periscope-card, .predict-card, .ai-card, .tip-card{ padding:calc(var(--u)*1.5); }
   #moves-log{ max-height:calc(var(--u)*9); }
@@ -646,7 +861,7 @@ header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
   .eco-badge{ padding:calc(var(--u)*0.3) calc(var(--u)*1); margin-bottom:calc(var(--u)*0.5); }
   #opening-name{ font-size:calc(var(--u)*4); }
   .game-controls button{ padding:calc(var(--u)*0.3) calc(var(--u)*1.25); font-size:calc(var(--u)*3.25); }
-  #board{ width:min(max(calc(100dvh - 480px), 120px), 81vw, 560px); }
+  #board{ width:min(max(calc(100dvh - 420px), 120px), 81vw, 560px); }
 }
 </style>
 </head>
@@ -3915,6 +4130,8 @@ function renderBoard(){
         const span = document.createElement('span');
         span.className = 'pc ' + (piece.color==='w'?'w':'b');
         span.textContent = pieceGlyph(piece.type, piece.color);
+        span.dataset.glyph = span.textContent;
+        sq.dataset.glyph = span.textContent;
         sq.appendChild(span);
       } else {
         const dot = document.createElement('span');
@@ -4067,22 +4284,135 @@ function makeMoveWithFx(from, to, after, promotion){
   const isEnPassant = movingPiece && movingPiece.type==='p' && to[0]!==from[0] && !game.get(to);
   const epSquare = isEnPassant ? (to[0] + from[1]) : null;
   const capturedPiece = isEnPassant ? game.get(epSquare) : game.get(to);
+
+  // Geometria y elementos ANTES de tocar el estado: game.move() solo muta
+  // el objeto 'game', el DOM no cambia hasta el proximo renderBoard(), asi
+  // que fromEl/pcEl siguen mostrando la pieza en su casilla de origen
+  // durante toda la animacion de vuelo.
+  const boardEl = document.getElementById('board');
+  const fromEl = document.querySelector('.sq[data-sq="'+from+'"]');
+  const toEl = document.querySelector('.sq[data-sq="'+to+'"]');
+  const pcEl = fromEl ? fromEl.querySelector('.pc') : null;
+
   const moveObj = game.move({from, to, promotion: promotion || 'q'});
   if(!moveObj) return;
   lastMove = {from,to};
 
+  const canFly = !!(fromEl && toEl && pcEl && boardEl);
+  if(canFly){
+    flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after);
+    return;
+  }
   if(capturedPiece){
-    const fxSquare = isEnPassant ? epSquare : to;
-    const el = document.querySelector('.sq[data-sq="'+fxSquare+'"]');
-    const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch'];
-    const effClass = effects[capturedPiece.type.charCodeAt(0) % effects.length];
-    if(el){
-      el.classList.add(effClass);
-      setTimeout(()=>{ finishMove(after); }, 380);
-      return;
-    }
+    const fxEl = isEnPassant ? document.querySelector('.sq[data-sq="'+epSquare+'"]') : toEl;
+    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, after);
+    return;
   }
   finishMove(after);
+}
+
+/* Vuelo de pieza: clon absoluto que desliza de origen a destino, con dos
+   ecos de fosforo rezagados y una linea de trayectoria HUD que se dibuja
+   debajo. Si hay captura, coordina con la destruccion existente (fx-*)
+   para que el atacante aterrice mientras el objetivo se desintegra. */
+function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after){
+  const boardRect = boardEl.getBoundingClientRect();
+  const fromRect = fromEl.getBoundingClientRect();
+  const toRect = toEl.getBoundingClientRect();
+  const colorClass = pcEl.classList.contains('w') ? 'w' : 'b';
+  const glyph = pcEl.dataset.glyph || pcEl.textContent;
+  const cs = getComputedStyle(pcEl);
+
+  const dx = toRect.left - fromRect.left;
+  const dy = toRect.top - fromRect.top;
+  const isCapture = !!capturedPiece;
+  const flyDur = isCapture ? 430 : 360;
+
+  function makeGhost(extraClass){
+    const g = document.createElement('span');
+    g.className = 'pc-fly ' + colorClass + (extraClass ? ' '+extraClass : '');
+    g.textContent = glyph;
+    g.style.left = (fromRect.left - boardRect.left) + 'px';
+    g.style.top = (fromRect.top - boardRect.top) + 'px';
+    g.style.width = fromRect.width + 'px';
+    g.style.height = fromRect.height + 'px';
+    g.style.fontSize = cs.fontSize;
+    boardEl.appendChild(g);
+    return g;
+  }
+
+  // Linea de trayectoria HUD (se dibuja sola, como un trazador digital)
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const traj = document.createElementNS(svgNS, 'svg');
+  traj.setAttribute('class', 'traj-line ' + colorClass);
+  traj.style.position = 'absolute'; traj.style.left='0'; traj.style.top='0';
+  traj.style.width = boardRect.width+'px'; traj.style.height = boardRect.height+'px';
+  const x1 = (fromRect.left - boardRect.left) + fromRect.width/2;
+  const y1 = (fromRect.top - boardRect.top) + fromRect.height/2;
+  const x2 = (toRect.left - boardRect.left) + toRect.width/2;
+  const y2 = (toRect.top - boardRect.top) + toRect.height/2;
+  const len = Math.hypot(x2-x1, y2-y1);
+  const path = document.createElementNS(svgNS, 'path');
+  path.setAttribute('d', `M${x1},${y1} L${x2},${y2}`);
+  path.style.strokeDasharray = String(len);
+  path.style.setProperty('--len', String(len));
+  traj.appendChild(path);
+  boardEl.appendChild(traj);
+
+  pcEl.style.opacity = '0';
+
+  const echo2 = makeGhost('echo echo2');
+  const echo1 = makeGhost('echo echo1');
+  const flyer = makeGhost('');
+
+  const timing = { duration: flyDur, easing: 'cubic-bezier(.18,.85,.24,1)', fill:'forwards' };
+  const kf = [{ transform:'translate(0,0)' }, { transform:`translate(${dx}px, ${dy}px)` }];
+  flyer.animate(kf, timing);
+  echo1.animate(kf, {...timing, duration: flyDur+70, delay:55});
+  echo2.animate(kf, {...timing, duration: flyDur+70, delay:110});
+
+  if(isCapture){
+    const fxEl = isEnPassant ? document.querySelector('.sq[data-sq="'+epSquare+'"]') : toEl;
+    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, null);
+  }
+
+  setTimeout(()=>{
+    // Aterrizaje: micro onda de choque + squash, sobre lo que ya haya
+    const ring = document.createElement('div');
+    ring.className = 'landing-ring ' + colorClass;
+    ring.style.left = (toRect.left - boardRect.left) + 'px';
+    ring.style.top = (toRect.top - boardRect.top) + 'px';
+    ring.style.width = toRect.width + 'px';
+    ring.style.height = toRect.height + 'px';
+    boardEl.appendChild(ring);
+    flyer.classList.add('landing');
+    if(!isCapture){ boardEl.classList.add('board-impact-soft'); }
+    setTimeout(()=>{ boardEl.classList.remove('board-impact-soft'); }, 320);
+  }, flyDur - 40);
+
+  const cleanupDelay = isCapture ? 760 : (flyDur + 140);
+  setTimeout(()=>{
+    [flyer, echo1, echo2, traj].forEach(el=>{ if(el && el.remove) el.remove(); });
+    document.querySelectorAll('.landing-ring').forEach(el=>el.remove());
+    finishMove(after);
+  }, cleanupDelay);
+}
+
+function triggerCaptureFx(toEl, capturedPiece, isEnPassant, epSquare, after){
+  const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch'];
+  const effClass = effects[capturedPiece.type.charCodeAt(0) % effects.length];
+  if(toEl){
+    toEl.classList.add(effClass);
+    const boardEl = document.getElementById('board');
+    const impactClass = 'impact-' + effClass.replace('fx-','');
+    boardEl.classList.add('board-impact', impactClass);
+    setTimeout(()=>{
+      boardEl.classList.remove('board-impact', impactClass);
+      if(after !== null) finishMove(after);
+    }, 760);
+    return;
+  }
+  if(after !== null) finishMove(after);
 }
 function finishMove(after){
   logMoves();
@@ -4910,16 +5240,27 @@ function uciToMoveObj(uci){
 
 function playEngineMove(moveObj){
   if(!moveObj){ thinking=false; checkGameOver(); return; }
-  const capturedPiece = game.get(moveObj.to);
-  let applied = game.move({from:moveObj.from, to:moveObj.to, promotion:moveObj.promotion||'q'});
-  if(!applied){
-    const legal = game.moves({verbose:true});
-    const fallback = legal.find(m=>m.from===moveObj.from && m.to===moveObj.to) || legal[0];
-    if(fallback) applied = game.move({from:fallback.from,to:fallback.to,promotion:'q'});
+  const legal = game.moves({verbose:true});
+  let resolved = legal.find(m=>m.from===moveObj.from && m.to===moveObj.to) || legal[0];
+  if(!resolved){
+    thinking = false;
+    document.getElementById('btn-reroll').disabled = true;
+    checkGameOver();
+    return;
   }
+  const from = resolved.from, to = resolved.to;
+  const movingPieceBefore = game.get(from);
+  const isEnPassant = movingPieceBefore && movingPieceBefore.type==='p' && to[0]!==from[0] && !game.get(to);
+  const epSquare = isEnPassant ? (to[0] + from[1]) : null;
+  const capturedPiece = isEnPassant ? game.get(epSquare) : game.get(to);
+
+  const boardEl = document.getElementById('board');
+  const fromEl = document.querySelector('.sq[data-sq="'+from+'"]');
+  const toEl = document.querySelector('.sq[data-sq="'+to+'"]');
+  const pcEl = fromEl ? fromEl.querySelector('.pc') : null;
+
+  const applied = game.move({from, to, promotion: resolved.promotion || moveObj.promotion || 'q'});
   if(!applied){
-    // ninguna jugada (propuesta ni fallback) pudo aplicarse: no toques lastMove,
-    // no finjas que hubo movimiento. Probablemente la partida ya terminó.
     thinking = false;
     document.getElementById('btn-reroll').disabled = true;
     checkGameOver();
@@ -4929,10 +5270,16 @@ function playEngineMove(moveObj){
   thinking = false;
   document.getElementById('btn-reroll').disabled = (candidateMoves.length<=1);
 
-  renderBoard();
-  logMoves();
-  updateOpeningPanel();
-  checkGameOver();
+  const after = ()=>{ renderBoard(); logMoves(); updateOpeningPanel(); checkGameOver(); };
+
+  if(fromEl && toEl && pcEl && boardEl){
+    flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after);
+  } else if(capturedPiece){
+    const fxEl = isEnPassant ? document.querySelector('.sq[data-sq="'+epSquare+'"]') : toEl;
+    triggerCaptureFx(fxEl, capturedPiece, isEnPassant, epSquare, after);
+  } else {
+    after();
+  }
 }
 
 function rerollMove(){
