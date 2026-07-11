@@ -116,7 +116,7 @@ header.hero{
 .title-ascii .side-w{ color:var(--green); }
 .title-ascii .side-b{ color:var(--orange); }
 .tagline{
-  font-size:calc(var(--u)*5); color:var(--green); letter-spacing:0.5px;
+  font-size:calc(var(--u)*4.5); color:var(--green); letter-spacing:0.5px;
   white-space:nowrap;
 }
 
@@ -152,7 +152,7 @@ header.hero{
 
 .levels{ display:flex; gap:var(--u); width:100%; justify-content:center; flex-wrap:nowrap; }
 button{
-  font-family:var(--font-term); font-size:calc(var(--u)*5);
+  font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   background:var(--bg-panel); color:var(--green);
   border:calc(var(--u)*0.5) solid var(--green-dim); padding:calc(var(--u)*1) calc(var(--u)*2.5);
   cursor:pointer; letter-spacing:0.5px;
@@ -178,7 +178,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.dark{ background:var(--sq-b); }
 .sq .pc.w{ color:var(--green); text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.7); }
 .sq .pc.b{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1.5) rgba(255,127,0,0.7); }
-.sq .dot{ color:var(--green); font-size:calc(var(--u)*5); }
+.sq .dot{ color:var(--green); font-size:calc(var(--u)*4.5); }
 .sq.selected{ outline:calc(var(--u)*0.75) solid var(--orange); outline-offset:-2px; }
 .sq.legal::after{
   content:""; position:absolute; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5);
@@ -188,7 +188,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   width:80%; height:80%; background:transparent; border:calc(var(--u)*1) solid var(--orange);
 }
 .sq.last{ box-shadow:inset 0 0 0 calc(var(--u)*1) var(--green-dim); }
-.coord{ position:absolute; font-size:calc(var(--u)*5); color:var(--green); font-family:var(--font-term); }
+.coord{ position:absolute; font-size:calc(var(--u)*4.5); color:var(--green); font-family:var(--font-term); }
 .coord.file{ bottom:1px; right:2px; }
 .coord.rank{ top:1px; left:2px; }
 
@@ -230,7 +230,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.fx-glitch .pc{ animation: fx-glitch-kf 0.38s steps(5) forwards; }
 
 #status-bar{
-  font-size:calc(var(--u)*5); color:var(--green-dim); text-align:right;
+  font-size:calc(var(--u)*4.5); color:var(--green-dim); text-align:right;
   min-width:0; flex-shrink:1;
 }
 #status-bar.thinking{ color:var(--orange); }
@@ -240,7 +240,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #moves-log{
   width:100%; background:var(--bg-panel); border:1px solid var(--green-dim);
-  padding:calc(var(--u)*2); font-size:calc(var(--u)*5); max-height:calc(var(--u)*14);
+  padding:calc(var(--u)*2); font-size:calc(var(--u)*4.5); max-height:calc(var(--u)*14);
   overflow-y:auto; line-height:1.6; color:var(--green);
 }
 #moves-log .mv-num{ color:#888888; margin-right:calc(var(--u)*0.5); }
@@ -256,12 +256,12 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 .lm-box.lm-ai{ border-color:var(--orange-dim); }
 .lm-tag{
-  display:block; font-family:var(--font-term); font-size:calc(var(--u)*5);
+  display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   color:var(--green); letter-spacing:1px; margin-bottom:calc(var(--u)*1);
 }
 .lm-ai .lm-tag{ color:#E86040; }
 .lm-val{
-  font-family:var(--font-term); font-size:calc(var(--u)*5); color:var(--green);
+  font-family:var(--font-term); font-size:calc(var(--u)*4.5); color:var(--green);
   text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.5); letter-spacing:1px;
 }
 .lm-ai .lm-val{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1.5) rgba(255,127,0,0.5); }
@@ -282,32 +282,32 @@ button:disabled{ opacity:0.35; cursor:default; }
   gap:calc(var(--u)*2); margin-bottom:calc(var(--u)*1.5);
 }
 .opening-kicker{
-  font-size:calc(var(--u)*5); color:var(--green-dim);
+  font-size:calc(var(--u)*4.5); color:var(--green-dim);
   letter-spacing:2px; text-transform:uppercase; white-space:nowrap;
 }
 .eco-badge{
-  display:inline-block; font-family:var(--font-term); font-size:calc(var(--u)*5);
+  display:inline-block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   background:var(--green-dim); color:#000; padding:calc(var(--u)*1) calc(var(--u)*2);
   margin-bottom:calc(var(--u)*2);
 }
 #opening-name{
-  font-size:calc(var(--u)*7); color:var(--green); font-weight:bold; line-height:1.2;
+  font-size:calc(var(--u)*6); color:var(--green); font-weight:bold; line-height:1.2;
   text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.35);
 }
 #opening-moves{
   display:inline-block; margin-top:calc(var(--u)*2); font-family:var(--font-term);
-  font-size:calc(var(--u)*5); color:var(--green); letter-spacing:1px;
+  font-size:calc(var(--u)*4.5); color:var(--green); letter-spacing:1px;
 }
 
 /* ---------- % de victorias histórico, opcional y discreto ---------- */
 .wp-toggle{
-  display:inline-block; cursor:pointer; font-family:var(--font-term); font-size:calc(var(--u)*5);
+  display:inline-block; cursor:pointer; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   color:var(--green); border:1px dashed #39FF14; padding:0 calc(var(--u)*1);
   margin-left:calc(var(--u)*1.5); vertical-align:middle; user-select:none;
 }
 .wp-toggle:hover{ color:#39FF14; border-color:#39FF14; }
 .wp-detail{
-  display:none; font-family:var(--font-term); font-size:calc(var(--u)*5); color:var(--green);
+  display:none; font-family:var(--font-term); font-size:calc(var(--u)*4.5); color:var(--green);
   margin-left:calc(var(--u)*1); vertical-align:middle;
 }
 .wp-detail.open{ display:inline; }
@@ -320,7 +320,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   position:relative; overflow:hidden; display:flex; align-items:center; gap:calc(var(--u)*2.5);
 }
 .periscope-label{
-  display:block; font-family:var(--font-term); font-size:calc(var(--u)*5);
+  display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   color:var(--green); letter-spacing:0.5px; line-height:1.6; flex:1;
 }
 #periscope-board{
@@ -334,7 +334,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   background:repeating-linear-gradient(0deg, rgba(57,255,20,0.05) 0px, rgba(57,255,20,0.05) 1px, transparent 1px, transparent 3px);
   mix-blend-mode:overlay;
 }
-.psq{ display:flex; align-items:center; justify-content:center; font-size:calc(var(--u)*5); }
+.psq{ display:flex; align-items:center; justify-content:center; font-size:calc(var(--u)*4.5); }
 .psq.light{ background:var(--sq-a); }
 .psq.dark{ background:var(--sq-b); }
 #board.flipped{ transform:rotate(180deg); }
@@ -346,19 +346,19 @@ button:disabled{ opacity:0.35; cursor:default; }
   padding:calc(var(--u)*2); text-align:center;
 }
 .ai-label{
-  display:block; font-family:var(--font-term); font-size:calc(var(--u)*5);
+  display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   color:var(--green); margin-bottom:calc(var(--u)*2); letter-spacing:1px;
 }
 .eco-badge-ai{
-  display:inline-block; font-family:var(--font-term); font-size:calc(var(--u)*5);
+  display:inline-block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   background:var(--orange); color:#000; padding:calc(var(--u)*0.75) calc(var(--u)*1.75);
   margin-bottom:calc(var(--u)*1.5);
 }
 #ai-defense-name{
-  font-size:calc(var(--u)*5); color:var(--orange); font-weight:bold; line-height:1.3;
+  font-size:calc(var(--u)*4.5); color:var(--orange); font-weight:bold; line-height:1.3;
 }
 #ai-defense-tip{
-  margin-top:calc(var(--u)*2); font-size:calc(var(--u)*5); color:var(--green); line-height:1.5;
+  margin-top:calc(var(--u)*2); font-size:calc(var(--u)*4.5); color:var(--green); line-height:1.5;
 }
 
 /* ---------- 2c. LOG DE DEFENSAS DE LA IA VISTAS EN LA SESIÓN ---------- */
@@ -366,15 +366,15 @@ button:disabled{ opacity:0.35; cursor:default; }
 .chip-list{ display:flex; flex-wrap:wrap; gap:calc(var(--u)*1.5); }
 .chip{
   background:var(--bg-panel); border:1px solid var(--green); color:var(--green);
-  padding:calc(var(--u)*1) calc(var(--u)*1.75); font-size:calc(var(--u)*5); white-space:normal;
+  padding:calc(var(--u)*1) calc(var(--u)*1.75); font-size:calc(var(--u)*4.5); white-space:normal;
 }
 .chip .chip-eco{ color:#E86040; margin-right:calc(var(--u)*1); }
-.chip-empty{ color:var(--green); font-size:calc(var(--u)*5); }
+.chip-empty{ color:var(--green); font-size:calc(var(--u)*4.5); }
 
 /* ---------- 2d. PREDICTOR DE APERTURAS POSIBLES ---------- */
 /* POSICION: INMEDIATAMENTE BAJO EL TABLERO — no mover */
 .predict-label{
-  display:block; font-family:var(--font-term); font-size:calc(var(--u)*5);
+  display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   color:var(--orange); margin-bottom:calc(var(--u)*2); letter-spacing:2px;
   text-transform:uppercase;
 }
@@ -383,7 +383,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   padding:calc(var(--u)*3) calc(var(--u)*3);
 }
 .predict-count{
-  font-family:var(--font-term); font-size:calc(var(--u)*5); color:var(--green);
+  font-family:var(--font-term); font-size:calc(var(--u)*4.5); color:var(--green);
   margin-bottom:calc(var(--u)*2); letter-spacing:1px;
 }
 .chip .chip-next{ color:var(--orange); margin-right:calc(var(--u)*0.5); font-weight:bold; }
@@ -391,25 +391,25 @@ button:disabled{ opacity:0.35; cursor:default; }
 /* ---------- 3. CONSEJO DE VARIANTE ---------- */
 .tip-card{
   background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--orange);
-  padding:calc(var(--u)*2); font-size:calc(var(--u)*5); line-height:1.5;
+  padding:calc(var(--u)*2); font-size:calc(var(--u)*4.5); line-height:1.5;
 }
 .tip-card .tip-label{
-  display:block; font-family:var(--font-term); font-size:calc(var(--u)*5);
+  display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
   color:var(--orange); margin-bottom:calc(var(--u)*2); letter-spacing:1px;
 }
 
 /* ---------- 4. CONTEXTO (historia / partidas / perfil), oculto por defecto ---------- */
 .context-toggle{
   width:100%; background:transparent; border:1px dashed var(--green-dim);
-  color:var(--green); font-size:calc(var(--u)*5); padding:calc(var(--u)*2);
+  color:var(--green); font-size:calc(var(--u)*4.5); padding:calc(var(--u)*2);
 }
 .context-toggle:hover{ color:var(--green); border-color:var(--green); }
 .context-box{
-  display:none; font-size:calc(var(--u)*5); line-height:1.5; color:#bdf3b0;
+  display:none; font-size:calc(var(--u)*4.5); line-height:1.5; color:#bdf3b0;
 }
 .context-box.open{ display:block; }
 .context-box h3{
-  font-size:calc(var(--u)*5); color:var(--orange); text-transform:uppercase;
+  font-size:calc(var(--u)*4.5); color:var(--orange); text-transform:uppercase;
   letter-spacing:1px; margin:calc(var(--u)*3) 0 var(--u);
 }
 .context-box h3:first-child{ margin-top:0; }
@@ -423,20 +423,20 @@ button:disabled{ opacity:0.35; cursor:default; }
   border-top:1px dashed var(--green-dim);
 }
 .lore-label{
-  font-family:var(--font-term); font-size:calc(var(--u)*5); color:var(--green);
+  font-family:var(--font-term); font-size:calc(var(--u)*4.5); color:var(--green);
   letter-spacing:1px; margin-bottom:calc(var(--u)*2);
 }
 .lore-text{
-  font-size:calc(var(--u)*5); color:var(--green); line-height:1.6;
+  font-size:calc(var(--u)*4.5); color:var(--green); line-height:1.6;
 }
 .lore-text .cursor{ display:inline-block; width:calc(var(--u)*2); background:var(--green-dim);
   animation:blink 1s steps(1) infinite; }
 @keyframes blink{ 50%{ opacity:0; } }
 
-footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); padding:calc(var(--u)*4) 0 calc(var(--u)*6); }
+footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*4.5); padding:calc(var(--u)*4) 0 calc(var(--u)*6); }
 
 @media (min-width:640px){
-  #opening-name{ font-size:calc(var(--u)*8); }
+  #opening-name{ font-size:calc(var(--u)*7); }
   .sq{ font-size:calc(var(--u)*10); }
 }
 </style>
@@ -3474,6 +3474,77 @@ const OPENINGS_BATCH2 = [
 ["E09","Catalana, variante abierta con Nc3","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O dxc4 Qe2 Nc6"]
 ].map(function(a){ return {eco:a[0], name:a[1], moves:a[2]}; });
 
+/* ---- lote 3: huecos de la Inglesa, Reti, Catalana, Semi-Eslava,
+   Siciliana anti-teórica y algunas históricas/curiosas ---- */
+const OPENINGS_BATCH3 = [
+["A11","Reti, Eslava con g3","Nf3 d5 c4 c6 g3"],
+["A13","Inglesa, variante Kramnik","c4 e6 Nf3 d5 g3"],
+["A20","Inglesa Reversa con g3","c4 e5 g3"],
+["A21","Inglesa, variante Kramnik-Shirov","c4 e5 Nc3 Bb4"],
+["A22","Inglesa, Dos Caballos con g3","c4 e5 Nc3 Nf6 g3"],
+["A26","Inglesa, Siciliana Invertida cerrada con e4","c4 e5 Nc3 Nc6 g3 g6 Bg2 Bg7 d3 d6 e4"],
+["A28","Inglesa, Cuatro Caballos con d4","c4 e5 Nc3 Nf6 Nf3 Nc6 d4"],
+["A35","Inglesa Simetrica con Nc3","c4 c5 Nc3 Nc6"],
+["A36","Inglesa Simetrica, Botvinnik","c4 c5 Nc3 g6 g3 Bg7 Bg2 Nc6 Nf3"],
+["A00","Apertura Polaca / Sokolsky, Gambito Halibut","b4 e5 Bb2 Bxb4 Bxe5"],
+["A00","Apertura Amar (1.Nh3)","Nh3"],
+["A00","Apertura Clemenz (1.h3)","h3"],
+["A00","Apertura Saragossa (1.c3)","c3"],
+["A02","Bird, variante Dutch Reversa","f4 d5 Nf3"],
+["A03","Bird, variante Leningrado Reversa","f4 d5 g3"],
+["B00","Defensa Carr / San Jorge Moderna","e4 h6"],
+["B00","Defensa Guatemalteca (1...Nh6)","e4 Nh6"],
+["B01","Escandinava, variante Marshall","e4 d5 exd5 Nf6 Nf3"],
+["B02","Alekhine, variante de los Dos Peones","e4 Nf6 e5 Nd5 c4 Nb6 c5"],
+["B02","Alekhine, variante Exchange","e4 Nf6 e5 Nd5 d4 d6 c4 Nb6 exd6"],
+["B06","Moderna, variante Robatsch","e4 g6 d4 Bg7 Nc3 d6 f4"],
+["B09","Pirc, Ataque Austriaco con Bd3","e4 d6 d4 Nf6 Nc3 g6 f4 Bg7 Nf3 O-O Bd3"],
+["B10","Caro-Kann, variante Breyer","e4 c6 d3"],
+["B12","Caro-Kann Avance, variante Short","e4 c6 d4 d5 e5 Bf5 Nf3 e6 Be2"],
+["B15","Caro-Kann, variante Forgacs","e4 c6 d4 d5 Nc3 g6 h4"],
+["B21","Siciliana, Gambito Morra con Bc4","e4 c5 d4 cxd4 c3 dxc3 Nxc3 Nc6 Nf3 d6 Bc4"],
+["B22","Siciliana Alapin, variante con d5","e4 c5 c3 d5 exd5 Qxd5 d4"],
+["B22","Siciliana Alapin, variante con Nf6","e4 c5 c3 Nf6 e5 Nd5 d4 cxd4 Nf3"],
+["B27","Siciliana, variante Hyperaccelerated Fianchetto","e4 c5 Nf3 g6 c4"],
+["B40","Siciliana, variante Pin","e4 c5 Nf3 e6 Nc3 Bb4"],
+["B44","Siciliana Taimanov, variante con Nb5","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6 Nb5"],
+["B50","Siciliana, variante Modern con Bg5","e4 c5 Nf3 d6 Bc4"],
+["B54","Siciliana, Ataque Moscú con c3","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 f3"],
+["C00","Francesa, variante Reti","e4 e6 Nf3"],
+["C00","Francesa, variante Wing Gambit","e4 e6 b4"],
+["C01","Francesa Cambio, variante con Bd3","e4 e6 d4 d5 exd5 exd5 Bd3"],
+["C01","Francesa Cambio, variante con Nf3","e4 e6 d4 d5 exd5 exd5 Nf3 Nf6 c4"],
+["C11","Francesa, variante Steinitz","e4 e6 d4 d5 Nc3 Nf6 e5"],
+["C11","Francesa, variante Burn","e4 e6 d4 d5 Nc3 Nf6 Bg5 dxe4"],
+["C13","Francesa, variante Alekhine-Chatard con Bg5","e4 e6 d4 d5 Nc3 Nf6 Bg5 Be7 e5"],
+["C13","Francesa, variante Albin-Chatard","e4 e6 d4 d5 Nc3 Nf6 Bg5 Be7 e5 Nfd7 Bxe7"],
+["C15","Francesa Winawer, variante Bogoljubov","e4 e6 d4 d5 Nc3 Bb4 Bd2"],
+["C16","Francesa Winawer, variante avanzada con Ne7","e4 e6 d4 d5 Nc3 Bb4 e5 Ne7"],
+["D02","Sistema Londres contra la India de Rey","d4 Nf6 Nf3 g6 Bf4 Bg7 e3"],
+["D04","Sistema Colle-Zukertort","d4 d5 Nf3 Nf6 e3 e6 b3"],
+["D30","Gambito de Dama Rehusado, variante semi-cerrada","d4 d5 c4 e6 Nf3"],
+["D30","Gambito de Dama Rehusado con Nbd7","d4 d5 c4 e6 Nf3 Nf6 g3"],
+["D31","GDR, variante Alapin","d4 d5 c4 e6 Nc3 a6"],
+["D37","GDR con Bf4","d4 d5 c4 e6 Nc3 Nf6 Nf3 Be7 Bf4"],
+["D40","Semi-Tarrasch, variante Rubinstein","d4 d5 c4 e6 Nc3 Nf6 Nf3 c5 e3 Nc6"],
+["D43","Semi-Eslava, variante anti-Moscú","d4 d5 c4 c6 Nc3 Nf6 Nf3 e6 Bg5 h6"],
+["E00","Catalana, variante cerrada temprana","d4 Nf6 c4 e6 g3 c5"],
+["E04","Catalana Abierta, variante Nf3","d4 d5 Nf3 Nf6 c4 e6 g3 dxc4"],
+["A80","Holandesa, variante Krejcik","d4 f5 h3"],
+["A84","Holandesa, variante con Nh3","d4 f5 c4 Nf6 Nh3"],
+["A45","Trompowsky, variante Vaganian","d4 Nf6 Bg5 c5"],
+["A45","Trompowsky, variante Big Center","d4 Nf6 Bg5 e6 e4"],
+["A46","Sistema Torre contra India de Dama","d4 Nf6 Nf3 e6 Bg5 b6"],
+["A50","Ataque Mexicano (1.d4 Nf6 2.c4 Qb6)","d4 Nf6 c4 Qb6"],
+["A50","Defensa India de Rey Este (Doury)","d4 Nf6 c4 d6 Nc3 e5"],
+["A56","Benoni, variante Czech","d4 Nf6 c4 c5 d5 d6"],
+["A57","Gambito Benko, variante con Nf3","d4 Nf6 c4 c5 d5 b5 Nf3"],
+["A58","Gambito Benko, variante Fianchetto","d4 Nf6 c4 c5 d5 b5 cxb5 a6 g3"],
+["E60","India de Rey, variante Neo-Clasica","d4 Nf6 c4 g6 Nf3 Bg7 Nc3 O-O"],
+["E60","India de Rey, variante Smyslov","d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d6 O-O Nc6 Nc3 a6"]
+].map(function(a){ return {eco:a[0], name:a[1], moves:a[2]}; });
+EXTRA_OPENINGS.push.apply(EXTRA_OPENINGS, OPENINGS_BATCH3);
+
 /* Unir al array global */
 EXTRA_OPENINGS.push.apply(EXTRA_OPENINGS, OPENINGS_BATCH2);
 
@@ -3546,7 +3617,7 @@ function updatePredictions(hist){
   }
 
   // Solo si NADA coincide (primera jugada rarisima).
-  countEl.textContent = 'Tu apertura — terreno propio';
+  countEl.textContent = 'Sin coincidencias — apertura propia';
   listEl.innerHTML = '<span class="chip-empty">Ninguna del repertorio empieza asi. Sigue jugando: si transpone, la detecto al instante.</span>';
 }
 
@@ -3826,18 +3897,119 @@ const GENERIC_TIPS_OPENING = [
   'No saques la dama demasiado pronto — es un blanco fácil que te hace perder tiempos de desarrollo.',
   'Enroca en cuanto puedas si tu rey sigue en el centro; la seguridad del rey vale más que ganar un peón suelto.',
   'Controla las casillas centrales (d4, d5, e4, e5) con peones o piezas antes de lanzar un ataque lateral.',
-  'Conecta tus torres: despeja la fila trasera moviendo las piezas menores antes de pensar en el medio juego.'
+  'Conecta tus torres: despeja la fila trasera moviendo las piezas menores antes de pensar en el medio juego.',
+  'Cada jugada de apertura debería cumplir al menos uno de estos tres roles: desarrollar una pieza, disputar el centro o asegurar el rey. Si no hace ninguno, sospecha de ella.',
+  'Desarrolla los caballos antes que los alfiles cuando la posición sea ambigua: el caballo suele tener menos opciones buenas y conviene decidir su casilla primero.',
+  'Evita mover peones de flanco (a, h) sin una razón concreta en las primeras jugadas — no ayudan al desarrollo ni al centro.',
+  'Si el rival rompe el desarrollo con un jaque o una amenaza táctica temprana, primero neutralízala y recién después vuelve a tu plan de desarrollo.',
+  'No bloquees tu propio alfil de casillas claras con tu peón de e (o el de casillas oscuras con el de d) sin planificarlo — revisa por dónde piensas sacarlo.',
+  'Un peón de más en la apertura rara vez compensa quedar tres jugadas atrás en desarrollo: cuenta tiempos, no solo material.',
+  'Antes de enrocar, revisa que no dejes una pieza sin proteger en el flanco donde vas a esconder al rey.',
+  'Si dudas entre dos jugadas de desarrollo, prioriza la que además le quita una opción activa al rival.',
+  'La jugada c3/c6 o c4/c5 casi siempre vale la pena temprano: amplía tu control central y abre la diagonal del alfil de dama.',
+  'No definas la estructura de peones centrales hasta que hayas visto el plan del rival — a veces conviene mantener la tensión.',
+  'Evita cambiar piezas menores por peones dobles del rival si a cambio pierdes la pareja de alfiles sin compensación clara.',
+  'Cuenta cuántas piezas tuyas están desarrolladas contra las del rival cada 3-4 jugadas: si vas atrás, prioriza desarrollo sobre ataque.',
+  'Guarda el enroque largo para posiciones donde tu flanco de dama esté seguro — expone al rey si el rival tiene la columna b o c abierta.'
 ];
 const GENERIC_TIPS_MIDGAME = [
   'Antes de cada jugada, revisa: ¿qué piezas mías están colgadas? ¿Qué piezas rivales están colgadas?',
   'Busca la pieza peor colocada de tu rival y piensa cómo restringirla aún más.',
   'Un plan simple: mejora tu peor pieza. Pregúntate cuál de tus piezas hace menos y reubícala.',
   'Cuenta atacantes y defensores antes de iniciar cualquier cambio de piezas en una casilla disputada.',
-  'Si no ves un plan claro, mejora la seguridad de tu rey o activa tu peor torre — nunca está de más.'
+  'Si no ves un plan claro, mejora la seguridad de tu rey o activa tu peor torre — nunca está de más.',
+  'Antes de cambiar piezas, pregúntate si el final resultante te favorece — un cambio "parejo" en material puede ser muy desigual en la práctica.',
+  'Busca clavadas: si una pieza rival no se puede mover sin exponer algo más valioso detrás, esa es tu palanca táctica.',
+  'Revisa horquillas potenciales de caballo, sobre todo contra rey y torre o rey y dama en la misma diagonal de saltos.',
+  'Una pieza que defiende dos cosas a la vez (sobrecargada) es un objetivo: ataca la segunda cosa que defiende y gana la primera.',
+  'Antes de sacrificar material por ataque, cuenta las piezas que realmente participan del asalto — un ataque con dos piezas rara vez alcanza.',
+  'Si tu rival tiene una pieza claramente pasiva (encerrada o sin casillas), no la cambies: mantenla presa y juega en el resto del tablero.',
+  'Las torres rinden más en columnas abiertas o semiabiertas — antes de moverlas, pregúntate si esa columna se va a abrir pronto.',
+  'Un jaque no siempre es una amenaza: solo vale la pena si mejora tu posición o gana tiempo real, no por dar jaque en sí mismo.',
+  'Revisa jugadas intermedias (zwischenzug): antes de recapturar automáticamente, ¿hay una jugada con amenaza mayor que puedas meter primero?',
+  'Los peones pasados a partir del medio juego valen más de lo que parecen — empújalos con apoyo de piezas en vez de dejarlos solos.',
+  'Si tu rey está más seguro que el del rival, considera abrir líneas aunque eso también exponga algo el tuyo: la asimetría de seguridad juega a tu favor.',
+  'Antes de avanzar peones frente a tu propio rey enrocado, pregúntate qué ganas realmente — cada avance crea una casilla débil detrás.',
+  'Cuando no haya táctica concreta, mejora la posición de tu peor pieza antes de decidir cualquier cambio de peones.'
 ];
+const GENERIC_TIPS_ENDGAME = [
+  'En el final, el rey es una pieza fuerte: actívalo hacia el centro en cuanto el peligro de mate directo haya pasado.',
+  'Los peones pasados se vuelven decisivos — calcula si puedes apoyarlos con el rey o una torre antes de lanzarlos a correr solos.',
+  'Torres detrás de peones pasados (propios o rivales) es la regla de oro: maximiza su actividad colocándolas ahí, sea para empujar o para frenar.',
+  'La oposición (reyes enfrentados con una casilla de por medio) decide muchos finales de peones — cuenta las casillas antes de mover el rey.',
+  'En finales de torre, la actividad de la torre suele pesar más que un peón de menos: no te aferres al material a costa de pasividad.',
+  'Si tienes mayoría de peones en un flanco, créate un peón pasado ahí antes de decidir el resto del plan.',
+  'En finales de alfiles de distinto color, un peón de más casi nunca basta para ganar — busca crear dos amenazas en flancos opuestos.',
+  'No cambies tu única pieza activa por una pasiva del rival solo por simplificar: en el final, la actividad de piezas es casi tan importante como el material.',
+  'Cuenta las casillas críticas: en finales de peón y rey, saber si puedes llegar antes que el rey rival a una casilla clave define la partida entera.',
+  'Con torres en el tablero, evita pasividad total — una torre pasiva defendiendo un peón débil suele perder contra una torre activa.',
+  'Un rey que corta el paso al rey rival (le quita casillas) vale más que un peón extra en muchos finales.',
+  'Si vas ganando en material, simplifica hacia un final técnico conocido en vez de complicar con piezas mayores en el tablero.',
+  'Si vas perdiendo en material, busca complicaciones o actividad extrema — la simplificación favorece casi siempre al bando de más material.',
+  'Recuerda la regla del cuadrado para peones pasados sin piezas menores: si el rey rival no puede entrar al cuadrado, el peón corona solo.',
+  'En finales de dama, los jaques perpetuos son tu mejor recurso defensivo si vas abajo en material — busca la red de jaques antes de resignarte.'
+];
+
+/* ---- Análisis situacional: si la posición tiene una señal clara,
+   se prioriza sobre la rotación genérica por número de jugada. ---- */
+function hasDoubledPawns(color){
+  const board = game.board();
+  const files = new Array(8).fill(0);
+  for(const row of board){
+    for(let c=0;c<8;c++){
+      const sq = row[c];
+      if(sq && sq.type==='p' && sq.color===color) files[c]++;
+    }
+  }
+  return files.some(n=>n>=2);
+}
+function kingOnStartSquare(color){
+  const sq = color==='w' ? game.get('e1') : game.get('e8');
+  return !!(sq && sq.type==='k' && sq.color===color);
+}
+function countMaterialNoKings(){
+  const board = game.board();
+  let total = 0;
+  for(const row of board){
+    for(const sq of row){
+      if(!sq || sq.type==='k') continue;
+      total += VALUES[sq.type];
+    }
+  }
+  return total; // suma de ambos bandos, sin reyes; posición inicial = 78
+}
+const SITUATIONAL_TIPS = {
+  check: [
+    'Estás en jaque: primero identifica TODAS las formas de salir (mover el rey, bloquear o capturar la pieza que da jaque) antes de elegir la más activa.',
+    'Un jaque a veces es la mejor jugada del rival aunque parezca desesperada — verifica que no esconda una combinación mayor detrás.'
+  ],
+  kingCenter: [
+    'Tu rey sigue en e1/e8 varias jugadas después de la apertura — busca enrocar pronto o al menos asegúralo antes de complicar la posición.',
+    'Con el rey todavía en el centro, evita abrir columnas o diagonales hacia él aunque ganes algo de material a cambio.'
+  ],
+  doubledPawns: [
+    'Tienes peones doblados: suelen ser una debilidad a largo plazo, pero a veces dan columnas abiertas útiles — decide si conviene cambiarlos o mantenerlos.',
+    'Con peones doblados en tu estructura, busca compensación en actividad de piezas o en la columna semiabierta que suelen generar.'
+  ]
+};
 function genericTacticalTip(hist){
+  // 1) señales situacionales concretas, si aplican al bando humano
+  if(game.turn()===humanColor && game.in_check()){
+    return SITUATIONAL_TIPS.check[hist.length % SITUATIONAL_TIPS.check.length];
+  }
+  if(hist.length>=14 && kingOnStartSquare(humanColor)){
+    return SITUATIONAL_TIPS.kingCenter[hist.length % SITUATIONAL_TIPS.kingCenter.length];
+  }
+  if(hist.length>=10 && hasDoubledPawns(humanColor)){
+    return SITUATIONAL_TIPS.doubledPawns[hist.length % SITUATIONAL_TIPS.doubledPawns.length];
+  }
+  // 2) fallback: rotación genérica por fase de juego (material real, no solo n° de jugada)
   const n = hist.length;
-  const pool = n <= 8 ? GENERIC_TIPS_OPENING : GENERIC_TIPS_MIDGAME;
+  const material = countMaterialNoKings();
+  let pool;
+  if(material <= 22 && n >= 12) pool = GENERIC_TIPS_ENDGAME;
+  else if(n <= 8) pool = GENERIC_TIPS_OPENING;
+  else pool = GENERIC_TIPS_MIDGAME;
   return pool[n % pool.length];
 }
 
@@ -3920,7 +4092,7 @@ function updateOpeningPanel(){
       tipEl.textContent='Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.';
     } else if(nearest && nearestLim>=1){
       badge.innerHTML = '<span class="eco-badge">'+nearest.eco+'</span>';
-      nameEl.textContent = 'Te alejaste de '+nearest.name+' — terreno propio desde aquí.';
+      nameEl.textContent = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.';
       movesEl.style.display='none';
       histEl.textContent='Comparte las primeras '+nearestLim+(nearestLim===1?' jugada':' jugadas')+' con '+nearest.name+', pero luego diverge. Si transpone de nuevo a una línea conocida, lo detecto al instante.';
       gamesEl.textContent='—';
@@ -3940,7 +4112,7 @@ function updateOpeningPanel(){
 
   if(bestIsStale){
     badge.innerHTML = '<span class="eco-badge">'+nearest.eco+'</span>';
-    nameEl.textContent = 'Te alejaste de '+nearest.name+' — terreno propio desde aquí.';
+    nameEl.textContent = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.';
     movesEl.style.display='none';
     histEl.textContent='Comparte las primeras '+nearestLim+(nearestLim===1?' jugada':' jugadas')+' con '+nearest.name+', pero luego diverge. Si transpone de nuevo a una línea conocida, lo detecto al instante.';
     gamesEl.textContent='—';
