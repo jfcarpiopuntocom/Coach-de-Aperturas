@@ -37,6 +37,50 @@
     conocido: rotan 10 consejos genéricos (5 apertura / 5 medio
     juego) elegidos de forma determinística por número de jugada.
   ============================================================
+  AUDITORÍA — sesión 2026-07-10 (segunda pasada)
+  ============================================================
+  - 14 líneas de EXTRA_OPENINGS tenían notación SAN inválida
+    (jugadas ilegales o ambiguas: B40, A50, D04, D54, D63, D94,
+    E84, E93, E99, E52, E57, A27, C09, E09) — nunca se detectaban
+    ni predecían. Corregidas y verificadas ejecutando las 672
+    líneas contra chess.js real: 0 errores.
+  - Subpromoción: makeMoveWithFx forzaba promotion:'q' siempre.
+    Ahora se pregunta con un selector Q/R/B/N cuando el peón
+    humano promociona.
+  - Captura al paso no disparaba la animación de captura (el
+    código miraba game.get(to), pero en e.p. la pieza capturada
+    está en otra casilla). Corregido: detecta e.p. y anima la
+    casilla real de la pieza capturada.
+  - Corrección de la nota anterior: revocar el blob URL del
+    worker de Stockfish EN EL MISMO TICK que se crea el Worker
+    (no "tras crear el Worker" como decía el fix previo) es
+    justamente el riesgo — algunos navegadores cargan el script
+    del worker de forma asíncrona. Ahora se revoca recién al
+    confirmar 'uciok', con red de seguridad a los 5s.
+  - rerollMove() no incrementaba boardEpoch (sí lo hacían
+    undoMove/resetGame/setHumanColor) — ventana de carrera con
+    setTimeout(engineTurn) pendientes de antes del reroll.
+  - handleEngineMessage no distinguía 'bestmove (none)' (posición
+    terminal o análisis abortado) de una jugada real — podía
+    pasar basura a uciToMoveObj. Ahora resuelve null explícito.
+  - negamax() renombrada a minimaxAB(): la implementación era
+    minimax con poda alfa-beta, no negamax real (que se define
+    recursivamente devolviendo -f(hijo)). Cosmético, pero
+    engañoso para mantenimiento futuro.
+  - askEngineExternal: el watchdog de 6s nunca se cancelaba
+    cuando 'bestmove' llegaba a tiempo, acumulando timers
+    zombis durante toda la partida. Ahora se limpia con
+    clearTimeout apenas se resuelve por la vía normal.
+  - VALUES (tabla de material) estaba declarada ~470 líneas
+    después de su primer uso (countMaterialNoKings). No rompía
+    nada porque las llamadas ocurren tras eventos de usuario,
+    pero es frágil ante refactors futuros — se declara ahora
+    junto al resto de constantes de estado, antes de su uso.
+  - toggleWinPct abría el detalle de %-victorias sin cerrar los
+    otros ya abiertos, dejando varios popups y nodos huérfanos
+    entre re-renders. Ahora cierra cualquier otro detalle abierto
+    antes de togglear el actual.
+  ============================================================
 -->
 <!DOCTYPE html>
 <html lang="es">
@@ -339,6 +383,28 @@ button:disabled{ opacity:0.35; cursor:default; }
 .psq.dark{ background:var(--sq-b); }
 #board.flipped{ transform:rotate(180deg); }
 #board.flipped .pc, #board.flipped .dot, #board.flipped .coord{ display:inline-block; transform:rotate(180deg); }
+
+/* ---------- Selector de promoción (Q/R/B/N) ---------- */
+.promo-overlay{
+  position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.75);
+}
+.promo-box{
+  background:var(--bg-panel); border:calc(var(--u)*0.75) solid var(--green);
+  padding:calc(var(--u)*4); display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*3);
+  box-shadow:0 0 calc(var(--u)*6) rgba(57,255,20,0.3);
+}
+.promo-label{ font-size:calc(var(--u)*4.5); color:var(--green); letter-spacing:1px; }
+.promo-choices{ display:flex; gap:calc(var(--u)*2); }
+.promo-choice{
+  font-family:var(--font-term); font-size:calc(var(--u)*10);
+  background:var(--sq-a); border:calc(var(--u)*0.5) solid var(--green-dim);
+  width:calc(var(--u)*14); height:calc(var(--u)*14);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.promo-choice:hover{ border-color:var(--green); background:var(--sq-b); }
+.promo-choice .pc.w{ color:var(--green); }
+.promo-choice .pc.b{ color:var(--orange); }
 
 /* ---------- 2b. DEFENSA DE LA IA (lo que responden las negras) ---------- */
 .ai-card{
@@ -2361,6 +2427,13 @@ const LEVELS = [
   { label:"2600", skill:20, depth:15, movetime:900, randomness:0.0,  localDepth:2 }
 ];
 
+// Tabla de valor material (peón=1 … dama=9, rey=0). Declarada aquí, junto al resto
+// de constantes de estado y ANTES de su primer uso (countMaterialNoKings /
+// genericTacticalTip / evalMaterial), no ~470 líneas después como estaba: la versión
+// vieja funcionaba solo porque las llamadas ocurrían tras eventos de usuario, pero era
+// frágil ante cualquier refactor que separase el script.
+const VALUES = {p:1,n:3,b:3,r:5,q:9,k:0};
+
 const FILES = ['a','b','c','d','e','f','g','h'];
 
 /* ============================================================
@@ -3216,7 +3289,7 @@ const OPENINGS_BATCH2 = [
 ["D01","Ataque Veresov con Nf3","d4 d5 Nc3 Nf6 Bg5 Nbd7 Nf3"],
 ["D02","Sistema Londres con e3","d4 d5 Nf3 Nf6 Bf4 e6 e3 c5"],
 ["D03","Torre, variante Bogo","d4 Nf6 Nf3 e6 Bg5 d5"],
-["D04","Sistema Colle con Nc3","d4 d5 Nf3 Nf6 e3 c5 c3 Nc3"],
+["D04","Sistema Colle con Nc3","d4 d5 Nf3 Nf6 e3 c5 Nc3"],
 ["D06","GD variante Chigorin","d4 d5 c4 Nc6 Nc3"],
 ["D07","Chigorin, linea principal","d4 d5 c4 Nc6 Nf3 Bg4 cxd5 Bxf3 gxf3 Qxd5"],
 ["D09","Gambito Albin con Nc3","d4 d5 c4 e5 dxe5 d4 e3 Bb4+ Nc3"],
@@ -3252,7 +3325,7 @@ const OPENINGS_BATCH2 = [
 ["D49","Semi-Eslava, variante Meran con Nxb5","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3 Nbd7 Bd3 dxc4 Bxc4 b5 Be2 Bb7 O-O a6 Nxb5"],
 ["D50","GDR, variante Tartakower con Nc3","d4 d5 c4 e6 Nc3 Nf6 Bg5"],
 ["D51","GDR, variante Cambdrige Springs","d4 d5 c4 e6 Nc3 Nf6 Bg5 Nbd7 e3 c6 Nf3 Qa5"],
-["D54","GDR Tartakower con O-O","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 O-O Nf3 h6 Bh4 O-O"],
+["D54","GDR Tartakower con b6","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 h6 Bh4 b6"],
 ["D55","GDR, variante con Bd3","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 O-O Nf3 h6 Bh4 b6"],
 ["D56","GDR Tartakower sin cambio","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 h6 Bh4 O-O Nf3 b6"],
 ["D58","GDR Tartakower, linea principal","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 h6 Bh4 b6 cxd5 Nxd5 Bxe7 Qxe7"],
@@ -3260,7 +3333,7 @@ const OPENINGS_BATCH2 = [
 ["D60","GDR Ortodoxa, variante clasica","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3"],
 ["D61","GDR Ortodoxa, variante Bogoljubov","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Qc2"],
 ["D62","GDR Ortodoxa, variante del alfil","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Bd3"],
-["D63","GDR Ortodoxa, variante clasica con cxd5","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 cxd5"],
+["D63","GDR Ortodoxa, variante clasica con cxd5","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 c6 cxd5"],
 ["D64","GDR Ortodoxa, variante neo-clasica","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 c6 Bd3"],
 ["D67","GDR Ortodoxa, variante Capablanca","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 c6 Bd3 dxc4 Bxc4 Nd5"],
 ["D69","GDR Ortodoxa, variante intercambio con Rc1","d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 Nf3 O-O e3 Nbd7 Rc1 c6 Bd3 dxc4 Bxc4 Nd5 Bxe7 Qxe7 O-O Nxc3 Rxc3"],
@@ -3282,7 +3355,7 @@ const OPENINGS_BATCH2 = [
 ["D91","Grunfeld, variante con Bg5","d4 Nf6 c4 g6 Nc3 d5 Bg5"],
 ["D92","Grunfeld, variante con g3 de 5.Bf4","d4 Nf6 c4 g6 Nc3 d5 Bf4 Bg7 e3 O-O Rc1"],
 ["D93","Grunfeld, variante con Bg5 y Nxd5","d4 Nf6 c4 g6 Nc3 d5 Bg5 Ne4 Bh4"],
-["D94","Grunfeld, variante con c3","d4 Nf6 c4 g6 Nc3 d5 e3 Bg7 c3"],
+["D94","Grunfeld, variante con Nc3 y e3","d4 Nf6 c4 g6 Nf3 Bg7 Nc3 d5 e3"],
 ["D95","Grunfeld, variante con Ne5","d4 Nf6 c4 g6 Nc3 d5 e3 Bg7 Nf3 O-O b4"],
 ["D96","Grunfeld, variante con Qa4+","d4 Nf6 c4 g6 Nc3 d5 Nf3 Bg7 Qa4+"],
 ["D97","Grunfeld, variante rusa principal","d4 Nf6 c4 g6 Nc3 d5 Nf3 Bg7 Qb3"],
@@ -3308,7 +3381,7 @@ const OPENINGS_BATCH2 = [
 ["E80","India de Rey, Samisch con Bg5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 c5 d5"],
 ["E82","India de Rey, Samisch con O-O-O","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 c5 d5 Ne8 Qd2 f5 O-O-O"],
 ["E83","India de Rey, Samisch con Be6","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 Nc6"],
-["E84","India de Rey, Samisch con f5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 Nc6 Qd2 Rb8 Nge2 f5"],
+["E84","India de Rey, Samisch con f5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 Nbd7 Qd2 c5 Nge2 a6 Nc1 Ne8 Nd3 f5"],
 ["E85","India de Rey, Samisch con e5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5"],
 ["E86","India de Rey, Samisch con h5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5 Nge2"],
 ["E87","India de Rey, Samisch, linea principal","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5 d5 Ne8"],
@@ -3316,13 +3389,13 @@ const OPENINGS_BATCH2 = [
 ["E89","India de Rey, Samisch con c5","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5 d5 Ne8 Qd2 f5 O-O-O fxe4 fxe4 Nf6"],
 ["E90","India de Rey, linea principal sin f4","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3"],
 ["E91","India de Rey, linea principal con Bf4","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 Nc6"],
-["E93","India de Rey, variante Petrosian con Nd2","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 d5 Nd7 Nd2"],
+["E93","India de Rey, variante Petrosian con Nd2","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 d5 Nbd7 Nd2"],
 ["E94","India de Rey, variante clasica","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O"],
 ["E95","India de Rey, variante clasica con Nbd7","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nbd7 Re1"],
 ["E96","India de Rey, variante clasica con h3","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nbd7 Re1 c6 Bf1 h6"],
 ["E97","India de Rey, variante Mar del Plata","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7"],
 ["E98","India de Rey, Mar del Plata con Nd2","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Nd2"],
-["E99","India de Rey, variante principal linea final","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Nd2 f5 exf5 Nxf5 Nxf5 Rxf5"],
+["E99","India de Rey, variante principal linea final","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Nd2 Ne8 f3 f5"],
 
 /* === NIMZOINDIA EXTENDIDA === */
 ["E21","Nimzoindia, variante tres caballos","d4 Nf6 c4 e6 Nc3 Bb4 Nf3"],
@@ -3353,12 +3426,12 @@ const OPENINGS_BATCH2 = [
 ["E49","Nimzoindia, variante Hromadka","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 d5 a3 Bxc3+ bxc3"],
 ["E50","Nimzoindia, variante 4.e3 O-O 5.Nf3 d5 6.Bd3","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3"],
 ["E51","Nimzoindia, variante 4.e3 Nf3 d5","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5"],
-["E52","Nimzoindia, variante 4.e3 Nf3 d5 Bg5","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bg5"],
+["E52","Nimzoindia, variante 4.Bg5 con e3 y d5","d4 Nf6 c4 e6 Nc3 Bb4 Bg5 O-O e3 d5"],
 ["E53","Nimzoindia, variante 4.e3 Nf3 d5 Bd3","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3"],
 ["E54","Nimzoindia, variante con Gambit","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O dxc4 Bxc4"],
 ["E55","Nimzoindia, variante Gligoric","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O Nc6"],
 ["E56","Nimzoindia, variante con Re1","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O cxd4 exd4 dxc4"],
-["E57","Nimzoindia, variante con 7...cxd4","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O cxd4 exd4 dxc4 Bxc4 Nxc3 bxc3"],
+["E57","Nimzoindia, variante con 7...cxd4","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O cxd4 exd4 dxc4 Bxc4 Bxc3 bxc3"],
 ["E58","Nimzoindia, variante Karpov","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O Nc6 a3 Bxc3 bxc3"],
 ["E59","Nimzoindia, variante principal","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Nf3 d5 Bd3 c5 O-O Nc6 a3 Bxc3 bxc3 dxc4"],
 
@@ -3374,7 +3447,7 @@ const OPENINGS_BATCH2 = [
 ["A17","Inglesa, variante anti-Grunfeld","c4 Nf6 Nc3 e6 Nf3 Bb4"],
 ["A18","Inglesa, variante Mikenas","c4 Nf6 Nc3 e6 e4"],
 ["A19","Inglesa, variante Mikenas con Nd4","c4 Nf6 Nc3 e6 e4 c5 e5 Ng8"],
-["A27","Inglesa, variante Bristol","c4 e5 Nc3 Nf6 Nf3 Nc6 d4 cxd4"],
+["A27","Inglesa, variante Bristol","c4 e5 Nc3 Nf6 Nf3 Nc6 d4 exd4"],
 ["A31","Inglesa, variante Siciliana simetrica","c4 c5 Nf3 Nf6 d4 cxd4 Nxd4"],
 ["A32","Inglesa, variante Siciliana simetrica con Nf6","c4 c5 Nf3 Nf6 d4 cxd4 Nxd4 e6"],
 ["A33","Inglesa, variante Siciliana simetrica con Nc6","c4 c5 Nf3 Nf6 d4 cxd4 Nxd4 e6 Nc3 Nc6"],
@@ -3390,7 +3463,7 @@ const OPENINGS_BATCH2 = [
 /* === FRANCESA EXTENDIDA === */
 ["C06","Francesa Tarrasch, variante Kasparov","e4 e6 d4 d5 Nd2 Nf6 e5 c5 c3 Nc6 Bd3"],
 ["C08","Francesa Tarrasch, variante abierta","e4 e6 d4 d5 Nd2 c5 exd5 exd5"],
-["C09","Francesa Tarrasch, variante abierta con Nf6","e4 e6 d4 d5 Nd2 c5 exd5 exd5 Nf3 Nc6"],
+["C09","Francesa Tarrasch, variante abierta con Nf6","e4 e6 d4 d5 Nd2 c5 exd5 exd5 Ngf3 Nc6"],
 ["C14","Francesa Clasica con variante","e4 e6 d4 d5 Nc3 Nf6 Bg5 Be7 e5 Nfd7 Bxe7 Qxe7"],
 ["C16","Francesa Winawer, variante Advance","e4 e6 d4 d5 Nc3 Bb4 e5 Qd7"],
 ["C17","Francesa Winawer, variante Armenian","e4 e6 d4 d5 Nc3 Bb4 e5 c5 a3 Bxc3+ bxc3 Ne7"],
@@ -3472,7 +3545,7 @@ const OPENINGS_BATCH2 = [
 ["E05","Catalana, variante cerrada con Nf3","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O dxc4"],
 ["E07","Catalana, variante cerrada con b3","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O c6 b3"],
 ["E08","Catalana, variante Kramnik","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O c6 Qc2"],
-["E09","Catalana, variante abierta con Nc3","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O dxc4 Qe2 Nc6"]
+["E09","Catalana, variante abierta con Nc3","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O dxc4 Nc3"]
 ].map(function(a){ return {eco:a[0], name:a[1], moves:a[2]}; });
 
 /* ---- lote 3: huecos de la Inglesa, Reti, Catalana, Semi-Eslava,
@@ -3507,7 +3580,7 @@ const OPENINGS_BATCH3 = [
 ["B22","Siciliana Alapin, variante con d5","e4 c5 c3 d5 exd5 Qxd5 d4"],
 ["B22","Siciliana Alapin, variante con Nf6","e4 c5 c3 Nf6 e5 Nd5 d4 cxd4 Nf3"],
 ["B27","Siciliana, variante Hyperaccelerated Fianchetto","e4 c5 Nf3 g6 c4"],
-["B40","Siciliana, variante Pin","e4 c5 Nf3 e6 Nc3 Bb4"],
+["B40","Siciliana, variante Pin","e4 c5 Nf3 e6 d4 cxd4 Nxd4 Nf6 Nc3 Bb4"],
 ["B44","Siciliana Taimanov, variante con Nb5","e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6 Nb5"],
 ["B50","Siciliana, variante Modern con Bg5","e4 c5 Nf3 d6 Bc4"],
 ["B54","Siciliana, Ataque Moscú con c3","e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 f3"],
@@ -3536,7 +3609,7 @@ const OPENINGS_BATCH3 = [
 ["A45","Trompowsky, variante Vaganian","d4 Nf6 Bg5 c5"],
 ["A45","Trompowsky, variante Big Center","d4 Nf6 Bg5 e6 e4"],
 ["A46","Sistema Torre contra India de Dama","d4 Nf6 Nf3 e6 Bg5 b6"],
-["A50","Ataque Mexicano (1.d4 Nf6 2.c4 Qb6)","d4 Nf6 c4 Qb6"],
+["A50","Ataque Mexicano","d4 Nf6 c4 c5 d5 Qb6"],
 ["A50","Defensa India de Rey Este (Doury)","d4 Nf6 c4 d6 Nc3 e5"],
 ["A56","Benoni, variante Czech","d4 Nf6 c4 c5 d5 d6"],
 ["A57","Gambito Benko, variante con Nf3","d4 Nf6 c4 c5 d5 b5 Nf3"],
@@ -3759,11 +3832,20 @@ function onSquareClick(squareName){
     const move = legalTargets.find(m=>m.to===squareName);
     if(move){
       const epoch = boardEpoch;
-      makeMoveWithFx(selectedSq, squareName, ()=>{
-        selectedSq = null; legalTargets = [];
-        renderBoard();
-        setTimeout(()=>{ if(epoch===boardEpoch) engineTurn(); }, 250);
-      });
+      const doMove = (promotion)=>{
+        makeMoveWithFx(selectedSq, squareName, ()=>{
+          selectedSq = null; legalTargets = [];
+          renderBoard();
+          setTimeout(()=>{ if(epoch===boardEpoch) engineTurn(); }, 250);
+        }, promotion);
+      };
+      // Promoción de peón: pregunta SIEMPRE qué pieza, en vez de forzar dama.
+      // move.flags incluye 'p' cuando chess.js marca la jugada como promoción.
+      if(move.flags && move.flags.indexOf('p') !== -1){
+        showPromotionPicker(humanColor, (choice)=>doMove(choice));
+      } else {
+        doMove('q');
+      }
       return;
     }
   }
@@ -3777,17 +3859,61 @@ function onSquareClick(squareName){
   renderBoard();
 }
 
-/* Aplica el movimiento; si hay captura, dispara una de las 5
-   animaciones (genéricas, según la pieza CAPTURADA, no el par) y
-   retrasa el re-render hasta que termine. */
-function makeMoveWithFx(from, to, after){
-  const capturedPiece = game.get(to);
-  const moveObj = game.move({from, to, promotion:'q'});
+/* Overlay simple: 4 botones (Q/R/B/N) con el glifo real de la pieza,
+   del color de quien promociona. onChoose recibe 'q'|'r'|'b'|'n'. */
+function showPromotionPicker(color, onChoose){
+  const existing = document.getElementById('promo-overlay');
+  if(existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'promo-overlay';
+  overlay.className = 'promo-overlay';
+  const box = document.createElement('div');
+  box.className = 'promo-box';
+  const label = document.createElement('div');
+  label.className = 'promo-label';
+  label.textContent = 'Elige tu promoción';
+  box.appendChild(label);
+  const choices = document.createElement('div');
+  choices.className = 'promo-choices';
+  const options = [['q','Dama'],['r','Torre'],['b','Alfil'],['n','Caballo']];
+  for(const [type,name] of options){
+    const btn = document.createElement('div');
+    btn.className = 'promo-choice';
+    btn.title = name;
+    const span = document.createElement('span');
+    span.className = 'pc ' + color;
+    span.textContent = pieceGlyph(type, color);
+    btn.appendChild(span);
+    btn.addEventListener('click', ()=>{
+      overlay.remove();
+      onChoose(type);
+    });
+    choices.appendChild(btn);
+  }
+  box.appendChild(choices);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+/* Aplica el movimiento; si hay captura (normal O al paso), dispara una de
+   las 5 animaciones (genéricas, según la pieza CAPTURADA, no el par) y
+   retrasa el re-render hasta que termine. 'promotion' viene del selector
+   Q/R/B/N (fix: antes siempre forzaba dama sin preguntar). */
+function makeMoveWithFx(from, to, after, promotion){
+  // Captura al paso: la pieza capturada NO está en 'to', sino en la misma
+  // columna de 'to' y la misma fila de 'from' (fix: antes get(to) devolvía
+  // null en e.p. y la animación de captura no se disparaba).
+  const movingPiece = game.get(from);
+  const isEnPassant = movingPiece && movingPiece.type==='p' && to[0]!==from[0] && !game.get(to);
+  const epSquare = isEnPassant ? (to[0] + from[1]) : null;
+  const capturedPiece = isEnPassant ? game.get(epSquare) : game.get(to);
+  const moveObj = game.move({from, to, promotion: promotion || 'q'});
   if(!moveObj) return;
   lastMove = {from,to};
 
   if(capturedPiece){
-    const el = document.querySelector('.sq[data-sq="'+to+'"]');
+    const fxSquare = isEnPassant ? epSquare : to;
+    const el = document.querySelector('.sq[data-sq="'+fxSquare+'"]');
     const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch'];
     const effClass = effects[capturedPiece.type.charCodeAt(0) % effects.length];
     if(el){
@@ -3906,7 +4032,12 @@ function winPctToggleHtml(o){
 }
 function toggleWinPct(el){
   const detail = el.nextElementSibling;
-  if(detail) detail.classList.toggle('open');
+  if(!detail) return;
+  const willOpen = !detail.classList.contains('open');
+  // Fix: cerrar cualquier otro detalle de %-victorias abierto antes de togglear este,
+  // así nunca quedan dos popups abiertos a la vez ni nodos huérfanos entre re-renders.
+  document.querySelectorAll('.wp-detail.open').forEach(d=>{ if(d!==detail) d.classList.remove('open'); });
+  detail.classList.toggle('open', willOpen);
 }
 
 /* Consejos genéricos de fase de juego, para cuando la partida ya
@@ -4352,11 +4483,28 @@ async function loadEngine(){
     const blob = new Blob([code], {type:'application/javascript'});
     const blobUrl = URL.createObjectURL(blob);
     engine = new Worker(blobUrl);
-    URL.revokeObjectURL(blobUrl); // el worker ya tiene el codigo cargado; no hace falta mantener vivo el blob
-    engine.onmessage = (e)=>handleEngineMessage(e, timeoutId);
+    // Fix: NO revocar la blob URL en el mismo tick que se crea el Worker.
+    // En algunos navegadores la carga del script del worker es asíncrona
+    // respecto al constructor, y revocar de inmediato puede hacer que el
+    // worker falle en cargar el script. Revocamos recién cuando el worker
+    // ya contestó 'uciok' (confirmación real de que el código cargó), o
+    // como red de seguridad tras 5s si nunca contesta.
+    let blobRevoked = false;
+    const revokeBlobSafely = ()=>{
+      if(blobRevoked) return;
+      blobRevoked = true;
+      URL.revokeObjectURL(blobUrl);
+    };
+    setTimeout(revokeBlobSafely, 5000);
+    engine.onmessage = (e)=>{
+      if(!blobRevoked && typeof e.data==='string' && e.data==='uciok') revokeBlobSafely();
+      handleEngineMessage(e, timeoutId);
+    };
     engine.onerror = (e)=>{
       console.warn('Worker de Stockfish falló en tiempo de ejecución', e);
+      revokeBlobSafely();
       clearTimeout(timeoutId);
+      if(engineWatchdog){ clearTimeout(engineWatchdog); engineWatchdog = null; }
       engineMode = 'local';
       if(pendingResolve){
         const resolve = pendingResolve; pendingResolve = null;
@@ -4373,6 +4521,7 @@ async function loadEngine(){
 
 let pendingResolve = null;
 let multipvLines = [];
+let engineWatchdog = null;   // id del watchdog de askEngineExternal; se cancela al resolver por vía normal para no acumular timers zombis
 
 function handleEngineMessage(e, timeoutId){
   const line = typeof e.data==='string' ? e.data : '';
@@ -4395,8 +4544,15 @@ function handleEngineMessage(e, timeoutId){
   } else if(line.startsWith('bestmove')){
     const mv = line.split(' ')[1];
     if(pendingResolve){
+      // Fix: bestmove llegó a tiempo — cancelamos el watchdog para que no
+      // dispare después (el guard pendingResolve===resolve ya lo hacía inofensivo,
+      // pero el timer quedaba vivo y se acumulaban zombis toda la partida).
+      if(engineWatchdog){ clearTimeout(engineWatchdog); engineWatchdog = null; }
       const resolve = pendingResolve; pendingResolve = null;
-      resolve(mv);
+      // 'bestmove (none)' ocurre en posiciones terminales (mate/ahogado) o
+      // análisis abortado. Resolvemos null explícitamente en vez de dejar
+      // pasar "(none)" a uciToMoveObj, que generaría un from/to basura.
+      resolve(mv === '(none)' ? null : mv);
     }
   }
 }
@@ -4450,8 +4606,10 @@ function askEngineExternal(){
       resolve(null);
       return;
     }
-    // watchdog: si no responde en 6s, se cae a motor local para esta y futuras jugadas
-    setTimeout(()=>{
+    // watchdog: si no responde en 6s, se cae a motor local para esta y futuras jugadas.
+    // Se guarda su id para poder cancelarlo en handleEngineMessage cuando bestmove llega a tiempo.
+    engineWatchdog = setTimeout(()=>{
+      engineWatchdog = null;
       if(pendingResolve === resolve){
         pendingResolve = null;
         engineMode = 'local';
@@ -4462,7 +4620,7 @@ function askEngineExternal(){
 }
 
 /* ---- Motor local de respaldo: material + minimax corto ---- */
-const VALUES = {p:1,n:3,b:3,r:5,q:9,k:0};
+/* VALUES (tabla de material) ahora se declara arriba, junto a FILES/LEVELS, antes de su primer uso. */
 function evalMaterial(){
   const board = game.board();
   let score = 0;
@@ -4472,13 +4630,18 @@ function evalMaterial(){
   }
   return score; // positivo = mejor para negras
 }
-function negamax(depth, maximizingBlack, alpha, beta){
+/* Minimax con poda alfa-beta (nombre corregido: esto NO es negamax real —
+   negamax se define recursivamente devolviendo -f(hijo); esta versión usa
+   un booleano 'maximizingBlack' y ramifica max/min explícito, que es
+   minimax clásico. Se deja documentado para que el próximo mantenimiento
+   no asuma la simetría de negamax al tocar esta función). */
+function minimaxAB(depth, maximizingBlack, alpha, beta){
   if(depth===0 || game.game_over()) return evalMaterial();
   const moves = game.moves({verbose:true});
   let best = maximizingBlack ? -Infinity : Infinity;
   for(const m of moves){
     game.move(m);
-    const val = negamax(depth-1, !maximizingBlack, alpha, beta);
+    const val = minimaxAB(depth-1, !maximizingBlack, alpha, beta);
     game.undo();
     if(maximizingBlack){
       best = Math.max(best,val);
@@ -4497,7 +4660,7 @@ function localCandidates(){
   const moves = game.moves({verbose:true});
   const scored = moves.map(m=>{
     game.move(m);
-    const s = negamax(Math.max(L.localDepth-1,0), !engineIsBlack, -Infinity, Infinity);
+    const s = minimaxAB(Math.max(L.localDepth-1,0), !engineIsBlack, -Infinity, Infinity);
     game.undo();
     return {m, s};
   });
@@ -4615,6 +4778,7 @@ function playEngineMove(moveObj){
 function rerollMove(){
   if(thinking) return;
   if(game.history().length===0) return;
+  boardEpoch++; // invalida cualquier setTimeout de engineTurn programado antes de este reroll
   game.undo();
   if(game.turn() === humanColor) return; // no era jugada del motor: nada que rerollear
   candidateIdx = (candidateIdx+1) % Math.max(candidateMoves.length,1);
