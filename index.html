@@ -1,11 +1,9 @@
-
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Coach de Aperturas y Defensas</title>
+<title>Coach de Aperturas</title>
 <meta property="og:title" content="Coach de Aperturas y Defensas">
 <meta property="og:description" content="Un tablero, un despertar de cien años, y una apertura que aún no tiene nombre para ti.">
 <meta property="og:type" content="website">
@@ -176,7 +174,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.fx-flash .pc{ animation: fx-flash-kf 0.38s ease-in forwards; }
 
 #status-bar{
-  font-size:calc(var(--u)*4); color:var(--green-dim); text-align:right;
+  font-size:calc(var(--u)*5); color:var(--green-dim); text-align:right;
   min-width:0; flex-shrink:1;
 }
 #status-bar.thinking{ color:var(--orange); }
@@ -228,7 +226,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   gap:calc(var(--u)*2); margin-bottom:calc(var(--u)*1.5);
 }
 .opening-kicker{
-  font-size:calc(var(--u)*4.5); color:var(--green-dim);
+  font-size:calc(var(--u)*5); color:var(--green-dim);
   letter-spacing:2px; text-transform:uppercase; white-space:nowrap;
 }
 .eco-badge{
@@ -301,7 +299,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   margin-bottom:calc(var(--u)*1.5);
 }
 #ai-defense-name{
-  font-size:calc(var(--u)*6); color:var(--orange); font-weight:bold; line-height:1.3;
+  font-size:calc(var(--u)*5); color:var(--orange); font-weight:bold; line-height:1.3;
 }
 #ai-defense-tip{
   margin-top:calc(var(--u)*2); font-size:calc(var(--u)*5); color:var(--green); line-height:1.5;
@@ -312,7 +310,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 .chip-list{ display:flex; flex-wrap:wrap; gap:calc(var(--u)*1.5); }
 .chip{
   background:var(--bg-panel); border:1px solid var(--green); color:var(--green);
-  padding:calc(var(--u)*1.5) calc(var(--u)*2.5); font-size:calc(var(--u)*5); white-space:nowrap;
+  padding:calc(var(--u)*1) calc(var(--u)*1.75); font-size:calc(var(--u)*5); white-space:normal;
 }
 .chip .chip-eco{ color:#E86040; margin-right:calc(var(--u)*1); }
 .chip-empty{ color:var(--green); font-size:calc(var(--u)*5); }
@@ -329,10 +327,10 @@ button:disabled{ opacity:0.35; cursor:default; }
   padding:calc(var(--u)*3) calc(var(--u)*3);
 }
 .predict-count{
-  font-family:var(--font-term); font-size:calc(var(--u)*6); color:var(--green);
+  font-family:var(--font-term); font-size:calc(var(--u)*5); color:var(--green);
   margin-bottom:calc(var(--u)*2); letter-spacing:1px;
 }
-.chip .chip-next{ color:var(--green); margin-left:calc(var(--u)*1.5); font-weight:bold; }
+.chip .chip-next{ color:var(--orange); margin-right:calc(var(--u)*0.5); font-weight:bold; }
 
 /* ---------- 3. CONSEJO DE VARIANTE ---------- */
 .tip-card{
@@ -392,7 +390,7 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); paddi
 <!-- PANTALLA CORE: un viewport exacto, sin scroll interno -->
 <div class="screen">
 <header class="hero">
-  <div class="title-ascii"><span class="side-w">○</span> COACH DE APERTURAS Y DEFENSAS <span class="side-b">●</span></div>
+  <div class="title-ascii"><span class="side-w">♕</span> COACH DE APERTURAS <span class="side-b">♟</span></div>
 </header>
 
 <div class="wrap">
@@ -482,7 +480,7 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*5); paddi
       <div id="ai-defense-log" class="chip-list"><span class="chip-empty">Aún no has visto ninguna. Juega para que la IA responda y aparezcan aquí.</span></div>
     </section>
 
-    <button class="context-toggle" onclick="toggleContext()">+ historia, partidas y perfil de jugador</button>
+    <button class="context-toggle" id="context-toggle-btn" onclick="toggleContext()">+ historia, partidas y perfil de jugador</button>
     <div class="context-box" id="context-box">
       <h3>Historia</h3>
       <div id="opening-history">—</div>
@@ -2275,7 +2273,12 @@ function typeIntro(){
 }
 typeIntro();
 
-function toggleContext(){ document.getElementById('context-box').classList.toggle('open'); }
+function toggleContext(){
+  const box = document.getElementById('context-box');
+  const open = box.classList.toggle('open');
+  document.getElementById('context-toggle-btn').textContent =
+    (open?'− ':'+ ')+'historia, partidas y perfil de jugador';
+}
 
 /* ============================================================
    ESTADO DEL JUEGO
@@ -3459,8 +3462,7 @@ function updatePredictions(hist){
   if(live.length){
     countEl.textContent = live.length + (live.length===1?' apertura posible':' aperturas posibles');
     let html = live.slice(0,MAX).map(function(c){
-      return '<span class="chip"><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+
-             '<span class="chip-next">&rarr; '+c.next+'</span></span>';
+      return '<span class="chip"><span class="chip-next">+'+c.next+' = </span><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+'</span>';
     }).join('');
     if(live.length>MAX) html += '<span class="chip">+'+(live.length-MAX)+' m&aacute;s&hellip;</span>';
     listEl.innerHTML = html;
@@ -3836,7 +3838,7 @@ function updateOpeningPanel(){
   histEl.innerHTML = '<div class="hist-fact">'+best.history+'</div>';
   gamesEl.innerHTML = '<div class="hist-fact">'+best.games+'</div>';
 
-  const t = TEMPERAMENT[best.tag];
+  const t = TEMPERAMENT[best.tag] || TEMPERAMENT.solid;
   tempEl.innerHTML = '<b>'+t.label+'</b><br>'+t.text+'<div class="watch-box"><b>Cuidado con:</b> '+t.watch+'</div>';
   tipEl.innerHTML = best.tip;
 
@@ -3897,8 +3899,14 @@ function renderAiDefenseLog(){
 }
 
 let wikiCurrentOpening = null;
+let wikiExtractCache = null; // { opening, html } - se reaplica si el panel se re-renderiza para la misma apertura
 async function tryLiveWikipedia(openingName){
-  if(wikiCurrentOpening === openingName) return; // ya la tenemos, no repitas la llamada ni el texto
+  if(wikiExtractCache && wikiExtractCache.opening===openingName){
+    // ya la tenemos: el panel se acaba de resetear (undo/reroll), reaplica sin re-fetch
+    document.getElementById('opening-history').innerHTML += wikiExtractCache.html;
+    return;
+  }
+  if(wikiCurrentOpening === openingName) return; // fetch ya en curso, no dupliques la llamada
   wikiCurrentOpening = openingName;
   try{
     const url = 'https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(openingName.replace(/\s*\(.*?\)\s*/g,''));
@@ -3909,8 +3917,9 @@ async function tryLiveWikipedia(openingName){
     // apertura, este resultado está obsoleto: no lo pegues encima del panel actual.
     if(wikiCurrentOpening !== openingName) return;
     if(data && data.extract){
-      const histEl = document.getElementById('opening-history');
-      histEl.innerHTML += '<div class="hist-fact">📡 Wikipedia: '+data.extract+'</div>';
+      const html = '<div class="hist-fact">📡 Wikipedia: '+data.extract+'</div>';
+      wikiExtractCache = {opening:openingName, html};
+      document.getElementById('opening-history').innerHTML += html;
     }
   }catch(e){ /* fallback silencioso */ }
 }
@@ -3931,7 +3940,9 @@ async function loadEngine(){
     const res = await fetch('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
     const code = await res.text();
     const blob = new Blob([code], {type:'application/javascript'});
-    engine = new Worker(URL.createObjectURL(blob));
+    const blobUrl = URL.createObjectURL(blob);
+    engine = new Worker(blobUrl);
+    URL.revokeObjectURL(blobUrl); // el worker ya tiene el codigo cargado; no hace falta mantener vivo el blob
     engine.onmessage = (e)=>handleEngineMessage(e, timeoutId);
     engine.onerror = (e)=>{
       console.warn('Worker de Stockfish falló en tiempo de ejecución', e);
@@ -3988,7 +3999,13 @@ function applyLevel(){
 }
 
 function setHumanColor(c){
-  if(thinking || c===humanColor) return;
+  if(c===humanColor) return;
+  if(thinking){
+    const bar = document.getElementById('status-bar');
+    bar.textContent = 'Esperá a que la IA termine de pensar…';
+    bar.className = 'thinking';
+    return;
+  }
   humanColor = c;
   document.getElementById('color-w').classList.toggle('active', c==='w');
   document.getElementById('color-b').classList.toggle('active', c==='b');
@@ -4152,15 +4169,23 @@ function uciToMoveObj(uci){
 }
 
 function playEngineMove(moveObj){
-  if(!moveObj){ thinking=false; return; }
+  if(!moveObj){ thinking=false; checkGameOver(); return; }
   const capturedPiece = game.get(moveObj.to);
-  const applied = game.move({from:moveObj.from, to:moveObj.to, promotion:moveObj.promotion||'q'});
+  let applied = game.move({from:moveObj.from, to:moveObj.to, promotion:moveObj.promotion||'q'});
   if(!applied){
     const legal = game.moves({verbose:true});
     const fallback = legal.find(m=>m.from===moveObj.from && m.to===moveObj.to) || legal[0];
-    if(fallback) game.move({from:fallback.from,to:fallback.to,promotion:'q'});
+    if(fallback) applied = game.move({from:fallback.from,to:fallback.to,promotion:'q'});
   }
-  lastMove = {from:moveObj.from, to:moveObj.to};
+  if(!applied){
+    // ninguna jugada (propuesta ni fallback) pudo aplicarse: no toques lastMove,
+    // no finjas que hubo movimiento. Probablemente la partida ya terminó.
+    thinking = false;
+    document.getElementById('btn-reroll').disabled = true;
+    checkGameOver();
+    return;
+  }
+  lastMove = {from:applied.from, to:applied.to};
   thinking = false;
   document.getElementById('btn-reroll').disabled = (candidateMoves.length<=1);
 
@@ -4202,9 +4227,14 @@ function undoMove(){
 }
 
 function resetGame(){
-  if(thinking) return;
+  if(thinking){
+    const bar = document.getElementById('status-bar');
+    bar.textContent = 'Esperá a que la IA termine de pensar…';
+    bar.className = 'thinking';
+    return;
+  }
   game.reset();
-  selectedSq=null; legalTargets=[]; lastMove=null; candidateMoves=[]; wikiCurrentOpening=null;
+  selectedSq=null; legalTargets=[]; lastMove=null; candidateMoves=[]; wikiCurrentOpening=null; wikiExtractCache=null;
   renderBoard(); logMoves(); updateOpeningPanel();
   if(game.turn() === humanColor){
     document.getElementById('status-bar').textContent = humanTurnMsg();
