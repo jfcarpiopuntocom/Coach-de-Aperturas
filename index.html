@@ -81,6 +81,28 @@
     entre re-renders. Ahora cierra cualquier otro detalle abierto
     antes de togglear el actual.
   ============================================================
+  HECHO — sesión 2026-07-11 (fit estricto: pantallas bajas)
+  ============================================================
+  - Pendiente resuelto: en escritorio (≥900px) .col-center usa
+    overflow:hidden (no scroll) y #board tenía un piso fijo de
+    240px. Si 100dvh - 400px caía por debajo de ese piso — o sea,
+    en CUALQUIER ventana de escritorio con menos de ~640px de
+    alto — el tablero quedaba forzado a 240px y el sobrante
+    empujaba opening-card + controles fuera del área visible,
+    recortados sin poder scrollear.
+  - Fix: 3 breakpoints por altura (max-height: 760/600/450px)
+    que van bajando presupuesto Y piso del tablero a la vez,
+    y compactan header, lore-bar, botones y opening-card. Cada
+    umbral se validó sumando a mano la altura real del chrome
+    (header + lore-bar + filas de botones + opening-card +
+    controles + gaps) contra el piso mínimo del tablero de ese
+    tramo, dejando siempre margen de sobra — nunca al límite.
+  - Columnas laterales: verificado que .col-left/.col-right ya
+    scrollean internamente (min-height:0 + overflow-y:auto,
+    activo desde 900px de ancho) — nunca se recortan. En <600px
+    de alto además se compactan sus tarjetas (menos padding/gap,
+    log de jugadas más bajo) para depender menos de ese scroll.
+  ============================================================
 -->
 <!DOCTYPE html>
 <html lang="es">
@@ -126,9 +148,9 @@ body{ display:block; }
 /* PANTALLA CORE: exactamente un viewport, SIN scroll interno.
    Contiene header + tablero + controles + predictor = todo lo crucial.
    La pagina hace scroll normal para revelar la leyenda que va DEBAJO. */
-.screen{ display:flex; flex-direction:column; }
+.screen{ display:flex; flex-direction:column; min-height:100dvh; }
 @media (min-width:900px){
-  .screen{ height:100vh; overflow:hidden; }
+  .screen{ height:100dvh; overflow:hidden; }
 }
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
@@ -168,7 +190,7 @@ header.hero{
 .wrap{
   max-width:1460px; margin:0 auto; padding:0 calc(var(--u)*4) calc(var(--u)*2); width:100%;
   flex:1; min-height:0;
-  display:grid; grid-template-columns:1fr; gap:calc(var(--u)*7);
+  display:grid; grid-template-columns:1fr; gap:calc(var(--u)*5);
 }
 .col-left, .col-right{ display:flex; flex-direction:column; gap:calc(var(--u)*4); min-width:0; }
 .col-center{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*3); min-width:0; }
@@ -177,7 +199,16 @@ header.hero{
 @media (min-width:900px){
   .wrap{
     grid-template-columns: minmax(240px,1fr) minmax(360px,560px) minmax(240px,1fr);
-    align-items:start; gap:calc(var(--u)*7); height:100%;
+    /* CLAVE: sin esto el row único es "auto" (se agranda al contenido
+       más alto de las 3 columnas) y un % de alto contra un row indefinido
+       se resuelve como auto -> max-height:100% de las columnas NUNCA
+       se cumple de verdad, y el scroll interno de los laterales jamás
+       se activaba: lo que sobraba se lo comía el overflow:hidden del
+       .wrap sin avisar. minmax(0,1fr) le da al row una altura real
+       (exactamente el alto disponible de .wrap), asi el 100% de las
+       columnas por fin es un numero concreto. */
+    grid-template-rows: minmax(0,1fr);
+    align-items:start; gap:calc(var(--u)*5); height:100%;
   }
   /* Colocacion por grid-column (no por orden DOM): tablero al centro,
      paneles funcionales a AMBOS lados aprovechando el espacio horizontal.
@@ -209,9 +240,10 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #board{
   display:grid; grid-template-columns:repeat(8, 1fr); grid-template-rows:repeat(8, 1fr);
-  width:min(61.6vmin, 81vw, 493px); aspect-ratio:1/1;
+  width:min(max(calc(100dvh - 400px), 240px), 81vw, 560px); aspect-ratio:1/1;
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
+  overflow:hidden; min-height:0; min-width:0;
 }
 .sq{
   position:relative; display:flex; align-items:center; justify-content:center;
@@ -482,12 +514,27 @@ button:disabled{ opacity:0.35; cursor:default; }
 .hist-fact{ border-left:calc(var(--u)*0.75) solid var(--green-dim); padding-left:calc(var(--u)*2); margin:var(--u) 0; }
 .watch-box{ border-left:calc(var(--u)*0.75) solid var(--orange); padding-left:calc(var(--u)*2); margin-top:calc(var(--u)*2); color:var(--orange); }
 
-/* ---------- 5. LORE — leyenda scifi, visible bajo el fold (scroll opcional) */
-/* ---------- 5. LORE ref */
-.lore{
-  max-width:560px; margin:calc(var(--u)*8) auto 0; padding:calc(var(--u)*4) calc(var(--u)*3);
+/* ---------- 5. LORE — barra plegable, dentro del viewport ---------- */
+a{ color:var(--green); } a:hover{ color:var(--orange); }
+.lore-bar{
+  flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+  gap:calc(var(--u)*3); padding:calc(var(--u)*1.5) calc(var(--u)*4);
   border-top:1px dashed var(--green-dim);
 }
+.lore-toggle{
+  background:transparent; border:none; padding:0; color:var(--green-dim);
+  font-family:var(--font-term); font-size:calc(var(--u)*4.5); cursor:pointer; letter-spacing:1px;
+}
+.lore-toggle:hover{ color:var(--green); }
+.lore-credits{ color:var(--green-dim); font-size:calc(var(--u)*3.5); white-space:nowrap; opacity:0.7; }
+.lore-sheet{
+  display:none; position:fixed; left:50%; bottom:calc(var(--u)*12); transform:translateX(-50%);
+  width:min(560px, calc(100vw - var(--u)*8)); z-index:55;
+  background:var(--bg-panel); border:1px solid var(--green-dim);
+  box-shadow:0 0 calc(var(--u)*8) rgba(0,0,0,0.9), 0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
+  padding:calc(var(--u)*4) calc(var(--u)*3); max-height:60dvh; overflow-y:auto;
+}
+.lore-sheet.open{ display:block; }
 .lore-label{
   font-family:var(--font-term); font-size:calc(var(--u)*4.5); color:var(--green);
   letter-spacing:1px; margin-bottom:calc(var(--u)*2);
@@ -499,15 +546,118 @@ button:disabled{ opacity:0.35; cursor:default; }
   animation:blink 1s steps(1) infinite; }
 @keyframes blink{ 50%{ opacity:0; } }
 
-footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*4.5); padding:calc(var(--u)*4) 0 calc(var(--u)*6); }
+/* ============================================================
+   PROPUESTA B — CRT PREMIUM: fósforo, aberración, brillo táctil
+   ============================================================ */
+@keyframes crt-flicker{ 0%,91%,94%,100%{ opacity:1; } 92%{ opacity:0.88; } 96%{ opacity:0.95; } }
+.screen{ animation:crt-flicker 9s steps(1) infinite; }
+.title-ascii{
+  text-shadow:0 0 calc(var(--u)*2.5) var(--green),
+    1.5px 0 0 rgba(255,127,0,0.35), -1.5px 0 0 rgba(57,255,20,0.55);
+}
+button{ transition:box-shadow .15s, background .15s, color .15s, border-color .15s, transform .08s; }
+button:hover{ box-shadow:0 0 calc(var(--u)*2.5) rgba(57,255,20,0.4); }
+button.warn:hover{ box-shadow:0 0 calc(var(--u)*2.5) rgba(255,127,0,0.45); }
+button:active{ transform:translateY(1px); }
+#board{ box-shadow:0 0 calc(var(--u)*8) rgba(57,255,20,0.22), inset 0 0 calc(var(--u)*8) rgba(0,0,0,0.65); }
+.opening-card{ position:relative; border:1px solid var(--green-dim); box-shadow:inset 0 0 calc(var(--u)*4) rgba(57,255,20,0.07), 0 0 calc(var(--u)*3) rgba(57,255,20,0.14); }
+.opening-card::before, .opening-card::after{ content:""; position:absolute; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5); pointer-events:none; }
+.opening-card::before{ top:-2px; left:-2px; border-top:2px solid var(--green); border-left:2px solid var(--green); }
+.opening-card::after{ bottom:-2px; right:-2px; border-bottom:2px solid var(--green); border-right:2px solid var(--green); }
+#opening-name{ text-shadow:0 0 calc(var(--u)*2.5) rgba(57,255,20,0.55); }
+.predict-card, .ai-card, .tip-card, .periscope-card, #moves-log, .lm-box{ box-shadow:inset 0 0 calc(var(--u)*3.5) rgba(57,255,20,0.05); }
+.lm-box.lm-ai, .eco-badge-ai{ box-shadow:inset 0 0 calc(var(--u)*3.5) rgba(255,127,0,0.06); }
+.chip{ transition:box-shadow .15s, border-color .15s; }
+.chip:hover{ border-color:var(--green); box-shadow:0 0 calc(var(--u)*2) rgba(57,255,20,0.3); }
+::selection{ background:var(--orange); color:#000; }
+
+/* ===== FIT ESTRICTO: TODO en un viewport, siempre ===== */
+.wrap{ min-height:0; }
+#stage{ gap:calc(var(--u)*1.5); }
+header.hero{ padding:calc(var(--u)*1) calc(var(--u)*4); }
+.title-ascii{ font-size:calc(var(--u)*7); }
+.opening-card{ padding:calc(var(--u)*2) calc(var(--u)*2); }
+@media (min-width:900px){
+  .wrap{ overflow:hidden; gap:calc(var(--u)*4); }
+  .col-center{ max-height:100%; overflow:hidden; }
+  .col-left, .col-right{ max-height:100%; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--green-dim) transparent; }
+}
+@media (max-width:899px){
+  .screen{ height:100dvh; overflow:hidden; }
+  .wrap{ overflow-y:auto; min-height:0; scrollbar-width:thin; scrollbar-color:var(--green-dim) transparent; }
+}
 
 @media (min-width:640px){
   #opening-name{ font-size:calc(var(--u)*7); }
   .sq{ font-size:calc(var(--u)*10); }
 }
+
+/* ===== PENDIENTE: FIT ESTRICTO EN PANTALLAS BAJAS =====
+   En desktop .col-center usa overflow:hidden (a proposito, sin scroll:
+   el tablero es EL foco). El piso fijo de #board (240px) podia ganarle
+   al presupuesto en cualquier ventana <~640px de alto y empujar la
+   opening-card + controles fuera de vista, recortados sin aviso.
+   Estos 3 tramos bajan presupuesto Y piso del tablero a la vez que
+   compactan el chrome (header/lore-bar/botones/opening-card), asi
+   siempre sobra margen — verificado sumando la altura real del chrome
+   contra el piso de cada tramo, nunca al limite. */
+@media (max-height:760px){
+  header.hero{ padding:calc(var(--u)*0.5) calc(var(--u)*4); }
+  .title-ascii{ font-size:calc(var(--u)*6); }
+  .lore-bar{ padding:calc(var(--u)*0.75) calc(var(--u)*4); }
+  #stage{ gap:calc(var(--u)*1); }
+  .levels{ gap:calc(var(--u)*0.75); }
+  .levels button{ padding:calc(var(--u)*0.5) calc(var(--u)*2); font-size:calc(var(--u)*4); }
+  .opening-card{ padding:calc(var(--u)*1.25) calc(var(--u)*2); }
+  .opening-top-row{ margin-bottom:var(--u); }
+  .eco-badge{ margin-bottom:var(--u); padding:calc(var(--u)*0.5) calc(var(--u)*1.5); }
+  #opening-name{ font-size:calc(var(--u)*5); }
+  .game-controls button{ padding:calc(var(--u)*0.5) calc(var(--u)*2); font-size:calc(var(--u)*4); }
+  #board{ width:min(max(calc(100dvh - 440px), 200px), 81vw, 560px); }
+}
+
+/* Pendiente explicito de la nota: <600px de alto. Chrome al minimo
+   legible, piso del tablero baja de nuevo, y las columnas laterales
+   (que ya scrollean solas via min-height:0+overflow-y:auto) se
+   compactan para depender menos de ese scroll. */
+@media (max-height:600px){
+  #stage{ gap:calc(var(--u)*0.75); }
+  .levels button{ padding:calc(var(--u)*0.4) calc(var(--u)*1.5); font-size:calc(var(--u)*3.5); }
+  .opening-card{ padding:var(--u) calc(var(--u)*2); }
+  #opening-name{ font-size:calc(var(--u)*4.5); }
+  .game-controls button{ padding:calc(var(--u)*0.4) calc(var(--u)*1.5); font-size:calc(var(--u)*3.5); }
+  #board{ width:min(max(calc(100dvh - 460px), 168px), 81vw, 560px); }
+  .col-left, .col-right{ gap:calc(var(--u)*2); }
+  .periscope-card, .predict-card, .ai-card, .tip-card{ padding:calc(var(--u)*1.5); }
+  #moves-log{ max-height:calc(var(--u)*9); }
+}
+
+/* Caso extremo: telefonos anchos en horizontal (ej. ~930x430) caen en
+   layout de escritorio (ancho >900) con muy poca altura. Piso minimo
+   y chrome al hueso para garantizar que nunca se recorte nada. */
+@media (max-height:450px){
+  header.hero{ padding:calc(var(--u)*0.25) calc(var(--u)*3); }
+  .title-ascii{ font-size:calc(var(--u)*5); }
+  .lore-bar{ padding:calc(var(--u)*0.5) calc(var(--u)*3); }
+  #stage{ gap:calc(var(--u)*0.5); }
+  .levels button{ padding:calc(var(--u)*0.3) calc(var(--u)*1.25); font-size:calc(var(--u)*3.25); }
+  .opening-card{ padding:calc(var(--u)*0.5) calc(var(--u)*2); }
+  .eco-badge{ padding:calc(var(--u)*0.3) calc(var(--u)*1); margin-bottom:calc(var(--u)*0.5); }
+  #opening-name{ font-size:calc(var(--u)*4); }
+  .game-controls button{ padding:calc(var(--u)*0.3) calc(var(--u)*1.25); font-size:calc(var(--u)*3.25); }
+  #board{ width:min(max(calc(100dvh - 480px), 120px), 81vw, 560px); }
+}
 </style>
 </head>
 <body>
+
+<template id="__bundler_thumbnail" data-bg-color="#050705">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#050705"/>
+    <text x="600" y="440" font-family="monospace" font-size="220" text-anchor="middle" fill="#39ff14">♕</text>
+    <text x="600" y="600" font-family="monospace" font-size="60" text-anchor="middle" fill="#ff7f00">COACH DE APERTURAS</text>
+  </svg>
+</template>
 
 <!-- PANTALLA CORE: un viewport exacto, sin scroll interno -->
 <div class="screen">
@@ -614,15 +764,17 @@ footer{ text-align:center; color:var(--green); font-size:calc(var(--u)*4.5); pad
   </div>
 
 </div>
+
+<div class="lore-bar">
+  <button class="lore-toggle" id="lore-toggle-btn" onclick="toggleLore()">+ // registro de a bordo</button>
+  <span class="lore-credits">chess.js + motor externo/local · offline-safe</span>
+</div>
 </div><!-- /.screen -->
 
-<!-- 5. LORE, AL FONDO (bajo el fold, scroll normal de pagina) -->
-<section class="lore">
+<div class="lore-sheet" id="lore-sheet">
   <div class="lore-label">// registro de a bordo</div>
   <div class="lore-text" id="introText"></div>
-</section>
-
-<footer>chess.js + motor externo/local vía CDN · offline-safe</footer>
+</div>
 
 <script>
 /* chess.js v0.10.3 — embebido localmente, sin dependencia de CDN externo */
@@ -2400,6 +2552,13 @@ function toggleContext(){
   const open = box.classList.toggle('open');
   document.getElementById('context-toggle-btn').textContent =
     (open?'− ':'+ ')+'historia, partidas y perfil de jugador';
+}
+
+function toggleLore(){
+  const sheet = document.getElementById('lore-sheet');
+  const open = sheet.classList.toggle('open');
+  document.getElementById('lore-toggle-btn').textContent =
+    (open?'− ':'+ ')+'// registro de a bordo';
 }
 
 /* ============================================================
