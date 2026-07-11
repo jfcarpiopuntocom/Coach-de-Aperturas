@@ -844,8 +844,14 @@ button:disabled{ opacity:0.35; cursor:default; }
   mix-blend-mode:overlay;
 }
 .psq{ display:flex; align-items:center; justify-content:center; font-size:calc(var(--u)*4.5); }
+/* psq base usa los mismos colores del tablero, pero dentro del periscopio
+   son casi invisibles contra el fondo oscuro — se sobreescriben abajo */
 .psq.light{ background:var(--sq-a); }
 .psq.dark{ background:var(--sq-b); }
+/* periscopio: casillas visibles aunque estén vacías */
+#periscope-board .psq.light{ background:#1a2e1a; }
+#periscope-board .psq.dark { background:#0a1208; }
+#periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); }
 #board.flipped{ transform:rotate(180deg); }
 #board.flipped .pc, #board.flipped .dot, #board.flipped .coord{ display:inline-block; transform:rotate(180deg); }
 
