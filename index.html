@@ -1,10 +1,50 @@
+<!--
+  ============================================================
+  HECHO — sesión 2026-07-10
+  ============================================================
+  - Fix: motor local sin fuerza real (negamax sin alpha-beta,
+    profundidad efectiva 0-1). Reescrito con poda alpha-beta y
+    localDepth subido a 3 (2 plies reales). Randomness nivel 400
+    bajado de 0.55 a 0.35.
+  - Default de dificultad cambiado a Nivel 400 (antes 1500).
+  - Ajuste de layout: header más compacto + tablero reducido 12%
+    para que todo el panel entre en un viewport.
+  - 3 microcirugías preventivas: undoMove (underflow de historial),
+    rerollMove (podía disparar el motor en turno equivocado),
+    setLevel (índice inválido ya no corrompe currentLevel).
+  - Panel "+ historia, partidas y perfil de jugador": el botón
+    ahora alterna +/− según el estado (antes quedaba fijo en "+").
+  - Fix: el extracto de Wikipedia desaparecía silenciosamente al
+    re-renderizar el panel (undo/reroll) sin volver a aparecer;
+    ahora se cachea y se reaplica sin re-fetch.
+  - Megareview: 5 microcirugías preventivas más —
+    1) playEngineMove ya no deja lastMove desincronizado si
+       ninguna jugada (propuesta ni fallback) pudo aplicarse.
+    2) TEMPERAMENT[best.tag] con fallback a 'solid' (evita
+       crash si algún tag futuro no está en el mapa).
+    3-4) resetGame/setHumanColor avisan en la barra de estado
+       en vez de no-op silencioso si se clickea mientras la IA
+       piensa.
+    5) Blob URL del worker de Stockfish ahora se revoca tras
+       crear el Worker (evitaba una fuga de memoria).
+  - Predictor de aperturas posibles: formato cambiado a
+    "+jugada = Nombre de apertura" (antes flecha simple).
+  - Tipografía unificada: todo el texto (salvo el título y el
+    nombre de la apertura detectada) al mismo tamaño de referencia.
+  - Rebrand: título pasa a "Coach de Aperturas" (antes "...y
+    Defensas"), círculos ○/● del header reemplazados por ♕/♟.
+  - Caja táctica ya no queda vacía ("—") al salir del repertorio
+    conocido: rotan 10 consejos genéricos (5 apertura / 5 medio
+    juego) elegidos de forma determinística por número de jugada.
+  ============================================================
+-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Coach de Aperturas</title>
-<meta property="og:title" content="Coach de Aperturas y Defensas">
+<meta property="og:title" content="Coach de Aperturas">
 <meta property="og:description" content="Un tablero, un despertar de cien años, y una apertura que aún no tiene nombre para ti.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#050705">
@@ -124,7 +164,7 @@ button.warn:hover{ background:var(--orange); color:#000; }
 button:disabled{ opacity:0.35; cursor:default; }
 
 #board{
-  display:grid; grid-template-columns:repeat(8, 1fr);
+  display:grid; grid-template-columns:repeat(8, 1fr); grid-template-rows:repeat(8, 1fr);
   width:min(61.6vmin, 81vw, 493px); aspect-ratio:1/1;
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
@@ -169,9 +209,25 @@ button:disabled{ opacity:0.35; cursor:default; }
   60%{ filter:invert(0); opacity:1; }
   100%{ filter:invert(0); opacity:0; transform:scale(0.5); }
 }
+@keyframes fx-scanwipe-kf{
+  0%{ opacity:1; clip-path:inset(0 0 0 0); filter:brightness(1); }
+  40%{ opacity:1; clip-path:inset(0 0 60% 0); filter:brightness(2.2); }
+  70%{ clip-path:inset(0 0 90% 0); filter:brightness(3); }
+  100%{ opacity:0; clip-path:inset(0 0 100% 0); filter:brightness(3); }
+}
+@keyframes fx-glitch-kf{
+  0%{ opacity:1; transform:translate(0,0); filter:hue-rotate(0deg); }
+  20%{ transform:translate(-3px,1px); filter:hue-rotate(30deg); }
+  40%{ transform:translate(3px,-2px) scaleX(1.1); opacity:0.8; }
+  60%{ transform:translate(-2px,2px) scaleX(0.9); filter:hue-rotate(-20deg); opacity:0.6; }
+  80%{ transform:translate(2px,-1px); opacity:0.3; }
+  100%{ opacity:0; transform:translate(0,4px) scaleX(1); }
+}
 .sq.fx-dissolve .pc{ animation: fx-dissolve-kf 0.38s ease-out forwards; }
 .sq.fx-shatter .pc{ animation: fx-shatter-kf 0.38s steps(6) forwards; }
 .sq.fx-flash .pc{ animation: fx-flash-kf 0.38s ease-in forwards; }
+.sq.fx-scanwipe .pc{ animation: fx-scanwipe-kf 0.38s steps(8) forwards; }
+.sq.fx-glitch .pc{ animation: fx-glitch-kf 0.38s steps(5) forwards; }
 
 #status-bar{
   font-size:calc(var(--u)*5); color:var(--green-dim); text-align:right;
@@ -3639,7 +3695,7 @@ function onSquareClick(squareName){
   renderBoard();
 }
 
-/* Aplica el movimiento; si hay captura, dispara una de las 3
+/* Aplica el movimiento; si hay captura, dispara una de las 5
    animaciones (genéricas, según la pieza CAPTURADA, no el par) y
    retrasa el re-render hasta que termine. */
 function makeMoveWithFx(from, to, after){
@@ -3650,8 +3706,8 @@ function makeMoveWithFx(from, to, after){
 
   if(capturedPiece){
     const el = document.querySelector('.sq[data-sq="'+to+'"]');
-    const effects = ['fx-dissolve','fx-shatter','fx-flash'];
-    const effClass = effects[capturedPiece.type.charCodeAt(0) % 3];
+    const effects = ['fx-dissolve','fx-shatter','fx-flash','fx-scanwipe','fx-glitch'];
+    const effClass = effects[capturedPiece.type.charCodeAt(0) % effects.length];
     if(el){
       el.classList.add(effClass);
       setTimeout(()=>{ finishMove(after); }, 380);
@@ -3796,6 +3852,13 @@ function updateOpeningPanel(){
      maximizando seq.length). Si ninguna esta completa aun, usar la de mayor
      prefijo cubierto (lim) como aproximacion mientras sigues jugando. */
   let best = null, bestComplete = -1, bestLim = 0;
+  /* Fallback de "pariente mas cercano": la linea con MAYOR prefijo en
+     comun aunque no siga coincidiendo despues (a diferencia del loop
+     de arriba, que descarta apenas hay una jugada que no calza). Sirve
+     para cuando la partida se sale del repertorio desde jugada 1-2 y
+     nunca vuelve a calzar exacto: mejor mostrar el pariente mas cercano
+     que un "explorando variantes" fijo para siempre. */
+  let nearest = null, nearestLim = 0;
   for(const o of OPENINGS){
     const seq = o.moves.split(' ');
     const lim = Math.min(seq.length, hist.length);
@@ -3803,7 +3866,13 @@ function updateOpeningPanel(){
     for(let i=0;i<lim;i++){
       if(seq[i] !== hist[i]){ ok=false; break; }
     }
-    if(!ok) continue;
+    if(!ok){
+      // aun sin match exacto, registra cuanto prefijo comparten de verdad
+      let common = 0;
+      while(common<lim && seq[common]===hist[common]) common++;
+      if(common > nearestLim){ nearestLim = common; nearest = o; }
+      continue;
+    }
     const complete = seq.length <= hist.length ? seq.length : -1;
     if(complete > bestComplete || (complete === -1 && bestComplete === -1 && lim > bestLim)){
       best = o; bestComplete = complete; bestLim = lim;
@@ -3816,7 +3885,12 @@ function updateOpeningPanel(){
     const lim = Math.min(seq.length, hist.length);
     let ok = true;
     for(let i=0;i<lim;i++){ if(seq[i] !== hist[i]){ ok=false; break; } }
-    if(!ok) continue;
+    if(!ok){
+      let common = 0;
+      while(common<lim && seq[common]===hist[common]) common++;
+      if(common > nearestLim){ nearestLim = common; nearest = {eco:x.eco, name:x.name}; }
+      continue;
+    }
     const complete = seq.length <= hist.length ? seq.length : -1;
     const better = complete > bestComplete || (complete === -1 && bestComplete === -1 && lim > bestLim);
     if(!better) continue;
@@ -3844,6 +3918,13 @@ function updateOpeningPanel(){
       movesEl.style.display='none'; histEl.textContent='—'; gamesEl.textContent='—';
       tempEl.textContent='Elige una apertura y este panel te dirá qué temperamento de jugador suele encontrarse cómodo aquí.';
       tipEl.textContent='Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.';
+    } else if(nearest && nearestLim>=1){
+      badge.innerHTML = '<span class="eco-badge">'+nearest.eco+'</span>';
+      nameEl.textContent = 'Te alejaste de '+nearest.name+' — terreno propio desde aquí.';
+      movesEl.style.display='none';
+      histEl.textContent='Comparte las primeras '+nearestLim+(nearestLim===1?' jugada':' jugadas')+' con '+nearest.name+', pero luego diverge. Si transpone de nuevo a una línea conocida, lo detecto al instante.';
+      gamesEl.textContent='—';
+      tipEl.textContent=genericTacticalTip(hist);
     } else {
       badge.innerHTML=''; nameEl.textContent='Tu apertura — explorando variantes.';
       movesEl.style.display='none';
