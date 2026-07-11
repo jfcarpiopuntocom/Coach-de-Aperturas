@@ -124,7 +124,12 @@
      tablero -> apertura -> consejo -> contexto (opcional) -> lore.
    ============================================================ */
 :root{
+  /* --u responsivo: nunca baja de 3.5px (el valor histórico, para no romper el
+     fit de pantallas bajas donde los @media max-height ya compactan), pero crece
+     con la altura hasta 4.6px en monitores altos para que el texto no quede
+     microscópico. Base = --u*4.5, así el body va de ~15.75px a ~20.7px. */
   --u: 3.5px;
+  --u: clamp(3.5px, 0.52vh, 4.6px);
   --bg:        #050705;
   --bg-panel:  #080c08;
   --green:     #39ff14;
@@ -188,17 +193,17 @@ header.hero{
 
 /* ---------- Contenedor general: tablero al centro, info a los lados ---------- */
 .wrap{
-  max-width:1460px; margin:0 auto; padding:0 calc(var(--u)*4) calc(var(--u)*2); width:100%;
+  max-width:1600px; margin:0 auto; padding:0 calc(var(--u)*4) calc(var(--u)*2); width:100%;
   flex:1; min-height:0;
   display:grid; grid-template-columns:1fr; gap:calc(var(--u)*5);
 }
 .col-left, .col-right{ display:flex; flex-direction:column; gap:calc(var(--u)*4); min-width:0; }
-.col-center{ display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*3); min-width:0; }
+.col-center{ display:flex; flex-direction:column; align-items:center; justify-content:safe center; gap:calc(var(--u)*3); min-width:0; }
 .col-center > section{ width:100%; }
 
 @media (min-width:900px){
   .wrap{
-    grid-template-columns: minmax(240px,1fr) minmax(360px,560px) minmax(240px,1fr);
+    grid-template-columns: minmax(210px,0.85fr) minmax(400px,660px) minmax(210px,0.85fr);
     /* CLAVE: sin esto el row único es "auto" (se agranda al contenido
        más alto de las 3 columnas) y un % de alto contra un row indefinido
        se resuelve como auto -> max-height:100% de las columnas NUNCA
@@ -241,7 +246,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #board{
   display:grid; grid-template-columns:repeat(8, 1fr); grid-template-rows:repeat(8, 1fr);
-  width:min(56vmin, 81vw, 460px); aspect-ratio:1/1;
+  width:min(100%, 64vh, 540px); aspect-ratio:1/1;
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
   overflow:hidden; min-height:0; min-width:0; position:relative;
