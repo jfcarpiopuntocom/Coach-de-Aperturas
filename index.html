@@ -823,19 +823,20 @@ button:disabled{ opacity:0.35; cursor:default; }
    A propósito chico: es un "ojo de cerradura" al tablero del rival, no un
    segundo tablero completo. Va en línea, al lado del texto, sin agregar scroll. */
 .periscope-card{
-  background:#020402; border:1px solid var(--green-dim); padding:calc(var(--u)*2);
-  position:relative; overflow:hidden; display:flex; flex-direction:column; gap:calc(var(--u)*2);
+  background:#020402; border:1px solid var(--green-dim); padding:calc(var(--u)*1.5) calc(var(--u)*2);
+  position:relative; overflow:hidden; display:flex; align-items:center; gap:calc(var(--u)*2.5);
 }
 .periscope-label{
   display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
-  color:var(--green); letter-spacing:0.5px; line-height:1.6; flex:none;
+  color:var(--green); letter-spacing:0.5px; line-height:1.6; flex:1;
 }
 #periscope-board{
-  /* tablero completo 8x8, cuadrado, llena el ancho de la columna */
-  display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
-  width:100%; aspect-ratio:1/1;
+  /* mini tablero 8x8 fijo, rotado 180° = vista del rival, patas arriba */
+  flex:none; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
+  width:calc(var(--u)*28); height:calc(var(--u)*28);
   border:1px solid var(--green-dim);
   filter:brightness(0.9) saturate(0.7);
+  transform:rotate(180deg);
 }
 .periscope-card::after{
   content:''; position:absolute; inset:0; pointer-events:none;
@@ -4390,22 +4391,16 @@ function renderBoard(){
    Reutiliza el mismo orden de casillas que el tablero principal;
    el giro de 180° lo hace el CSS, así que esto siempre queda en
    sync con renderBoard() sin lógica de espejo duplicada. */
-/* Periscopio: tablero completo 8x8 rotado 180°, exactamente como lo ve el rival.
-   board[0]=fila 8 ... board[7]=fila 1. Rotado 180°: la fila 1 del rival (su fondo)
-   queda abajo, la fila 8 arriba — espejo perfecto de su perspectiva. */
+/* Periscopio: mismo tablero renderizado en orden normal (fila 8→1, col a→h),
+   el CSS aplica rotate(180deg) para dar la vista del rival patas arriba.
+   No hay lógica de espejo aquí — el transform lo hace todo. */
 function renderPeriscope(){
   const el = document.getElementById('periscope-board');
   if(!el) return;
   el.innerHTML = '';
-  const board = game.board();
-  const rivalIsBlack = humanColor === 'w';
-  // Orden de filas en la vista del rival (su fondo queda abajo):
-  // rival=negro ve: fila8 arriba → fila1 abajo  → rows [0,1,2,3,4,5,6,7] normal
-  // rival=blanco ve: fila1 arriba → fila8 abajo  → rows [7,6,5,4,3,2,1,0] invertido
-  const rankRows = rivalIsBlack ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
-  for(const r of rankRows){
-    for(let cc=0; cc<8; cc++){
-      const c = rivalIsBlack ? 7-cc : cc; // espejo horizontal según color rival
+  const board = game.board(); // board[0]=fila8 ... board[7]=fila1
+  for(let r=0; r<8; r++){
+    for(let c=0; c<8; c++){
       const isLight = (r+c)%2===0;
       const sq = document.createElement('div');
       sq.className = 'psq ' + (isLight?'light':'dark');
