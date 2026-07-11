@@ -1232,7 +1232,9 @@ a{ color:var(--green); } a:hover{ color:var(--orange); }
   text-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.45); letter-spacing:1px;
   font-weight:bold; white-space:nowrap;
 }
-.lore-credits{ color:var(--green-dim); font-size:calc(var(--u)*3.5); white-space:nowrap; opacity:0.7; }
+.lore-credits{ color:#4a8c3a; font-size:calc(var(--u)*3.5); white-space:nowrap; }
+.lore-credits a{ color:#4a8c3a; text-decoration:none; border-bottom:1px dashed #4a8c3a; }
+.lore-credits a:hover{ color:var(--orange); border-color:var(--orange); }
 .lore-sheet{
   display:none; position:fixed; left:50%; bottom:calc(var(--u)*12); transform:translateX(-50%);
   width:min(560px, calc(100vw - var(--u)*8)); z-index:55;
@@ -1477,7 +1479,7 @@ button:active{ transform:translateY(1px); }
   <button class="lore-toggle" id="lore-toggle-btn" onclick="toggleLore()">+ // registro de a bordo</button>
   <button class="lore-toggle" id="battlefx-toggle-btn" onclick="toggleBattleFx()">⚡ FX: ON</button>
   <button class="lore-toggle" id="sound-toggle-btn" onclick="toggleSound()">🔊 Sonidos: ON</button>
-  <span class="lore-credits">chess.js + motor externo/local · offline-safe</span>
+  <span class="lore-credits">chess.js · offline-safe · MIT · <a href="https://www.paypal.com/donate?business=jfcarpio%40gmail.com&currency_code=USD" target="_blank" rel="noopener">apoya el proyecto</a></span>
   <button id="help-btn" class="help-btn" onclick="openHelpModal()" aria-label="Acerca de esta app" title="Acerca de esta app">?</button>
 </div>
 </div><!-- /.screen -->
