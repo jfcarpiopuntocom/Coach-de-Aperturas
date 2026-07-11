@@ -3761,6 +3761,30 @@ function toggleWinPct(el){
   if(detail) detail.classList.toggle('open');
 }
 
+/* Consejos genéricos de fase de juego, para cuando la partida ya
+   se salió del repertorio conocido — la caja táctica NUNCA debe
+   quedar vacía ni con un simple guion. Se elige uno determinístico
+   según el número de jugada, para que no cambie erráticamente. */
+const GENERIC_TIPS_OPENING = [
+  'Sigues en fase de apertura: prioriza desarrollar piezas menores antes de mover la misma pieza dos veces.',
+  'No saques la dama demasiado pronto — es un blanco fácil que te hace perder tiempos de desarrollo.',
+  'Enroca en cuanto puedas si tu rey sigue en el centro; la seguridad del rey vale más que ganar un peón suelto.',
+  'Controla las casillas centrales (d4, d5, e4, e5) con peones o piezas antes de lanzar un ataque lateral.',
+  'Conecta tus torres: despeja la fila trasera moviendo las piezas menores antes de pensar en el medio juego.'
+];
+const GENERIC_TIPS_MIDGAME = [
+  'Antes de cada jugada, revisa: ¿qué piezas mías están colgadas? ¿Qué piezas rivales están colgadas?',
+  'Busca la pieza peor colocada de tu rival y piensa cómo restringirla aún más.',
+  'Un plan simple: mejora tu peor pieza. Pregúntate cuál de tus piezas hace menos y reubícala.',
+  'Cuenta atacantes y defensores antes de iniciar cualquier cambio de piezas en una casilla disputada.',
+  'Si no ves un plan claro, mejora la seguridad de tu rey o activa tu peor torre — nunca está de más.'
+];
+function genericTacticalTip(hist){
+  const n = hist.length;
+  const pool = n <= 8 ? GENERIC_TIPS_OPENING : GENERIC_TIPS_MIDGAME;
+  return pool[n % pool.length];
+}
+
 /* ============================================================
    DETECTOR DE APERTURA — el propósito central del tablero.
    ============================================================ */
@@ -3825,7 +3849,7 @@ function updateOpeningPanel(){
       movesEl.style.display='none';
       histEl.textContent='Variante personal. Si transpone a una apertura conocida, aparece al instante.';
       gamesEl.textContent='—';
-      tipEl.textContent='—';
+      tipEl.textContent=genericTacticalTip(hist);
     }
     updateAiDefensePanel(hist, null);
     return;
