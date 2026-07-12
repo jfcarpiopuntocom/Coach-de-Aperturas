@@ -993,6 +993,47 @@ button:disabled{ opacity:0.35; cursor:default; }
   100%{ opacity:0; transform:scale(1.9) rotate(70deg); }
 }
 
+/* ===== SPACE BATTLE FX UPGRADE 2026-07-11 — FX ON only =====
+   Cuatro capas nuevas de espectáculo encima de lo que ya existe:
+   1) sweep-beam: líneas de luz full-board por torre/alfil/dama
+   2) impact-ring: ondas de choque concéntricas expandiéndose desde el impacto
+   3) tactical-alert: banner HUD para capturas de reina/torre
+   4) sq-ripple-w/b: flash en cascada por las casillas adyacentes
+   Ninguna de estas clases se aplica cuando battleFxEnabled=false.
+   CSS cosmético puro: sin efectos en gameplay ni en coaching. */
+
+/* Impact rings — círculos concéntricos expandiéndose */
+.impact-ring{
+  position:absolute; border-radius:50%; pointer-events:none; z-index:47;
+  border:calc(var(--u)*0.6) solid; box-sizing:border-box;
+}
+.impact-ring.w{ border-color:#39ff14; box-shadow:0 0 calc(var(--u)*3) #39ff14; }
+.impact-ring.b{ border-color:#ff7f00; box-shadow:0 0 calc(var(--u)*3) #ff7f00; }
+
+/* Tactical alert — banner HUD para reina/torre eliminadas */
+.tactical-alert{
+  position:absolute; z-index:60; pointer-events:none;
+  left:50%; top:45%;
+  font-size:clamp(13px, calc(var(--u)*4), 19px);
+  font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+  padding:calc(var(--u)*1.5) calc(var(--u)*4.5);
+  border:calc(var(--u)*0.4) solid; border-radius:calc(var(--u)*0.8);
+  white-space:nowrap; background:#060606;
+  animation: tactical-alert-kf 1.25s ease-out forwards;
+}
+.tactical-alert.w{ color:#39ff14; border-color:#39ff14; box-shadow:0 0 calc(var(--u)*7) #39ff14; }
+.tactical-alert.b{ color:#ff7f00; border-color:#ff7f00; box-shadow:0 0 calc(var(--u)*7) #ff7f00; }
+@keyframes tactical-alert-kf{
+  0%  { opacity:0; transform:translate(-50%, calc(-50% + 10px)) scale(0.82); }
+  18% { opacity:1; transform:translate(-50%, -50%) scale(1); }
+  70% { opacity:1; transform:translate(-50%, -50%) scale(1); }
+  100%{ opacity:0; transform:translate(-50%, calc(-50% - 8px)) scale(1.06); }
+}
+
+/* Square ripple — flash breve en casillas del radio de impacto */
+.sq.sq-ripple-w{ background:#39ff14 !important; }
+.sq.sq-ripple-b{ background:#ff7f00 !important; }
+
 #status-bar{
   font-size:calc(var(--u)*4.5); color:var(--green-dim); text-align:right;
   min-width:0; flex-shrink:1;
@@ -5537,6 +5578,39 @@ function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSqu
   if(echo1) echo1.animate(kf, {...timing, duration: flyDur+70, delay:55});
   if(echo2) echo2.animate(kf, {...timing, duration: flyDur+70, delay:110});
 
+  // Comet tail 2026-07-11: 5 fantasmas estáticos en puntos equidistantes a lo
+  // largo de la trayectoria. Cada uno se ilumina cuando la pieza pasa por su
+  // posición y se desvanece con blur — efecto "rastro de cometa".
+  // Solo con FX on y cuando el vuelo tiene dirección real (dx|dy != 0).
+  if(battleFxEnabled && (dx || dy)){
+    const TRAIL = 5;
+    for(let i = 1; i <= TRAIL; i++){
+      const t = i / (TRAIL + 1);                           // 1/6, 2/6, ... 5/6
+      const tg = document.createElement('span');
+      tg.className = 'pc-fly ' + colorClass;
+      tg.textContent = glyph;
+      tg.style.left = ((fromRect.left - boardRect.left) + dx * t) + 'px';
+      tg.style.top  = ((fromRect.top  - boardRect.top)  + dy * t) + 'px';
+      tg.style.width  = fromRect.width  + 'px';
+      tg.style.height = fromRect.height + 'px';
+      tg.style.fontSize = cs.fontSize;
+      tg.style.opacity = '0';
+      tg.style.zIndex = '38'; // debajo del flyer principal
+      boardEl.appendChild(tg);
+      const peak = 0.65 * (1 - t * 0.55);  // más brillante cerca del origen
+      const arrivalMs = flyDur * t;
+      const trailI = i; // capturar para el closure
+      setTimeout(()=>{
+        tg.animate([
+          {opacity:0,           filter:'blur(0px)'},
+          {opacity:peak,        filter:'blur(1px)',  offset:0.18},
+          {opacity:0,           filter:'blur(4px)'}
+        ], {duration:240, easing:'ease-out', fill:'forwards'});
+        setTimeout(()=>{ if(tg.remove) tg.remove(); }, 280);
+      }, arrivalMs);
+    }
+  }
+
   if(isCapture){
     const fxEl = isEnPassant ? document.querySelector('.sq[data-sq="'+epSquare+'"]') : toEl;
     // triggerCaptureFx ya respeta battleFxEnabled internamente: con FX on
@@ -5682,6 +5756,124 @@ function spawnBattleShock(boardEl, toEl, colorClass){
   setTimeout(()=>{ if(ring.remove) ring.remove(); }, 460);
 }
 
+/* ===== SPACE BATTLE FX: 3 NUEVAS FUNCIONES 2026-07-11 =====
+   Todas gateadas por el caller (solo se llaman cuando battleFxEnabled=true).
+   Ninguna toca game state. Solo efectos visuales efímeros sobre boardEl. */
+
+// SWEEP BEAMS — líneas de luz SVG full-board para torre/alfil/dama.
+// Torre: cruz H+V, Alfil: diagonales, Dama: H+V+diagonales.
+// Se clipean naturalmente por overflow:hidden del #board.
+function spawnSweepBeams(boardEl, toEl, attackerType, colorClass){
+  if(attackerType !== 'r' && attackerType !== 'b' && attackerType !== 'q') return;
+  const boardRect = boardEl.getBoundingClientRect();
+  const r = toEl.getBoundingClientRect();
+  const cx = (r.left - boardRect.left) + r.width / 2;
+  const cy = (r.top - boardRect.top) + r.height / 2;
+  const strokeColor = colorClass === 'w' ? '#39ff14' : '#ff7f00';
+  const dur = 300;
+
+  function makeSvgBeam(x1, y1, x2, y2, delay){
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:48;overflow:visible;width:100%;height:100%;';
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.style.stroke = strokeColor;
+    line.style.strokeWidth = '2.5';
+    line.style.strokeLinecap = 'round';
+    line.style.filter = 'drop-shadow(0 0 4px ' + strokeColor + ')';
+    svg.appendChild(line);
+    boardEl.appendChild(svg);
+    svg.animate(
+      [{opacity:0},{opacity:0.9,offset:0.12},{opacity:0.9,offset:0.58},{opacity:0}],
+      {duration:dur, delay:delay||0, easing:'ease-in-out', fill:'forwards'}
+    );
+    setTimeout(()=>{ if(svg.remove) svg.remove(); }, (delay||0) + dur + 30);
+  }
+
+  const W = boardRect.width, H = boardRect.height;
+  const diagLen = Math.hypot(W, H); // garantiza que la línea cubre la diagonal completa
+
+  if(attackerType === 'r' || attackerType === 'q'){
+    makeSvgBeam(0, cy, W, cy, 0);        // horizontal
+    makeSvgBeam(cx, 0, cx, H, 40);       // vertical (40ms después)
+  }
+  if(attackerType === 'b' || attackerType === 'q'){
+    const d = attackerType === 'q' ? 80 : 0; // offset timing para reina
+    makeSvgBeam(cx - diagLen, cy - diagLen, cx + diagLen, cy + diagLen, d);    // diagonal NW→SE
+    makeSvgBeam(cx + diagLen, cy - diagLen, cx - diagLen, cy + diagLen, d+40); // diagonal NE→SW
+  }
+}
+
+// IMPACT RINGS — 3-4 anillos concéntricos expandiéndose desde el punto de impacto.
+// count: cuántos anillos (1-4), scalado por magnitude del caller.
+function spawnImpactRings(boardEl, toEl, colorClass, count){
+  const boardRect = boardEl.getBoundingClientRect();
+  const r = toEl.getBoundingClientRect();
+  const cx = (r.left - boardRect.left) + r.width / 2;
+  const cy = (r.top - boardRect.top) + r.height / 2;
+  const size = Math.min(r.width, r.height);
+  for(let i = 0; i < count; i++){
+    const ring = document.createElement('div');
+    ring.className = 'impact-ring ' + colorClass;
+    ring.style.left = cx + 'px';
+    ring.style.top = cy + 'px';
+    ring.style.width = size + 'px';
+    ring.style.height = size + 'px';
+    boardEl.appendChild(ring);
+    const ringDur = 480 + i * 70;
+    ring.animate([
+      {transform:'translate(-50%,-50%) scale(0.15)', opacity:0.95},
+      {transform:'translate(-50%,-50%) scale(4.5)', opacity:0}
+    ], {duration:ringDur, delay:i*85, easing:'cubic-bezier(0.15,0.8,0.35,1)', fill:'forwards'});
+    setTimeout(()=>{ if(ring.remove) ring.remove(); }, ringDur + i*85 + 50);
+  }
+}
+
+// TACTICAL ALERT — banner HUD animado para capturas de reina o torre.
+// Solo aparece para victimType='q' o 'r'. Se autodestruye en 1.3s.
+function spawnTacticalAlert(boardEl, victimType, colorClass){
+  if(victimType !== 'q' && victimType !== 'r') return;
+  const msg = victimType === 'q' ? '♛ REINA ELIMINADA' : '♜ TORRE CAIDA';
+  const el = document.createElement('div');
+  el.className = 'tactical-alert ' + colorClass;
+  el.textContent = msg;
+  boardEl.appendChild(el);
+  setTimeout(()=>{ if(el.remove) el.remove(); }, 1280);
+}
+
+// SQUARE RIPPLE — flash en cascada desde el cuadro de impacto hacia afuera.
+// magnitude (0..1) define el radio máximo: ~1.35sq para peón, ~4.5sq para dama.
+// Cada casilla recibe un flash breve proporcional a su distancia al impacto.
+function spawnSquareRipple(boardEl, toEl, colorClass, magnitude){
+  const maxRadius = magnitude * 4.5;
+  if(maxRadius < 0.9) return; // peones en capturas de <1 sq de radio: saltar
+  const boardRect = boardEl.getBoundingClientRect();
+  const r = toEl.getBoundingClientRect();
+  const tcx = r.left - boardRect.left + r.width / 2;
+  const tcy = r.top - boardRect.top + r.height / 2;
+  const sqSize = r.width;
+  const rippleClass = colorClass === 'w' ? 'sq-ripple-w' : 'sq-ripple-b';
+  boardEl.querySelectorAll('.sq').forEach(sq => {
+    if(sq === toEl) return; // ya tiene su fx-* propia
+    const sr = sq.getBoundingClientRect();
+    const scx = sr.left - boardRect.left + sr.width / 2;
+    const scy = sr.top - boardRect.top + sr.height / 2;
+    const distSq = Math.hypot(scx - tcx, scy - tcy) / sqSize;
+    if(distSq > maxRadius) return;
+    const delay = Math.round(distSq * 60); // ms proporcional a la distancia
+    setTimeout(()=>{
+      sq.classList.add(rippleClass);
+      sq.animate(
+        [{backgroundColor: colorClass === 'w' ? '#39ff14' : '#ff7f00'}, {backgroundColor: 'transparent'}],
+        {duration:200, easing:'ease-out', fill:'none'}
+      );
+      setTimeout(()=>{ sq.classList.remove(rippleClass); }, 200);
+    }, delay);
+  });
+}
+
 // DISPARO ENTRANTE — lo que viaja HACIA el objetivo justo antes del
 // impacto, según WEAPON_BY_ATTACKER. Nace a una distancia acotada
 // (22% del tablero) detrás del objetivo en línea con impactAngle, para
@@ -5789,6 +5981,11 @@ function triggerCaptureFx(toEl, capturedPiece, isEnPassant, epSquare, after, att
     spawnIncomingFire(boardEl, toEl, attackerType, attackerColorClass, shakeMag, impactAngle);
     spawnBattleParticles(boardEl, toEl, attackerColorClass, shakeMag, impactAngle);
     spawnBattleShock(boardEl, toEl, attackerColorClass);
+    // SPACE BATTLE FX 2026-07-11: capas extra encima del sistema base
+    spawnSweepBeams(boardEl, toEl, attackerType, attackerColorClass);
+    spawnImpactRings(boardEl, toEl, attackerColorClass, Math.max(1, Math.round(shakeMag * 4)));
+    spawnTacticalAlert(boardEl, victimType, attackerColorClass);
+    spawnSquareRipple(boardEl, toEl, attackerColorClass, shakeMag);
     setTimeout(()=>{
       boardEl.classList.remove('board-impact', impactClass, 'board-impact-upset');
       boardEl.style.removeProperty('--shake-mag');
