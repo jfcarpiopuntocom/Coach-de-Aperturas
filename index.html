@@ -5979,9 +5979,9 @@ function spawnPromotionFanfare(boardEl, toEl, color, promoType){
   const r = toEl.getBoundingClientRect();
   const cx = (r.left - boardRect.left) + r.width  / 2;
   const cy = (r.top  - boardRect.top)  + r.height / 2;
-  const GLYPHS = { q: color==='w'?'♛':'♛', r: color==='w'?'♖':'♜', b: color==='w'?'♗':'♝', n: color==='w'?'♘':'♞' };
+  // pieceGlyph() ya maneja color correcto (♕ blanca vs ♛ negra, etc.)
   const NAMES  = { q:'REINA', r:'TORRE', b:'ALFIL', n:'CABALLO' };
-  const glyph  = GLYPHS[promoType] || '♛';
+  const glyph  = pieceGlyph(promoType, color) || '♛';
   const name   = NAMES[promoType]  || 'REINA';
 
   // 30 partículas doradas radiales
