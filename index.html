@@ -1278,6 +1278,16 @@ button:disabled{ opacity:0.35; cursor:default; }
   font-family:var(--font-term); font-size:calc(var(--u)*4.5); padding:calc(var(--u)*2); cursor:pointer;
 }
 .help-close:hover{ border-color:var(--green); }
+.help-extras{
+  display:flex; flex-wrap:wrap; gap:calc(var(--u)*1.5); margin-top:calc(var(--u)*1);
+}
+.help-extras button{
+  flex:1 1 calc(50% - var(--u)*1.5); min-width:120px;
+  background:transparent; border:1px dashed var(--green-dim); color:var(--green-dim);
+  font-family:var(--font-term); font-size:calc(var(--u)*3.5); padding:calc(var(--u)*1.5); cursor:pointer;
+}
+.help-extras button:hover{ border-color:var(--green); color:var(--green); }
+.help-extras button[aria-pressed="true"]{ border-color:var(--green); color:var(--green); border-style:solid; }
 
 /* ---------- 2b. DEFENSA DE LA IA (lo que responden las negras) ---------- */
 .ai-card{
@@ -1543,7 +1553,9 @@ button:active{ transform:translateY(1px); }
            columna (hasta 660px) mientras el tablero se queda en ~540px
            — el "invertida T" que luce sloppy. -->
       <div class="board-stack">
+      <div id="coach-eval-bar" style="display:none;margin-bottom:4px;"></div>
       <div id="board"></div>
+      <div id="coach-move-quality" style="display:none;font-size:11px;opacity:.85;margin-top:2px;"></div>
 
       <!-- INMEDIATAMENTE bajo el tablero, sin nada en medio: es EL tema
            de toda la app. El status ("Tu turno...") va en la MISMA fila,
@@ -1666,6 +1678,19 @@ button:active{ transform:translateY(1px); }
     <p>¡Despertaste tras 100 años de crionización — un tablero encendido en el puente es lo único que quedó funcional en la nave, fijada con autopiloto de vuelta a la Tierra. Esta app es tu oficial de a bordo: te pone al día con las aperturas y defensas para que al llegar a la Tierra empieces a ganar tus partidas!</p>
     <p>Estética inspirada en las space operas de Asimov y Heinlein y la película War Games (1983).</p>
     <p class="help-signature">v1.0 · Made in Sudamérica. · <a href="https://www.paypal.com/paypalme/jfcarpio" target="_blank" rel="noopener">apoya el proyecto</a></p>
+    <h3>Extras</h3>
+    <div class="help-extras">
+      <button type="button" onclick="copyCurrentFen()">Copiar FEN</button>
+      <button type="button" onclick="copyCurrentPgn()">Copiar PGN</button>
+      <button type="button" onclick="shareCurrentPosition()">Compartir posición</button>
+      <button type="button" id="voice-toggle-btn" onclick="const on=toggleVoiceAnnounce(); this.setAttribute('aria-pressed', on); this.textContent = on ? 'Voz: ON' : 'Voz: OFF';" aria-pressed="false">Voz: OFF</button>
+      <button type="button" id="notif-toggle-btn" onclick="toggleAnalysisNotifications().then(on=>{ this.setAttribute('aria-pressed', on); this.textContent = on ? 'Avisos: ON' : 'Avisos: OFF'; })" aria-pressed="false">Avisos: OFF</button>
+      <button type="button" id="fullscreen-toggle-btn" onclick="toggleCoachFullscreen(this)" aria-pressed="false">Pantalla completa: OFF</button>
+      <button type="button" id="bestmove-toggle-btn" onclick="toggleBestMoveArrow(this)" aria-pressed="false">Flecha mejor jugada: OFF</button>
+    </div>
+    <div class="help-extras" style="margin-top:8px;">
+      <span id="coach-accuracy-badge" style="font-size:12px;opacity:.85;">Precisión: — (juega para calcularla)</span>
+    </div>
     <button class="help-close" onclick="closeHelpModal()">CERRAR</button>
   </div>
 </div>
@@ -3548,6 +3573,7 @@ let thinking = false;
 let aiDefenseSeen = new Set();   // claves "eco|name" ya vistas en esta sesión
 let aiDefenseLog = [];           // [{eco,name}] en orden de aparición, para el chip-list
 let sessionTagLog = [];          // tags de aperturas reconocidas esta sesión (para tendencia táctica)
+let _engineThinkStartedAt = null; // RECURSO #17: timestamp del último 'go' enviado al motor
 let lastRecognizedEco = null;    // evita re-loguear la misma apertura en cada jugada
 
 /* ============================================================
@@ -3617,6 +3643,424 @@ function flashOpeningNameGlitch(){
 }
 
 /* ============================================================
+   RECURSO WEB #6 — Web Speech API: voz sintética opcional
+   ============================================================
+   Toggle apagado por defecto (nadie quiere que la voz hable sin pedirlo).
+   Si el navegador no soporta speechSynthesis, todo esto es no-op silencioso. */
+let voiceAnnounceEnabled = false;
+function toggleVoiceAnnounce(){
+  voiceAnnounceEnabled = !voiceAnnounceEnabled;
+  try{
+    if(voiceAnnounceEnabled && 'speechSynthesis' in window){
+      const u = new SpeechSynthesisUtterance('Anuncio de voz activado.');
+      u.lang = 'es-ES'; u.rate = 1.05;
+      speechSynthesis.speak(u);
+    }
+  }catch(_){}
+  return voiceAnnounceEnabled;
+}
+function announceOpeningByVoice(name){
+  if(!voiceAnnounceEnabled) return;
+  try{
+    if(!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(name);
+    u.lang = 'es-ES'; u.rate = 1.0; u.pitch = 0.95;
+    speechSynthesis.speak(u);
+  }catch(_){ /* degrada silenciosamente */ }
+}
+
+/* ============================================================
+   RECURSO WEB #7 — requestIdleCallback: trabajo pesado sin bloquear
+   ============================================================
+   Envoltorio genérico con fallback a setTimeout en navegadores sin soporte
+   (Safari histórico). No reemplaza ningún cálculo existente — está listo
+   para que futuras precomputaciones (ej. analizar todas las líneas) lo usen
+   sin tocar el hilo principal ni afectar el framerate del tablero. */
+function runWhenIdle(task, timeout){
+  try{
+    if('requestIdleCallback' in window){
+      requestIdleCallback(task, { timeout: timeout || 2000 });
+    }else{
+      setTimeout(()=> task({ didTimeout:false, timeRemaining:()=>50 }), 1);
+    }
+  }catch(_){ setTimeout(task, 1); }
+}
+
+/* ============================================================
+   RECURSO WEB #8 — CSS Houdini paintWorklet: textura de ruido CRT
+   ============================================================
+   Si el navegador soporta CSS.paintWorklet (Chromium sí, Firefox/Safari
+   no), pinta una textura de grano procedural vía worklet en vez de imagen
+   o canvas overlay. Si no hay soporte, no pasa nada — el shader WebGL del
+   RECURSO #2 ya cubre el efecto CRT, esto es una capa extra opcional. */
+function initHoudiniNoise(){
+  try{
+    if(!('paintWorklet' in CSS)) return;
+    const workletCode = `
+      registerPaint('crtgrain', class {
+        static get inputProperties(){ return ['--grain-seed']; }
+        paint(ctx, size){
+          const seed = 12345;
+          let s = seed;
+          const rand = ()=>{ s = (s*9301+49297)%233280; return s/233280; };
+          for(let i=0;i<420;i++){
+            const x = rand()*size.width, y = rand()*size.height;
+            const a = rand()*0.05;
+            ctx.fillStyle = 'rgba(200,255,220,'+a.toFixed(3)+')';
+            ctx.fillRect(x,y,1,1);
+          }
+        }
+      });
+    `;
+    const blob = new Blob([workletCode], { type:'text/javascript' });
+    CSS.paintWorklet.addModule(URL.createObjectURL(blob));
+    document.documentElement.style.setProperty('--houdini-grain', 'paint(crtgrain)');
+  }catch(_){ /* sin Houdini: no-op, el resto de la estética CRT sigue intacta */ }
+}
+
+/* ============================================================
+   RECURSO WEB #9 — Vibration API: feedback táctil en mobile
+   ============================================================
+   navigator.vibrate no existe en iOS Safari ni desktop — llamarlo ahí es
+   simplemente un no-op, nunca un error. Pulsos cortos y no invasivos. */
+function hapticPulse(pattern){
+  try{ if(navigator.vibrate) navigator.vibrate(pattern || 15); }catch(_){}
+}
+
+/* ============================================================
+   RECURSO WEB #10 — Screen Wake Lock API: pantalla activa en sesión larga
+   ============================================================
+   Se solicita al primer movimiento humano y se libera automáticamente al
+   cambiar de pestaña (la propia API lo hace) o al llamar releaseWakeLock().
+   Sin soporte (Firefox/Safari viejos): no-op, nunca rompe el flujo. */
+let _wakeLockRef = null;
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      _wakeLockRef = await navigator.wakeLock.request('screen');
+    }
+  }catch(_){ /* permiso denegado o sin soporte: silencioso */ }
+}
+function releaseWakeLock(){
+  try{ if(_wakeLockRef){ _wakeLockRef.release(); _wakeLockRef = null; } }catch(_){}
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && _wakeLockRef === null && sessionTagLog.length > 0){
+    requestWakeLock();
+  }
+});
+
+/* ============================================================
+   EASTER EGGS — 6 guiños ocultos, disparo aleatorio o por gesto secreto.
+   ============================================================
+   Regla de oro: nunca alteran el estado del juego ni el motor. Son 100%
+   cosméticos (texto/FX/consola) y siempre con probabilidad baja o gesto
+   explícito, para que aparezcan "a veces" y mantengan al usuario en vilo. */
+
+// Egg 1 — Konami-esque: secuencia de teclas ↑↑↓↓←→←→ba dispara un mensaje
+// de consola de nave (guiño a WarGames / Asimov).
+(function(){
+  const seq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  let pos = 0;
+  document.addEventListener('keydown', (e)=>{
+    pos = (e.key === seq[pos]) ? pos+1 : (e.key === seq[0] ? 1 : 0);
+    if(pos === seq.length){
+      pos = 0;
+      showEasterEggToast('GREETINGS, PROFESSOR FALKEN. SHALL WE PLAY A GAME?');
+      hapticPulse([20,40,20]);
+    }
+  });
+})();
+
+// Egg 2 — Consola: arte ASCII + créditos ocultos, visible solo para quien
+// abre devtools (guiño clásico de "easter egg en consola").
+(function(){
+  try{
+    console.log('%c♞ COACH DE APERTURAS %c— "It can only be attributable to human error." — HAL 9000, probably not about chess',
+      'color:#7CFC9A;font-weight:bold;font-size:13px;', 'color:#888;font-style:italic;');
+  }catch(_){}
+})();
+
+// Egg 3 — Racha de tablas/empates repetidos: mensaje WarGames.
+let _drawStreak = 0;
+function noteGameResultForEasterEgg(result){
+  if(result === 'draw'){
+    _drawStreak++;
+    if(_drawStreak >= 3){
+      _drawStreak = 0;
+      showEasterEggToast('EXTRAÑO JUEGO. LA ÚNICA JUGADA GANADORA ES NO JUGAR. ¿UNA PARTIDA DE AJEDREZ?');
+    }
+  } else {
+    _drawStreak = 0;
+  }
+}
+
+// Egg 4 — Muy baja probabilidad tras reconocer una apertura: un destello
+// FX especial poco común en el tablero, tipo "algo raro pasó".
+function maybeRareBoardFlash(){
+  if(Math.random() < 0.035){
+    const board = document.querySelector('.board, #board, [class*="board"]');
+    if(!board) return;
+    try{
+      board.animate([
+        { filter:'hue-rotate(0deg) saturate(1)' },
+        { filter:'hue-rotate(35deg) saturate(1.4)' },
+        { filter:'hue-rotate(0deg) saturate(1)' }
+      ], { duration: 900, easing:'ease-in-out' });
+      hapticPulse(10);
+    }catch(_){}
+  }
+}
+
+// Egg 5 — Hover largo (2.5s) sobre el nombre de apertura: cita apócrifa
+// tipo Heinlein sobre estrategia, muy ocasional.
+(function(){
+  let hoverTimer = null;
+  document.addEventListener('mouseover', (e)=>{
+    if(e.target && e.target.id === 'opening-name'){
+      hoverTimer = setTimeout(()=>{
+        if(Math.random() < 0.5){
+          showEasterEggToast('"Cualquier apertura suficientemente estudiada es indistinguible de la intuición." — nota marginal, atribución dudosa');
+        }
+      }, 2500);
+    }
+  }, true);
+  document.addEventListener('mouseout', (e)=>{
+    if(e.target && e.target.id === 'opening-name' && hoverTimer){
+      clearTimeout(hoverTimer); hoverTimer = null;
+    }
+  }, true);
+})();
+
+// Egg 6 — Tras una racha de aperturas agresivas reconocidas seguidas,
+// mensaje breve tipo "guerra fría de tablero" (Asimov/robots + WarGames).
+function maybeAggressiveStreakEgg(){
+  if(sessionTagLog.length >= 3){
+    const last3 = sessionTagLog.slice(-3);
+    if(last3.every(t => t === 'aggressive' || t === 'sharp')){
+      if(Math.random() < 0.4){
+        showEasterEggToast('PROTOCOLO DE DEFENSA: LAS TRES LEYES NO APLICAN AL AJEDREZ. PROCEDA CON CAUTELA.');
+      }
+    }
+  }
+}
+
+// Egg 7 — escribir "asimov" o "heinlein" en cualquier momento (buffer de
+// teclas, sin necesidad de foco en un input) dispara una cita distinta.
+(function(){
+  let buf = '';
+  const lines = {
+    asimov: 'UN ROBOT NO HARÁ DAÑO A UN REY, NI POR INACCIÓN PERMITIRÁ QUE UN REY SUFRA DAÑO.',
+    heinlein: '"EL AJEDREZ ES LA GIMNASIA DE LA MENTE" — ATRIBUCIÓN DUDOSA, PERO SUENA BIEN.'
+  };
+  document.addEventListener('keydown', (e)=>{
+    if(e.key.length !== 1) return;
+    buf = (buf + e.key.toLowerCase()).slice(-8);
+    for(const word in lines){
+      if(buf.endsWith(word)){ showEasterEggToast(lines[word]); buf=''; }
+    }
+  });
+})();
+
+// Egg 8 — 5 clics rápidos (menos de 2s) sobre el botón (?) de ayuda
+// revela un mensaje secreto sin interferir con su función normal.
+(function(){
+  let clicks = 0, timer = null;
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const btn = document.getElementById('help-btn');
+    if(!btn) return;
+    btn.addEventListener('click', ()=>{
+      clicks++;
+      clearTimeout(timer);
+      timer = setTimeout(()=>{ clicks = 0; }, 2000);
+      if(clicks >= 5){
+        clicks = 0;
+        showEasterEggToast('ACCESO A BITÁCORA SECRETA: LA NAVE SE LLAMA "MULTIVAC-16".');
+        hapticPulse([15,30,15,30,15]);
+      }
+    });
+  });
+})();
+
+// Egg 9 — al cargar la página, baja probabilidad de un mensaje de arranque
+// especial (guiño WarGames/HAL), independiente del resto de la sesión.
+(function(){
+  document.addEventListener('DOMContentLoaded', ()=>{
+    if(Math.random() < 0.04){
+      setTimeout(()=> showEasterEggToast('SECUENCIA DE ARRANQUE COMPLETA. SISTEMAS NOMINALES. BUENA SUERTE, COMANDANTE.'), 1200);
+    }
+  });
+})();
+
+// Utilidad compartida por los eggs: un toast discreto, mismo lenguaje
+// visual CRT del resto de la app, se autodestruye solo.
+function showEasterEggToast(msg){
+  try{
+    let t = document.getElementById('easter-egg-toast');
+    if(!t){
+      t = document.createElement('div');
+      t.id = 'easter-egg-toast';
+      t.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);'
+        +'max-width:min(90vw,520px);background:#0a1a12;color:#7CFC9A;border:1px solid #2a5a3a;'
+        +'font-family:monospace;font-size:13px;padding:10px 16px;border-radius:4px;z-index:99999;'
+        +'box-shadow:0 0 12px rgba(124,252,154,0.25);pointer-events:none;text-align:center;';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '0';
+    t.animate([{opacity:0},{opacity:1}], {duration:250, fill:'forwards'});
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(()=>{
+      t.animate([{opacity:1},{opacity:0}], {duration:500, fill:'forwards'});
+    }, 4200);
+  }catch(_){}
+}
+
+/* ============================================================
+   RECURSO WEB #11 — Clipboard API: copiar FEN/PGN de la posición actual
+   ============================================================
+   Sin tocar la UI principal — se expone solo desde el modal de ayuda (?).
+   Fallback silencioso si el navegador bloquea el clipboard (permisos). */
+async function copyCurrentFen(){
+  try{
+    const fen = (typeof game !== 'undefined' && game.fen) ? game.fen() : null;
+    if(!fen) return false;
+    await navigator.clipboard.writeText(fen);
+    showEasterEggToast('FEN copiado al portapapeles.');
+    return true;
+  }catch(_){ showEasterEggToast('No se pudo copiar (permiso de portapapeles denegado).'); return false; }
+}
+async function copyCurrentPgn(){
+  try{
+    const pgn = (typeof game !== 'undefined' && game.pgn) ? game.pgn() : null;
+    if(!pgn){ showEasterEggToast('Aún no hay jugadas para exportar como PGN.'); return false; }
+    await navigator.clipboard.writeText(pgn);
+    showEasterEggToast('PGN copiado al portapapeles.');
+    return true;
+  }catch(_){ showEasterEggToast('No se pudo copiar (permiso de portapapeles denegado).'); return false; }
+}
+
+/* ============================================================
+   RECURSO WEB #12 — Web Share API: compartir la posición actual
+   ============================================================
+   Solo en el modal (?). Si no hay soporte (desktop/Firefox), cae a
+   copiar el FEN al portapapeles — nunca deja al usuario sin acción. */
+async function shareCurrentPosition(){
+  try{
+    const fen = (typeof game !== 'undefined' && game.fen) ? game.fen() : '';
+    const text = 'Estoy estudiando esta posición en Coach de Aperturas: ' + fen;
+    if(navigator.share){
+      await navigator.share({ title: 'Coach de Aperturas', text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      showEasterEggToast('Tu navegador no soporta compartir nativo — copiado al portapapeles.');
+    }
+  }catch(_){ /* usuario canceló el share sheet: silencioso, no es error real */ }
+}
+
+/* ============================================================
+   RECURSO WEB #13 — ResizeObserver: resize más preciso que el listener
+   de window, reacciona a cambios reales del layout/viewport visual
+   (rotación mobile, barra de direcciones que aparece/desaparece, etc.)
+   sin polling. Fallback automático a window.resize si no hay soporte. */
+function observeViewportResize(callback){
+  try{
+    if('ResizeObserver' in window){
+      const ro = new ResizeObserver(()=> callback());
+      ro.observe(document.documentElement);
+      return ro;
+    }
+  }catch(_){}
+  window.addEventListener('resize', callback);
+  return null;
+}
+
+/* ============================================================
+   RECURSO WEB #14 — Intersection Observer: pausa el loop de render del
+   shader CRT (rAF) cuando la app deja de estar visible en el viewport
+   (embebida en un iframe largo, o el usuario scrollea lejos). Ahorra
+   batería/CPU sin afectar el efecto visual mientras SÍ está a la vista. */
+let _appVisibleInViewport = true;
+function initViewportIntersectionGuard(){
+  try{
+    if(!('IntersectionObserver' in window)) return;
+    const root = document.querySelector('.screen');
+    if(!root) return;
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e => { _appVisibleInViewport = e.isIntersecting; });
+    }, { threshold: 0.05 });
+    io.observe(root);
+  }catch(_){}
+}
+
+/* ============================================================
+   RECURSO WEB #15 — Broadcast Channel: sincroniza la tendencia de sesión
+   (aperturas reconocidas) si el usuario tiene la app abierta en dos
+   pestañas del mismo navegador a la vez. Sin servidor, sin polling.
+   Sin soporte (Safari viejo): no-op, cada pestaña sigue funcionando sola. */
+let _bcChannel = null;
+try{
+  if('BroadcastChannel' in window){
+    _bcChannel = new BroadcastChannel('coach-aperturas-sync');
+    _bcChannel.onmessage = (ev)=>{
+      if(ev.data && ev.data.type === 'opening-recognized' && ev.data.tag){
+        sessionTagLog.push(ev.data.tag);
+        try{ updateTendencia(); }catch(_){}
+      }
+    };
+  }
+}catch(_){}
+function broadcastOpeningRecognized(tag){
+  try{ if(_bcChannel) _bcChannel.postMessage({ type:'opening-recognized', tag: tag || 'solid' }); }catch(_){}
+}
+
+/* ============================================================
+   RECURSO WEB #16 — Web Locks API: evita que dos pestañas escriban al
+   mismo tiempo en el store de IndexedDB del historial de aperturas.
+   Sin soporte, el comportamiento cae al idbAdd original (sin lock) —
+   el riesgo de colisión real es mínimo, así que degradar es seguro. */
+async function idbAddLocked(storeName, value){
+  try{
+    if('locks' in navigator){
+      await navigator.locks.request('coach-aperturas-idb-write', async ()=>{
+        await idbAdd(storeName, value);
+      });
+    } else {
+      await idbAdd(storeName, value);
+    }
+  }catch(_){ /* nunca romper el juego por persistencia */ }
+}
+
+/* ============================================================
+   RECURSO WEB #17 — Notification API: aviso opcional (con permiso
+   explícito, pedido solo desde el modal ?) cuando el motor termina un
+   análisis largo (>3s) mientras el usuario cambió de pestaña. */
+let notificationsEnabled = false;
+async function toggleAnalysisNotifications(){
+  try{
+    if(!('Notification' in window)){ showEasterEggToast('Tu navegador no soporta notificaciones.'); return false; }
+    if(Notification.permission === 'granted'){
+      notificationsEnabled = !notificationsEnabled;
+    } else {
+      const perm = await Notification.requestPermission();
+      notificationsEnabled = (perm === 'granted');
+    }
+    showEasterEggToast(notificationsEnabled ? 'Avisos de análisis activados.' : 'Avisos de análisis desactivados.');
+  }catch(_){}
+  return notificationsEnabled;
+}
+function notifyIfLongAnalysis(thinkMs){
+  try{
+    if(!notificationsEnabled || document.visibilityState === 'visible') return;
+    if(thinkMs < 3000) return;
+    if(Notification.permission === 'granted'){
+      new Notification('Coach de Aperturas', { body: 'El motor terminó su análisis.', silent: true });
+    }
+  }catch(_){}
+}
+
+/* ============================================================
    RECURSO WEB #2 — Canvas/WebGL: shader CRT real
    ============================================================
    Antes el look CRT era 100% CSS (crt-flicker + box-shadow glow). Un
@@ -3634,6 +4078,8 @@ function setCrtShaderEnabled(v){
   if(cv) cv.style.display = v ? '' : 'none';
 }
 function initCrtShader(){
+  initHoudiniNoise(); // RECURSO #8: capa de grano extra si el navegador soporta CSS Houdini
+  initViewportIntersectionGuard(); // RECURSO #14: pausa el loop de render si la app sale del viewport
   const canvas = document.getElementById('crt-shader-overlay');
   if(!canvas) return;
   if(!crtShaderEnabled){ canvas.style.display = 'none'; return; }
@@ -3695,11 +4141,12 @@ function initCrtShader(){
     canvas.height = Math.round(window.innerHeight * dpr);
     gl.viewport(0, 0, canvas.width, canvas.height);
   }
-  window.addEventListener('resize', resize);
+  observeViewportResize(resize); // RECURSO #13: ResizeObserver con fallback automático a window.resize
   resize();
   let raf = null;
   function frame(t){
     if(!crtShaderEnabled){ raf = null; return; }
+    if(!_appVisibleInViewport){ raf = requestAnimationFrame(frame); return; } // RECURSO #14: pausa el dibujo, no el loop, para reanudar instantáneo
     gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uTime, t * 0.001);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -6644,6 +7091,7 @@ function spawnIncomingFire(boardEl, toEl, attackerType, colorClass, magnitude, i
 }
 
 function triggerCaptureFx(toEl, capturedPiece, isEnPassant, epSquare, after, attackerPiece, impactAngle){
+  hapticPulse(18); // RECURSO #9: pulso táctil de captura, no-op fuera de mobile
   const victimType = (capturedPiece && capturedPiece.type) ? capturedPiece.type : 'p';
   const attackerType = (attackerPiece && attackerPiece.type) ? attackerPiece.type : victimType;
   const baseMag = CHESS_SHAKING_SCALE[victimType] != null ? CHESS_SHAKING_SCALE[victimType] : 0.3;
@@ -7222,8 +7670,14 @@ function updateOpeningPanel(){
     lastRecognizedEco = best.eco;
     sessionTagLog.push(best.tag || 'solid');
     updateTendencia();
-    logOpeningToHistory(best.eco, best.name); // RECURSO #5: IndexedDB, fire-and-forget
+    idbAddLocked('opening_history', {eco: best.eco, name: best.name, ts: Date.now()}); // RECURSO #16: Web Locks sobre RECURSO #5
     flashOpeningNameGlitch(); // RECURSO #3: SVG filter, ver definición más abajo
+    announceOpeningByVoice(best.name); // RECURSO #6: Web Speech, no-op si el toggle está apagado
+    requestWakeLock(); // RECURSO #10: mantiene pantalla activa durante la sesión de estudio
+    hapticPulse(12); // RECURSO #9: pulso corto no-op en desktop/iOS
+    maybeRareBoardFlash(); // egg 4: destello poco común, cosmético
+    maybeAggressiveStreakEgg(); // egg 6: guiño tras racha de aperturas afiladas
+    broadcastOpeningRecognized(best.tag); // RECURSO #15: sync entre pestañas
   }
 
   tryLiveWikipedia(best.name);
@@ -7435,6 +7889,7 @@ function handleEngineMessage(e, timeoutId){
       // 'bestmove (none)' ocurre en posiciones terminales (mate/ahogado) o
       // análisis abortado. Resolvemos null explícitamente en vez de dejar
       // pasar "(none)" a uciToMoveObj, que generaría un from/to basura.
+      notifyIfLongAnalysis(Date.now() - (_engineThinkStartedAt || Date.now())); // RECURSO #17
       resolve(mv === '(none)' ? null : mv);
     }
   }
@@ -7499,6 +7954,7 @@ function askEngineExternal(){
   return new Promise((resolve)=>{
     multipvLines = [];
     pendingResolve = resolve;
+    _engineThinkStartedAt = Date.now(); // RECURSO #17: para medir si el análisis fue "largo"
     const L = LEVELS[currentLevel];
     try{
       engine.postMessage('position fen ' + game.fen());
@@ -7817,5 +8273,357 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
      el look CRT que antes era 100% CSS (crt-flicker). pointer-events:none para
      no interferir con clicks/drag del tablero. -->
 <canvas id="crt-shader-overlay" style="position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;"></canvas>
+<script>
+/* ============================================================
+   MICROMEJORAS 2026-07-12 — aprobadas por el usuario: 3,4,5,6,8,9,10
+   Bloque autocontenido, agregado al final para no tocar la lógica
+   central del motor/tablero. Usa wrapping (guarda la función
+   original y la llama adentro) en vez de editar in-place, así el
+   riesgo de romper el flujo de juego existente es mínimo.
+   ============================================================ */
+(function(){
+  'use strict';
+
+  // ---------- Utilidades comunes ----------
+  function $(id){ return document.getElementById(id); }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  // ============================================================
+  // 6) Page Visibility API — pausar avisos/sonido mientras la
+  //    pestaña está oculta (no podemos pausar una búsqueda de
+  //    Stockfish ya en curso, pero sí evitar sonidos/():avisos que
+  //    no tiene sentido lanzar si nadie está mirando).
+  // ============================================================
+  window.__coachTabHidden = false;
+  document.addEventListener('visibilitychange', function(){
+    window.__coachTabHidden = document.hidden;
+  });
+
+  // ============================================================
+  // 8) Web Audio API — capa de sonido adicional más rica, encima
+  //    de playChessSound existente (no lo reemplaza). Un "click"
+  //    sintetizado con envolvente simple para jaque/captura.
+  // ============================================================
+  var _actx = null;
+  function coachAudioCtx(){
+    if(_actx) return _actx;
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) _actx = new AC();
+    }catch(_){}
+    return _actx;
+  }
+  function coachSynthBlip(freq, durMs, type){
+    if(window.__coachTabHidden) return; // 6: no sonar si la pestaña está oculta
+    if(typeof soundEnabled !== 'undefined' && soundEnabled === false) return;
+    var ctx = coachAudioCtx();
+    if(!ctx) return;
+    try{
+      if(ctx.state === 'suspended') ctx.resume();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = type || 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + durMs/1000);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + durMs/1000 + 0.02);
+    }catch(_){}
+  }
+  if(typeof playChessSound === 'function'){
+    var _origPlayChessSound = playChessSound;
+    playChessSound = function(type, scale, weapon){
+      var r = _origPlayChessSound.apply(this, arguments);
+      // Capa extra: un timbre distinto según tipo de evento, sin
+      // pisar el sistema de audio original (solo lo complementa).
+      try{
+        if(type === 'check') coachSynthBlip(880, 180, 'sawtooth');
+        else if(type === 'capture') coachSynthBlip(220, 120, 'square');
+        else coachSynthBlip(440, 90, 'triangle');
+      }catch(_){}
+      return r;
+    };
+  }
+
+  // ============================================================
+  // 9) Storage Manager API — pedir persistencia para que el
+  //    historial de aperturas en IndexedDB no se borre bajo
+  //    presión de espacio del navegador.
+  // ============================================================
+  if(navigator.storage && navigator.storage.persist){
+    navigator.storage.persist().then(function(granted){
+      console.log('[coach] almacenamiento persistente:', granted ? 'concedido' : 'no concedido (el navegador decide)');
+    }).catch(function(){});
+  }
+
+  // ============================================================
+  // 10) Fullscreen API — SOLO accesible desde el modal de ayuda
+  //     (?), pedida explícitamente por el usuario para no arriesgar
+  //     el layout principal. Aplica sobre document.documentElement
+  //     completo (no reestructura el DOM).
+  // ============================================================
+  window.toggleCoachFullscreen = function(btn){
+    try{
+      if(!document.fullscreenElement){
+        (document.documentElement.requestFullscreen || function(){}).call(document.documentElement)
+          .then(function(){
+            if(btn){ btn.setAttribute('aria-pressed','true'); btn.textContent = 'Pantalla completa: ON'; }
+          }).catch(function(){
+            if(btn) btn.textContent = 'Pantalla completa: no disponible';
+          });
+      } else {
+        document.exitFullscreen && document.exitFullscreen();
+      }
+    }catch(_){
+      if(btn) btn.textContent = 'Pantalla completa: no disponible';
+    }
+  };
+  document.addEventListener('fullscreenchange', function(){
+    var btn = $('fullscreen-toggle-btn');
+    if(!btn) return;
+    var on = !!document.fullscreenElement;
+    btn.setAttribute('aria-pressed', on);
+    btn.textContent = on ? 'Pantalla completa: ON' : 'Pantalla completa: OFF';
+  });
+
+  // ============================================================
+  // 3) Clasificación de jugadas + 4) Precisión (%) del jugador
+  // 2) Mini gráfico de evaluación (sparkline)
+  // 5) Flecha de "mejor jugada" (usa el análisis ya en curso del
+  //    motor, no dispara búsquedas extra)
+  //
+  // Aproximación honesta (documentada): Stockfish sólo analiza
+  // activamente cuando es el turno de la IA (askEngineExternal).
+  // Ese análisis evalúa la posición ANTES de que la IA mueva, es
+  // decir: el resultado de la última jugada humana. Encadenando
+  // esos valores turno a turno obtenemos, con una jugada de
+  // desfase, una serie de evaluación suficiente para enseñar
+  // (clasificar jugadas humanas, graficar tendencia, sugerir la
+  // jugada que el motor tenía en mente). No es un análisis post-
+  // partida de grado profesional — para eso ya existe el botón
+  // "Copiar PGN" + un motor externo.
+  // ============================================================
+  window.__coachEvalLog = [];      // [{ply, cpWhite, mate, san, color}]
+  window.__coachLastEngineScore = null; // {cp, mate, sideToMove, ply}
+  window.__coachBestMoveUci = null;     // última mejor jugada sugerida por el motor
+
+  var _origHandleEngineMessage = (typeof handleEngineMessage === 'function') ? handleEngineMessage : null;
+  if(_origHandleEngineMessage){
+    handleEngineMessage = function(e, timeoutId){
+      try{
+        var line = (typeof e.data === 'string') ? e.data : '';
+        if(line.indexOf('info') === 0 && line.indexOf(' score ') !== -1){
+          var cpM = line.match(/score cp (-?\d+)/);
+          var mateM = line.match(/score mate (-?\d+)/);
+          if((cpM || mateM) && typeof game !== 'undefined'){
+            var side = game.turn(); // lado a quien le toca EN LA POSICIÓN ANALIZADA
+            window.__coachLastEngineScore = {
+              cp: cpM ? parseInt(cpM[1], 10) : null,
+              mate: mateM ? parseInt(mateM[1], 10) : null,
+              sideToMove: side,
+              ply: game.history().length
+            };
+          }
+          var pvM = line.match(/ pv (\S+)/);
+          if(pvM) window.__coachBestMoveUci = pvM[1];
+        }
+      }catch(_){}
+      var ret = _origHandleEngineMessage(e, timeoutId);
+      // Al llegar bestmove, el score final ya quedó guardado arriba
+      // (llegó en la última línea 'info ... score ...' antes de bestmove).
+      try{
+        if(typeof e.data === 'string' && e.data.indexOf('bestmove') === 0){
+          coachOnAnalysisSettled();
+        }
+      }catch(_){}
+      return ret;
+    };
+  }
+
+  function evalToWhiteCp(scoreObj){
+    if(!scoreObj) return null;
+    if(scoreObj.mate !== null && scoreObj.mate !== undefined){
+      var m = scoreObj.mate > 0 ? 100000 - scoreObj.mate : -100000 - scoreObj.mate;
+      return scoreObj.sideToMove === 'w' ? m : -m;
+    }
+    if(scoreObj.cp === null || scoreObj.cp === undefined) return null;
+    return scoreObj.sideToMove === 'w' ? scoreObj.cp : -scoreObj.cp;
+  }
+
+  function coachOnAnalysisSettled(){
+    var s = window.__coachLastEngineScore;
+    if(!s || typeof game === 'undefined') return;
+    var cpWhite = evalToWhiteCp(s);
+    if(cpWhite === null) return;
+    var ply = s.ply;
+    var hist = game.history();
+    var lastSan = hist[ply - 1] || null;
+    var lastColor = (ply % 2 === 1) ? 'w' : 'b'; // ply impar = jugó blanco
+    var entry = { ply: ply, cpWhite: cpWhite, san: lastSan, color: lastColor };
+    // Evita duplicar si ya lo registramos (varias líneas 'info' por go).
+    var log = window.__coachEvalLog;
+    if(log.length && log[log.length-1].ply === ply){
+      log[log.length-1] = entry;
+    } else {
+      log.push(entry);
+    }
+    // Clasificar la jugada humana que produjo este ply, comparando
+    // contra el eval previo de la serie (jugada -1 = 2 plies atrás,
+    // ya que evaluamos cada 2 plies mientras piensa la IA).
+    classifyLastHumanMove();
+    renderCoachEvalBar();
+    renderCoachBestMoveArrow();
+  }
+
+  var COACH_LABELS = [
+    {max:15,  label:'Excelente', cls:'exc'},
+    {max:35,  label:'Buena',     cls:'buena'},
+    {max:70,  label:'Imprecisión', cls:'imp'},
+    {max:150, label:'Error',     cls:'err'},
+    {max:Infinity, label:'Blunder', cls:'blun'}
+  ];
+  var COACH_WEIGHT = {exc:100, buena:92, imp:72, err:42, blun:5};
+  window.__coachHumanMoveGrades = []; // [{ply, cls, label, lossCp}]
+
+  function classifyLastHumanMove(){
+    if(typeof humanColor === 'undefined') return;
+    var log = window.__coachEvalLog;
+    if(log.length < 2) return;
+    var after = log[log.length - 1];
+    // Buscar la entrada anterior CUYO color coincide con humanColor
+    // inmediatamente antes de "after" (o sea, la jugada humana está
+    // entre esas dos evaluaciones).
+    if(after.color !== humanColor) return; // la última jugada evaluada fue de la IA, no clasificamos esa
+    var before = log[log.length - 2];
+    if(!before) return;
+    var deltaWhite = after.cpWhite - before.cpWhite;
+    var lossForMover = (humanColor === 'w') ? -deltaWhite : deltaWhite;
+    if(lossForMover < 0) lossForMover = 0; // el jugador mejoró su posición o el motor cambió de idea; no penalizar
+    var grade = COACH_LABELS.find(function(g){ return lossForMover <= g.max; });
+    var rec = { ply: after.ply, cls: grade.cls, label: grade.label, lossCp: lossForMover };
+    window.__coachHumanMoveGrades.push(rec);
+    renderCoachMoveQuality(rec);
+    renderCoachAccuracy();
+  }
+
+  function renderCoachMoveQuality(rec){
+    var el = $('coach-move-quality');
+    if(!el) return;
+    el.style.display = 'block';
+    var colorMap = {exc:'#3ddc84', buena:'#8fd13f', imp:'#e0c341', err:'#e0883f', blun:'#e04f4f'};
+    el.innerHTML = 'Tu última jugada: <b style="color:' + (colorMap[rec.cls]||'#ccc') + '">' + rec.label + '</b>' +
+      (rec.lossCp > 0 ? ' (≈' + Math.round(rec.lossCp) + ' cp)' : '');
+  }
+
+  function renderCoachAccuracy(){
+    var el = $('coach-accuracy-badge');
+    if(!el) return;
+    var grades = window.__coachHumanMoveGrades;
+    if(!grades.length){ el.textContent = 'Precisión: — (juega para calcularla)'; return; }
+    var total = 0;
+    grades.forEach(function(g){ total += COACH_WEIGHT[g.cls] !== undefined ? COACH_WEIGHT[g.cls] : 50; });
+    var pct = Math.round(total / grades.length);
+    el.textContent = 'Precisión: ' + pct + '% (' + grades.length + ' jugada' + (grades.length===1?'':'s') + ' evaluada' + (grades.length===1?'':'s') + ')';
+  }
+
+  // ---- 2) Mini gráfico de evaluación (sparkline SVG liviano) ----
+  function renderCoachEvalBar(){
+    var wrap = $('coach-eval-bar');
+    if(!wrap) return;
+    var log = window.__coachEvalLog;
+    if(!log.length) return;
+    wrap.style.display = 'block';
+    var W = 260, H = 20, mid = H/2;
+    var CAP = 600; // cp tope para no aplastar el gráfico con mates
+    var pts = log.slice(-40); // últimas 40 evaluaciones, suficiente para una partida típica
+    var n = pts.length;
+    var stepX = n > 1 ? W/(n-1) : W;
+    var path = '';
+    pts.forEach(function(p, i){
+      var v = clamp(p.cpWhite, -CAP, CAP);
+      var y = mid - (v/CAP)*(mid-2);
+      var x = i*stepX;
+      path += (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    });
+    var last = pts[pts.length-1];
+    var lastCp = last.cpWhite;
+    var lastLabel;
+    if(last.mate !== undefined && lastCp >= 99000){
+      lastLabel = 'Mate a favor de blancas';
+    } else if(lastCp <= -99000){
+      lastLabel = 'Mate a favor de negras';
+    } else {
+      var abs = Math.abs(lastCp/100).toFixed(1);
+      if(lastCp > 0) lastLabel = 'Ventaja: Blancas +' + abs;
+      else if(lastCp < 0) lastLabel = 'Ventaja: Negras +' + abs;
+      else lastLabel = 'Posición equilibrada';
+    }
+    wrap.innerHTML =
+      '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" style="display:block;overflow:visible;">' +
+        '<line x1="0" y1="'+mid+'" x2="'+W+'" y2="'+mid+'" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>' +
+        '<path d="'+path.trim()+'" fill="none" stroke="currentColor" stroke-width="2" stroke-opacity="0.8"/>' +
+      '</svg>' +
+      '<div style="font-size:10px;opacity:.7;text-align:right;">' + lastLabel + '</div>';
+  }
+
+  // ---- 5) Flecha de mejor jugada (opt-in, checkbox en el modal ?) ----
+  window.__coachShowBestMoveArrow = false;
+  window.toggleBestMoveArrow = function(btn){
+    window.__coachShowBestMoveArrow = !window.__coachShowBestMoveArrow;
+    if(btn){
+      btn.setAttribute('aria-pressed', window.__coachShowBestMoveArrow);
+      btn.textContent = 'Flecha mejor jugada: ' + (window.__coachShowBestMoveArrow ? 'ON' : 'OFF');
+    }
+    renderCoachBestMoveArrow();
+  };
+  function coachSquareCenter(sq){
+    var el = document.querySelector('#board .sq[data-sq="'+sq+'"]');
+    var boardEl = $('board');
+    if(!el || !boardEl) return null;
+    var br = boardEl.getBoundingClientRect();
+    var er = el.getBoundingClientRect();
+    return { x: er.left - br.left + er.width/2, y: er.top - br.top + er.height/2, w: br.width, h: br.height };
+  }
+  function renderCoachBestMoveArrow(){
+    var boardEl = $('board');
+    if(!boardEl) return;
+    var old = document.getElementById('coach-best-arrow-svg');
+    if(old) old.remove();
+    if(!window.__coachShowBestMoveArrow || !window.__coachBestMoveUci) return;
+    var uci = window.__coachBestMoveUci;
+    if(!uci || uci.length < 4) return;
+    var from = uci.slice(0,2), to = uci.slice(2,4);
+    var a = coachSquareCenter(from), b = coachSquareCenter(to);
+    if(!a || !b) return;
+    var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('id','coach-best-arrow-svg');
+    svg.setAttribute('width', a.w); svg.setAttribute('height', a.h);
+    svg.style.position = 'absolute'; svg.style.left = '0'; svg.style.top = '0';
+    svg.style.pointerEvents = 'none'; svg.style.zIndex = '5';
+    svg.innerHTML =
+      '<defs><marker id="coachArrowHead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">' +
+      '<path d="M0,0 L8,4 L0,8 z" fill="#3ddc84"/></marker></defs>' +
+      '<line x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'" stroke="#3ddc84" stroke-width="4" ' +
+      'stroke-opacity="0.75" marker-end="url(#coachArrowHead)"/>';
+    if(getComputedStyle(boardEl).position === 'static') boardEl.style.position = 'relative';
+    boardEl.appendChild(svg);
+  }
+  // Redibuja la flecha si la ventana cambia de tamaño (posiciones de casillas se mueven).
+  window.addEventListener('resize', function(){ if(window.__coachShowBestMoveArrow) renderCoachBestMoveArrow(); });
+
+  // Redibujar tras cada renderBoard() del juego original, así la
+  // flecha no queda desalineada tras animaciones o cambios de tablero.
+  if(typeof renderBoard === 'function'){
+    var _origRenderBoard = renderBoard;
+    renderBoard = function(){
+      var r = _origRenderBoard.apply(this, arguments);
+      try{ renderCoachBestMoveArrow(); }catch(_){}
+      return r;
+    };
+  }
+})();
+</script>
 </body>
 </html>
