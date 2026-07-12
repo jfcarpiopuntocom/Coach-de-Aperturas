@@ -1,5 +1,27 @@
 <!--
   ============================================================
+  HECHO — sesión 2026-07-11 (cuarta pasada: guards 2, 3 y 4 completos)
+  ============================================================
+  - Guard 2 (había quedado a medias): #engine-mode-badge tenía CSS para 3
+    estados pero ninguna función lo actualizaba — engineMode se asignaba
+    directo en 7 sitios (loadEngine x2, onerror, handleEngineMessage,
+    askEngineExternal x2, engineTurn) y ninguno tocaba el DOM. Creado
+    setEngineMode(mode) como único punto de escritura de engineMode; los
+    7 sitios ahora lo llaman en vez de asignar directo, así el badge no
+    puede volver a desincronizarse de la variable real.
+  - Guard 3: en modo local el badge ahora muestra texto ("● local"), no
+    solo color — el bug que originó toda la sesión ("la reina no sale de
+    los peones") era el motor local jugando sin heurística posicional:
+    legal siempre, pero con pinta de bug para quien no supiera que estaba
+    en modo simplificado. Un punto de color exige conocer el código de
+    antemano; la palabra no exige nada.
+  - Guard 4: validateFileIntegrity(), primera línea del BOOT. Chequea que
+    stockfish-engine-src / board / status-bar / engine-mode-badge existan
+    en el DOM y que Chess esté definido — si una futura edición a mano
+    vuelve a mover o borrar alguno de esos tags (la causa raíz del bug de
+    la entrada de abajo), el error aparece en consola apenas carga la
+    página, no recién en pleno juego.
+  ============================================================
   HECHO — sesión 2026-07-11
   ============================================================
   - CAUSA RAÍZ del bug "la reina/torre no sale de los peones,
@@ -3442,6 +3464,43 @@ let boardEpoch = 0;               // se incrementa en cada reset/deshacer/cambio
 let wasInCheck = false;            // para disparar fx-checkhit solo al ENTRAR en jaque, no en cada render mientras dure
 function humanTurnMsg(){ return 'Tu turno ('+(humanColor==='w'?'blancas':'negras')+').'; }
 
+/* GUARD 2 (parte JS): único punto que escribe engineMode. Antes del guard,
+   7 sitios distintos asignaban engineMode directo y ninguno tocaba el
+   badge — bastaba con que UNO se desincronizara para volver al problema
+   original ("no hay forma de saber a simple vista qué motor está
+   jugando"). Ahora es imposible que la variable cambie sin que el badge
+   se actualice con ella. */
+function setEngineMode(mode){
+  engineMode = mode;
+  updateEngineModeBadge();
+}
+
+/* GUARD 2 + GUARD 3: refleja engineMode en el badge permanente (nunca más
+   depender del texto transitorio de status-bar, que se pisa con
+   "Pensando…" apenas empieza la primera jugada). GUARD 3 además rotula el
+   modo local con TEXTO, no solo color: el bug de "la reina no sale de los
+   peones" era el motor local jugando sin heurística posicional — legal
+   siempre, pero con pinta de bug para quien no sepa que está en modo
+   simplificado. Un color exige conocer el código de antemano; la palabra
+   "local" no exige nada, se entiende con solo mirar. */
+function updateEngineModeBadge(){
+  const badge = document.getElementById('engine-mode-badge');
+  if(!badge) return;
+  if(engineMode === 'stockfish'){
+    badge.className = 'stockfish';
+    badge.textContent = '●';
+    badge.title = 'Motor: Stockfish (motor real)';
+  } else if(engineMode === 'local'){
+    badge.className = 'local';
+    badge.textContent = '● local';
+    badge.title = 'Motor local (respaldo simplificado): prioriza material sobre posición — jugadas más directas son esperables, no un bug de las reglas.';
+  } else {
+    badge.className = '';
+    badge.textContent = '●';
+    badge.title = 'Motor: cargando…';
+  }
+}
+
 /* ============================================================
    SONIDOS — paleta sintetizada Web Audio "órgano espacial" (canónica
    desde 2026-07-11): armónicos apilados tipo registros de órgano,
@@ -6237,7 +6296,7 @@ async function loadEngine(){
   // documento, cero red, cero CORS, cero dependencia de caché.
   const timeoutId = setTimeout(()=>{
     if(engineMode === 'loading'){
-      engineMode = 'local';
+      setEngineMode('local');
       document.getElementById('status-bar').textContent = 'Motor local listo. ' + humanTurnMsg();
     }
   }, 12000);
@@ -6271,7 +6330,7 @@ async function loadEngine(){
       revokeBlobSafely();
       clearTimeout(timeoutId);
       if(engineWatchdog){ clearTimeout(engineWatchdog); engineWatchdog = null; }
-      engineMode = 'local';
+      setEngineMode('local');
       if(pendingResolve){
         const resolve = pendingResolve; pendingResolve = null;
         resolve(null);
@@ -6287,7 +6346,7 @@ async function loadEngine(){
     // futura sesión de debug pierda tiempo re-investigando la causa raíz
     // ya resuelta (fetch/CDN) por un síntoma que es en realidad del sandbox.
     clearTimeout(timeoutId);
-    engineMode = 'local';
+    setEngineMode('local');
     if(e && e.name === 'SecurityError'){
       console.warn('loadEngine: Worker bloqueado por política de seguridad del entorno (sandbox/CSP) — probablemente estás viendo este archivo en un visor embebido, no en un navegador normal. Descargalo y abrilo directo, o subilo a tu hosting real.', e);
       document.getElementById('status-bar').textContent = 'Motor local listo (Worker bloqueado por el visor — probá en el navegador). ' + humanTurnMsg();
@@ -6309,7 +6368,7 @@ function handleEngineMessage(e, timeoutId){
   } else if(line === 'readyok'){
     if(engineMode === 'loading'){
       clearTimeout(timeoutId);
-      engineMode = 'stockfish';
+      setEngineMode('stockfish');
       applyLevel();
       document.getElementById('status-bar').textContent = 'Motor listo. ' + humanTurnMsg();
     }
@@ -6400,7 +6459,7 @@ function askEngineExternal(){
     }catch(err){
       console.warn('askEngineExternal: postMessage falló, motor caído', err);
       pendingResolve = null;
-      engineMode = 'local';
+      setEngineMode('local');
       resolve(null);
       return;
     }
@@ -6410,7 +6469,7 @@ function askEngineExternal(){
       engineWatchdog = null;
       if(pendingResolve === resolve){
         pendingResolve = null;
-        engineMode = 'local';
+        setEngineMode('local');
         resolve(null);
       }
     }, 6000);
@@ -6527,7 +6586,7 @@ async function engineTurn(){
     // mitad de partida, mensaje UCI corrupto, etc.) NUNCA debe dejar el
     // turno trabado en negras. Forzamos modo local y elegimos una jugada.
     console.warn('engineTurn: motor externo falló, usando motor local', err);
-    engineMode = 'local';
+    setEngineMode('local');
     try{
       candidateMoves = localCandidates();
       candidateIdx = 0;
@@ -6674,9 +6733,29 @@ function resetGame(){
   }
 }
 
+/* GUARD 4: auto-chequeo de integridad al arrancar. No reemplaza el
+   try/catch de loadEngine (que ya maneja el fallo en tiempo real) — corre
+   ANTES, así que si una edición futura vuelve a mover o borrar el
+   <script id="stockfish-engine-src"> (la causa raíz del bug documentado
+   arriba) o rompe algún id crítico del DOM, el diagnóstico aparece en
+   consola apenas carga la página, no recién cuando algo ya falló en
+   pleno juego. */
+function validateFileIntegrity(){
+  const requiredIds = ['stockfish-engine-src','board','status-bar','engine-mode-badge'];
+  const missing = requiredIds.filter(id => !document.getElementById(id));
+  if(missing.length){
+    console.error('validateFileIntegrity: faltan elementos con id: ' + missing.join(', ') + '. Si este HTML se editó a mano, revisá que no se haya borrado o movido alguno de esos tags.');
+  }
+  if(typeof Chess !== 'function'){
+    console.error('validateFileIntegrity: Chess (chess.js) no está definido — el script de chess.js no se ejecutó antes de este punto del documento.');
+  }
+}
+
 /* ============================================================
    BOOT
    ============================================================ */
+validateFileIntegrity();
+updateEngineModeBadge();
 renderBoard();
 logMoves();
 updateOpeningPanel();
