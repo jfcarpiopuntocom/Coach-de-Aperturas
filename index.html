@@ -5195,7 +5195,11 @@ function findAttackers(targetSq, attackerColor){
 function drawCheckLine(boardEl, fromSq, toSq){
   const colOf = f => FILES.indexOf(f);
   const cellOf = (sq)=>{
-    const c = colOf(sq[0]), r = 8-parseInt(sq[1],10); // r=0 es fila 8
+    let c = colOf(sq[0]), r = 8-parseInt(sq[1],10); // r=0 es fila 8
+    // GUARD G1: cuando el tablero está flipped (jugamos negras, re-render JS),
+    // las columnas y filas están en orden inverso — espejear ambos ejes
+    // para que la línea apunte al cuadrado visual correcto.
+    if(humanColor === 'b'){ c = 7-c; r = 7-r; }
     return {x:(c+0.5)/8*100, y:(r+0.5)/8*100};
   };
   const a = cellOf(fromSq), b = cellOf(toSq);
@@ -5237,6 +5241,12 @@ function applyCheckFx(boardEl){
 
 function renderBoard(){
   const boardEl = document.getElementById('board');
+  // GUARD G2: eliminar elementos flotantes huérfanos ANTES de vaciar el DOM.
+  // Si boardEpoch cambió durante un flyPiece (undo, reset, cambio de color),
+  // el cleanup del vuelo anterior ya no puede correr — estos elementos quedan
+  // pegados. innerHTML='' los borra igual, pero este querySelectorAll previo
+  // garantiza que su .remove() se llame correctamente (MutationObserver safe).
+  boardEl.querySelectorAll('.traj-line, .pc-fly, .landing-ring, .check-line').forEach(el=>el.remove());
   boardEl.innerHTML = '';
   const board = game.board();
   // Flip desde JS, no con CSS transform: re-renderizar en orden inverso cuando
@@ -5464,6 +5474,10 @@ function makeMoveWithFx(from, to, after, promotion){
    finishMove) no cambian en ningún caso. */
 function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSquare, after, movingPiece){
   const boardRect = boardEl.getBoundingClientRect();
+  // GUARD G3: si el tablero no tiene dimensiones reales (no está en el DOM,
+  // viewport oculto, o layout aún no resuelto), el traj-line se crearía con
+  // coordenadas inválidas y quedaría pegado. Ir directo a finishMove.
+  if(!boardRect.width || !boardRect.height){ finishMove(after); return; }
   const fromRect = fromEl.getBoundingClientRect();
   const toRect = toEl.getBoundingClientRect();
   const colorClass = pcEl.classList.contains('w') ? 'w' : 'b';
@@ -5549,9 +5563,15 @@ function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSqu
   }, flyDur - 40);
 
   const cleanupDelay = isCapture ? 760 : (flyDur + 140);
+  const flyEpoch = boardEpoch; // GUARD G4: capturar epoch en el momento del vuelo
   setTimeout(()=>{
+    // Si el epoch cambió (undo/reset/cambio de color durante el vuelo),
+    // el board ya fue re-renderizado y los elementos flotantes ya fueron
+    // eliminados por G2. Solo limpiar y NO llamar finishMove (ya fue llamado
+    // por el path que incrementó el epoch).
     [flyer, echo1, echo2, traj].forEach(el=>{ if(el && el.remove) el.remove(); });
     document.querySelectorAll('.landing-ring').forEach(el=>el.remove());
+    if(flyEpoch !== boardEpoch) return; // vuelo stale — finishMove ya fue llamado
     finishMove(after);
   }, cleanupDelay);
 }
