@@ -4906,6 +4906,107 @@ const OPENINGS_BATCH3 = [
 ].map(function(a){ return {eco:a[0], name:a[1], moves:a[2]}; });
 EXTRA_OPENINGS.push.apply(EXTRA_OPENINGS, OPENINGS_BATCH3);
 
+/* ---- BATCH4: Albin, Grünfeld, KID, Dutch, Pirc, Alekhine, Semi-Slav Meran,
+        Nimzo-Indian — los grandes sistemas negros faltantes ---- */
+const OPENINGS_BATCH4 = [
+/* === ALBIN COUNTER-GAMBIT (el "d5 y e5" de negras vs 1.d4) === */
+["D08","Albin Counter-Gambit","d4 d5 c4 e5"],
+["D09","Albin Counter-Gambit, Aceptado","d4 d5 c4 e5 dxe5 d4"],
+["D09","Albin Counter-Gambit, Variante Krenosz","d4 d5 c4 e5 dxe5 d4 e3 Bb4+"],
+["D08","Albin Counter-Gambit, Variante Lasker","d4 d5 c4 e5 dxe5 Nc6 Nf3 Bg4"],
+/* === GRÜNFELD DEFENSE === */
+["D80","Grünfeld Defense","d4 Nf6 c4 g6 Nc3 d5"],
+["D80","Grünfeld, Variante Stockholm","d4 Nf6 c4 g6 Nc3 d5 Bg5 Ne4"],
+["D81","Grünfeld, Gambit Ruso","d4 Nf6 c4 g6 Nc3 d5 Qb3"],
+["D82","Grünfeld, Variante 4.Bf4","d4 Nf6 c4 g6 Nc3 d5 Bf4"],
+["D83","Grünfeld, Gambito Ataque","d4 Nf6 c4 g6 Nc3 d5 Bg5 Ne4 Nxe4 dxe4"],
+["D85","Grünfeld, Variante Cambio","d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3"],
+["D87","Grünfeld, Sistema Ruso con Bc4","d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3 Bg7 Bc4"],
+["D90","Grünfeld, Tres Caballos","d4 Nf6 c4 g6 Nc3 d5 Nf3"],
+["D94","Grünfeld, Sistema Cerrado","d4 Nf6 c4 g6 Nc3 d5 Nf3 Bg7 e3"],
+["D97","Grünfeld, Sistema Ruso Prins","d4 Nf6 c4 g6 Nc3 d5 Nf3 Bg7 Qb3 dxc4 Qxc4 O-O"],
+/* === KING'S INDIAN — variantes adicionales === */
+["E62","India de Rey, Fianchetto con Nc3","d4 Nf6 c4 g6 Nc3 Bg7 Nf3 O-O g3 d6 Bg2"],
+["E72","India de Rey, Cuatro Peones","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4"],
+["E76","India de Rey, Cuatro Peones, Principal","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4 O-O Nf3"],
+["E91","India de Rey, Clásica","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Be2 O-O Nf3 Nc6"],
+["E92","India de Rey, Sistema Petrosian","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 d5"],
+["E94","India de Rey, Ortodoxa","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6"],
+["E99","India de Rey, Ortodoxa, Variante Principal","d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Ne1 Nd7 f3 f5"],
+/* === PIRC DEFENSE === */
+["B07","Defensa Pirc","e4 d6 d4 Nf6"],
+["B07","Pirc, Variante 150","e4 d6 d4 Nf6 Nc3 g6 Be3 c6 Qd2 b5"],
+["B08","Pirc, Sistema Clásico","e4 d6 d4 Nf6 Nc3 g6 Nf3 Bg7"],
+["B09","Pirc, Ataque Austriaco","e4 d6 d4 Nf6 Nc3 g6 f4 Bg7"],
+/* === MODERN/ROBATSCH === */
+["B06","Defensa Moderna","e4 g6"],
+["B06","Moderna, Línea Principal","e4 g6 d4 Bg7 Nc3 d6"],
+["B06","Moderna, Variante Gurgenidze","e4 g6 d4 Bg7 Nc3 c6"],
+/* === ALEKHINE'S DEFENSE === */
+["B02","Defensa Alekhine","e4 Nf6"],
+["B03","Alekhine, Cuatro Peones","e4 Nf6 e5 Nd5 d4 d6 c4 Nb6 f4"],
+["B04","Alekhine, Variante Moderna","e4 Nf6 e5 Nd5 d4 d6 Nf3"],
+["B05","Alekhine, Moderna, Línea Principal","e4 Nf6 e5 Nd5 d4 d6 Nf3 g6"],
+/* === DUTCH DEFENSE === */
+["A80","Defensa Holandesa","d4 f5"],
+["A82","Holandesa, Gambito Staunton","d4 f5 e4"],
+["A83","Holandesa, Gambito Staunton Aceptado","d4 f5 e4 fxe4 Nc3"],
+["A85","Holandesa con c4","d4 f5 c4 Nf6 Nc3"],
+["A87","Holandesa Leningrado","d4 f5 c4 Nf6 Nc3 g6 Nf3 Bg7"],
+["A88","Holandesa Leningrado, Principal","d4 f5 c4 Nf6 Nc3 g6 Nf3 Bg7 g3 O-O Bg2 d6"],
+["A90","Holandesa Clásica","d4 f5 c4 e6 Nc3 Nf6 Nf3"],
+["A92","Holandesa Stonewall","d4 f5 c4 e6 g3 Nf6 Bg2 d5"],
+["A96","Holandesa Clásica, Principal","d4 f5 c4 e6 g3 Nf6 Bg2 Be7 Nf3 O-O O-O d6"],
+/* === SEMI-SLAV y más variantes QGD === */
+["D41","Semi-Tarrasch","d4 d5 c4 e6 Nc3 Nf6 Nf3 c5"],
+["D42","Semi-Tarrasch con e3","d4 d5 c4 e6 Nc3 Nf6 Nf3 c5 e3 Nc6 Bd3"],
+["D44","Semi-Eslava Anti-Meran","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 Bg5"],
+["D45","Semi-Eslava Meran","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3 Nbd7"],
+["D46","Semi-Eslava con Bd3","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3 Nbd7 Bd3"],
+["D47","Meran, Variante Mikenas","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3 Nbd7 Bd3 dxc4 Bxc4 b5"],
+["D48","Meran, Variante Blumenfeld","d4 d5 c4 e6 Nc3 Nf6 Nf3 c6 e3 Nbd7 Bd3 dxc4 Bxc4 b5 Bb3 a6 e4"],
+["D36","GDR, Cambio Posicional","d4 d5 c4 e6 Nc3 Nf6 cxd5 exd5 Bg5"],
+["D50","GDR, Variante Argentina","d4 d5 c4 Nf6 Nc3 e6 Bg5"],
+["D51","GDR, Variante Budapest Trampoline","d4 d5 c4 Nf6 Nc3 e6 Bg5 Nbd7"],
+/* === NIMZO-INDIAN === */
+["E20","Nimzoindiana","d4 Nf6 c4 e6 Nc3 Bb4"],
+["E21","Nimzoindiana, Speelman","d4 Nf6 c4 e6 Nc3 Bb4 Nf3"],
+["E22","Nimzoindiana, Variante Spielmann","d4 Nf6 c4 e6 Nc3 Bb4 a3"],
+["E30","Nimzoindiana, Leningrado","d4 Nf6 c4 e6 Nc3 Bb4 Bg5"],
+["E32","Nimzoindiana, Clásica","d4 Nf6 c4 e6 Nc3 Bb4 Qc2"],
+["E34","Nimzoindiana, Clásica, Nxc3","d4 Nf6 c4 e6 Nc3 Bb4 Qc2 d5 cxd5 Qxd5"],
+["E40","Nimzoindiana, Variante e3","d4 Nf6 c4 e6 Nc3 Bb4 e3"],
+["E41","Nimzoindiana, e3, Variante húngara","d4 Nf6 c4 e6 Nc3 Bb4 e3 c5"],
+["E43","Nimzoindiana, Fischer","d4 Nf6 c4 e6 Nc3 Bb4 e3 b6"],
+["E46","Nimzoindiana, Rubinstein","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O"],
+["E47","Nimzoindiana, Rubinstein, Variante principal","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3"],
+["E54","Nimzoindiana, Samisch con b3","d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 d5 cxd5 exd5 O-O"],
+/* === QI DE DAMA y líneas adicionales con Nf6 === */
+["E12","India de Dama, Variante Miles","d4 Nf6 c4 e6 Nf3 b6 Nc3"],
+["E17","India de Dama, Variante clásica","d4 Nf6 c4 e6 Nf3 b6 g3 Bb7 Bg2 Be7 O-O O-O"],
+["E04","Catalana Abierta","d4 Nf6 c4 e6 g3 d5 Bg2 dxc4"],
+["E05","Catalana Abierta, Línea principal","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O dxc4"],
+["E06","Catalana Cerrada","d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O"],
+/* === OLD INDIAN (d6+e5 para negras) === */
+["A53","India Antigua, Variante principal","d4 Nf6 c4 d6 Nc3 e5"],
+["A53","India Antigua con Nf3","d4 Nf6 c4 d6 Nc3 e5 Nf3"],
+["A54","India Antigua, Variante ucraniana","d4 Nf6 c4 d6 Nc3 e5 Nf3 Nd7"],
+["A55","India Antigua, Clásica","d4 Nf6 c4 d6 Nc3 e5 Nf3 Be7 e4"],
+/* === BENKO/VOLGA GAMBIT === */
+["A57","Gambito Benko","d4 Nf6 c4 c5 d5 b5"],
+["A58","Gambito Benko Aceptado","d4 Nf6 c4 c5 d5 b5 cxb5 a6"],
+["A59","Gambito Benko, Variante completa","d4 Nf6 c4 c5 d5 b5 cxb5 a6 bxa6 Bxa6"],
+/* === BENONI === */
+["A60","Benoni Moderno","d4 Nf6 c4 c5 d5 e6"],
+["A65","Benoni, Variante 6.e4","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 Nf3"],
+["A67","Benoni, Variante Taimanov","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 Nf3 Bg7 Be2 O-O e5"],
+["A70","Benoni Clásico","d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 e4 Bg7 Be2"],
+/* === LÍNEAS DE RESPUESTA CON d5+e5 vs e4 (Pirc puro sin c4) === */
+["B07","Pirc, Variante Byrne","e4 d6 d4 Nf6 Nc3 g6 Bg5"],
+["B07","Pirc con e5","e4 d6 Nf3 Nf6 d4 e5"]
+].map(function(a){ return {eco:a[0], name:a[1], moves:a[2]}; });
+EXTRA_OPENINGS.push.apply(EXTRA_OPENINGS, OPENINGS_BATCH4);
+
 /* Unir al array global */
 EXTRA_OPENINGS.push.apply(EXTRA_OPENINGS, OPENINGS_BATCH2);
 
