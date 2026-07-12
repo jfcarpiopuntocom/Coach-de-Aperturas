@@ -1131,10 +1131,14 @@ button:disabled{ opacity:0.35; cursor:default; }
      pasadas es justo lo que se veía como "sale chico y después expande").
      aspect-ratio mantiene el cuadrado sin necesitar un height fijo aparte.
      flex-shrink:1 es la red de seguridad final. */
-  flex:0 1 auto; flex-shrink:1; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
-  width:min(calc(var(--u)*28), 100%);
+  flex:0 0 auto; flex-shrink:0; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
+  /* Ancho fijo basado en --u (variable :root, resuelta en la primera pasada desde vh —
+     sin depender de que el contenedor padre haya calculado su ancho). Esto elimina el
+     parpadeo "sale chico y expande": ya no hay indirección flex/container-query.
+     28*u cabe siempre en col-right (mínimo 210px de columna, 28*3.5px=98px). */
+  width:calc(var(--u)*28);
+  min-width:calc(var(--u)*28);
   aspect-ratio:1/1;
-  min-width:calc(var(--u)*10);
   border:1px solid var(--green-dim);
   filter:brightness(0.9) saturate(0.7);
 }
