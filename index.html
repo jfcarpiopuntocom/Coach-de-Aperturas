@@ -379,6 +379,7 @@ button:disabled{ opacity:0.35; cursor:default; }
   border:calc(var(--u)*0.75) solid var(--green-dim);
   box-shadow:0 0 calc(var(--u)*4) rgba(57,255,20,0.15);
   overflow:hidden; min-height:0; min-width:0; position:relative;
+  touch-action:none; /* permite drag sin activar scroll del browser */
 }
 .sq{
   position:relative; display:flex; align-items:center; justify-content:center;
@@ -3521,6 +3522,7 @@ let engine = null;
 let currentLevel = 0;
 let selectedSq = null;
 let legalTargets = [];
+let dragSq = null;       // casilla origen de un drag activo (null cuando no hay drag)
 let lastMove = null;
 let candidateMoves = []; // objetos {from,to,promotion} para "otra respuesta"
 let candidateIdx = 0;
@@ -5410,6 +5412,8 @@ function renderPeriscope(){
 function onSquareClick(squareName){
   if(thinking) return;
   if(game.turn() !== humanColor) return;
+  // Suprimir click sintético que el navegador genera tras un drag con pointer events
+  if(_skipNextClick){ _skipNextClick=false; return; }
   // MICROCIRUGIA: defensa en profundidad. El overlay de promocion ya
   // bloquea clicks fisicamente (backdrop opaco position:fixed), pero si
   // algun cambio futuro de CSS/z-index lo debilitara, esto evita que un
@@ -5447,7 +5451,133 @@ function onSquareClick(squareName){
   renderBoard();
 }
 
-/* Overlay simple: 4 botones (Q/R/B/N) con el glifo real de la pieza,
+/* ═══════════════════════════════════════════════════════════════════
+   DRAG — Pointer Events (desktop + touch + iOS/Android)
+   Misma técnica que ElMultiversoDelAjedrez, adaptada para coexistir
+   con el click-to-move (dos clicks) sin conflicto:
+   - Umbral 8px: si el pointer apenas se mueve, es un tap/click.
+     onSquareClick toma el control; pointer events no hacen nada.
+   - Si se mueve > 8px: modo drag activo. Se crea fantasma visual,
+     se resaltan casillas legales, y en pointerup se ejecuta la jugada.
+   - Después de un drag exitoso, e.preventDefault() en pointerup
+     suprime el click sintético. _skipNextClick es el respaldo.
+   - Un listener en window captura los drops fuera del tablero.
+   ═══════════════════════════════════════════════════════════════════ */
+
+let _pd = null;             // estado del drag activo: {sq,x0,y0,ghost,active}
+let _skipNextClick = false; // bloquea el click sintético post-drag
+
+function _pdGuard(){
+  return thinking || game.turn()!==humanColor || !!document.getElementById('promo-overlay');
+}
+
+function _pdSqFromPoint(x, y){
+  // Ocultar fantasma para que elementFromPoint vea la casilla debajo
+  if(_pd && _pd.ghost) _pd.ghost.style.display = 'none';
+  const el = document.elementFromPoint(x, y);
+  if(_pd && _pd.ghost) _pd.ghost.style.display = '';
+  if(!el) return null;
+  const sq = el.closest('.sq[data-sq]');
+  return sq ? sq.dataset.sq : null;
+}
+
+function _pdClean(){
+  if(_pd && _pd.ghost) _pd.ghost.remove();
+  _pd = null;
+}
+
+function _pdExecMove(fromSq, toSq){
+  // Recalcula los targets desde fromSq (no depende de legalTargets global)
+  const targets = game.moves({square: fromSq, verbose: true});
+  const move = targets.find(m => m.to === toSq);
+  if(!move){ selectedSq=null; legalTargets=[]; renderBoard(); return; }
+  const epoch = boardEpoch;
+  const doMove = (promotion)=>{
+    makeMoveWithFx(fromSq, toSq, ()=>{
+      selectedSq=null; legalTargets=[]; dragSq=null;
+      renderBoard();
+      setTimeout(()=>{ if(epoch===boardEpoch) engineTurn(); }, 250);
+    }, promotion);
+  };
+  if(move.flags && move.flags.indexOf('p') !== -1){
+    showPromotionPicker(humanColor, (choice)=>doMove(choice));
+  } else {
+    doMove('q');
+  }
+}
+
+function onBoardPointerDown(e){
+  if(_pdGuard()) return;
+  const span = e.target.closest('.pc');
+  if(!span) return;
+  const sq = e.target.closest('.sq[data-sq]');
+  if(!sq) return;
+  const piece = game.get(sq.dataset.sq);
+  if(!piece || piece.color !== humanColor) return;
+  _pdClean();
+  _pd = { sq: sq.dataset.sq, x0: e.clientX, y0: e.clientY, ghost: null, active: false };
+  // Capturar pointer para recibir eventos fuera del board
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
+}
+
+function onBoardPointerMove(e){
+  if(!_pd) return;
+  const dx = e.clientX - _pd.x0, dy = e.clientY - _pd.y0;
+  if(!_pd.active){
+    if(Math.hypot(dx, dy) < 8) return; // umbral: todavía podría ser click
+    // Cruzamos el umbral → activar modo drag
+    _pd.active = true;
+    // Resaltar casillas legales (igual que click-select)
+    selectedSq = _pd.sq;
+    legalTargets = game.moves({square: _pd.sq, verbose: true});
+    renderBoard();
+    // Crear fantasma visual que sigue al cursor/dedo
+    const piece = game.get(_pd.sq);
+    const ghost = document.createElement('span');
+    ghost.textContent = pieceGlyph(piece.type, piece.color);
+    ghost.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;font-size:2.4em;'
+      + 'transform:translate(-50%,-55%);opacity:0.85;user-select:none;'
+      + 'color:' + (piece.color==='w' ? 'var(--green)' : 'var(--orange)');
+    document.body.appendChild(ghost);
+    _pd.ghost = ghost;
+  }
+  _pd.ghost.style.left = e.clientX + 'px';
+  _pd.ghost.style.top  = e.clientY + 'px';
+}
+
+function onBoardPointerUp(e){
+  if(!_pd) return;
+  if(!_pd.active){ _pdClean(); return; } // fue tap → click handler toma el control
+  // Suprimir el click sintético que el navegador dispara tras pointerup
+  e.preventDefault();
+  _skipNextClick = true;
+  setTimeout(()=>{ _skipNextClick = false; }, 300); // safety reset
+  const from = _pd.sq;
+  const toSq = _pdSqFromPoint(e.clientX, e.clientY);
+  _pdClean();
+  selectedSq=null; legalTargets=[];
+  if(!toSq || toSq === from){ renderBoard(); return; }
+  _pdExecMove(from, toSq);
+}
+
+function onBoardPointerCancel(){
+  _pdClean(); selectedSq=null; legalTargets=[]; renderBoard();
+}
+
+/* Instalar listeners UNA VEZ en #board (y en window para drops fuera) */
+function initDragTouch(){
+  const board = document.getElementById('board');
+  if(!board) return;
+  board.addEventListener('pointerdown',   onBoardPointerDown);
+  board.addEventListener('pointermove',   onBoardPointerMove, {passive:true});
+  board.addEventListener('pointerup',     onBoardPointerUp);
+  board.addEventListener('pointercancel', onBoardPointerCancel);
+  // Drop fuera del tablero (liberó el mouse/dedo fuera del board)
+  window.addEventListener('pointerup', (e)=>{ if(_pd && _pd.active) onBoardPointerUp(e); });
+  window.addEventListener('blur',      ()=>{ _pdClean(); selectedSq=null; legalTargets=[]; renderBoard(); });
+}
+
+/* ── Overlay simple: 4 botones (Q/R/B/N) con el glifo real de la pieza,
    del color de quien promociona. onChoose recibe 'q'|'r'|'b'|'n'. */
 function showPromotionPicker(color, onChoose){
   const existing = document.getElementById('promo-overlay');
@@ -7430,6 +7560,7 @@ logMoves();
 updateOpeningPanel();
 updateAiColorLabels();
 loadEngine();
+initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
 </script>
 
 </body>
