@@ -1200,6 +1200,8 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 .help-box p{ font-size:calc(var(--u)*4.5); line-height:1.55; color:#bdf3b0; margin:0 0 calc(var(--u)*2); }
 .help-box .help-signature{ color:var(--green-dim); font-size:calc(var(--u)*3.5); margin-top:calc(var(--u)*3); }
+.help-box .help-signature a{ color:var(--green-dim); text-decoration:none; border-bottom:1px dashed var(--green-dim); }
+.help-box .help-signature a:hover{ color:var(--green); border-color:var(--green); }
 .help-close{
   display:block; margin-top:calc(var(--u)*3); width:100%;
   background:transparent; border:1px dashed var(--green-dim); color:var(--green);
@@ -1566,7 +1568,7 @@ button:active{ transform:translateY(1px); }
   <span class="lore-title">COACH DE APERTURAS</span>
   <button class="lore-toggle" id="battlefx-toggle-btn" onclick="toggleBattleFx()">⚡ FX: ON</button>
   <button class="lore-toggle" id="sound-toggle-btn" onclick="toggleSound()">🔊 Sonidos: ON</button>
-  <span class="lore-credits">chess.js · offline-safe · MIT · <a href="https://www.paypal.com/paypalme/jfcarpio" target="_blank" rel="noopener">apoya el proyecto</a></span>
+  <span class="lore-credits">MIT Open License</span>
   <button id="help-btn" class="help-btn" onclick="openHelpModal()" aria-label="Acerca de este tablero espacial pedagógico" title="Acerca de este tablero espacial pedagógico">?</button>
 </div>
 </div><!-- /.screen -->
@@ -1576,7 +1578,7 @@ button:active{ transform:translateY(1px); }
     <h2>// ACERCA DE ESTA NAVE</h2>
     <p>¡Despertaste tras 100 años de crionización — un tablero encendido en el puente es lo único que quedó funcional en la nave, fijada con autopiloto de vuelta a la Tierra. Esta app es tu oficial de a bordo: te pone al día con las aperturas y defensas para que al llegar a la Tierra empieces a ganar tus partidas!</p>
     <p>Estética inspirada en las space operas de Asimov y Heinlein y la película War Games (1983).</p>
-    <p class="help-signature">v1.0 · Made in Sudamérica.</p>
+    <p class="help-signature">v1.0 · Made in Sudamérica. · <a href="https://www.paypal.com/paypalme/jfcarpio" target="_blank" rel="noopener">apoya el proyecto</a></p>
     <button class="help-close" onclick="closeHelpModal()">CERRAR</button>
   </div>
 </div>
