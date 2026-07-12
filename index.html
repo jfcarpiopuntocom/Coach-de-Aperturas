@@ -1157,8 +1157,12 @@ button:disabled{ opacity:0.35; cursor:default; }
 #periscope-board .psq.light{ background:#1a2e1a; }
 #periscope-board .psq.dark { background:#0a1208; }
 #periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); font-size:calc(var(--u)*3); }
-#board.flipped{ transform:rotate(180deg); }
-#board.flipped .pc, #board.flipped .dot, #board.flipped .coord{ display:inline-block; transform:rotate(180deg); }
+/* rotate: como propiedad INDIVIDUAL (no shorthand transform) — no interfiere con
+   las animaciones de shake que usan transform:translate/rotate en sus keyframes.
+   Si usáramos transform:rotate(180deg) aquí, board-shake-hard-kf lo pisaría en
+   0%/100% con rotate(0deg) y el tablero se des-voltearía durante cada sacudida. */
+#board.flipped{ rotate:180deg; }
+#board.flipped .pc, #board.flipped .dot, #board.flipped .coord{ display:inline-block; rotate:180deg; }
 
 /* ---------- Selector de promoción (Q/R/B/N) ---------- */
 .promo-overlay{
