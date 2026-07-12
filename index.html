@@ -1034,6 +1034,27 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.sq-ripple-w{ background:#39ff14 !important; }
 .sq.sq-ripple-b{ background:#ff7f00 !important; }
 
+/* FX-10 Finale banner — más grande y más lento que tactical-alert */
+.finale-banner{
+  position:absolute; z-index:61; pointer-events:none;
+  left:50%; top:40%;
+  font-size:clamp(15px, calc(var(--u)*5.2), 26px);
+  font-weight:700; letter-spacing:0.14em; text-transform:uppercase;
+  padding:calc(var(--u)*2.2) calc(var(--u)*5.5);
+  border:calc(var(--u)*0.55) solid; border-radius:calc(var(--u)*1);
+  white-space:nowrap; background:#060606;
+  animation: finale-banner-kf 3.6s ease-out forwards;
+}
+.finale-banner.w{ color:#39ff14; border-color:#39ff14; box-shadow:0 0 calc(var(--u)*12) #39ff14; }
+.finale-banner.b{ color:#ff7f00; border-color:#ff7f00; box-shadow:0 0 calc(var(--u)*12) #ff7f00; }
+@keyframes finale-banner-kf{
+  0%  { opacity:0; transform:translate(-50%, calc(-50% + 22px)) scale(0.72); }
+  12% { opacity:1; transform:translate(-50%, -50%) scale(1.06); }
+  20% { opacity:1; transform:translate(-50%, -50%) scale(1); }
+  78% { opacity:1; transform:translate(-50%, -50%) scale(1); }
+  100%{ opacity:0; transform:translate(-50%, calc(-50% - 14px)) scale(1.08); }
+}
+
 #status-bar{
   font-size:calc(var(--u)*4.5); color:var(--green-dim); text-align:right;
   min-width:0; flex-shrink:1;
@@ -5484,10 +5505,40 @@ function makeMoveWithFx(from, to, after, promotion){
   const toEl = document.querySelector('.sq[data-sq="'+to+'"]');
   const pcEl = fromEl ? fromEl.querySelector('.pc') : null;
 
+  // FX-09: capturar rook elements ANTES de game.move() — el DOM todavía muestra
+  // la torre en su casilla original. Usamos el rank del rey (from[1]) para encontrarla.
+  const rank = from[1];
+  const preRookKS = document.querySelector('.sq[data-sq="h'+rank+'"]');
+  const preRookQS = document.querySelector('.sq[data-sq="a'+rank+'"]');
+
   const moveObj = game.move({from, to, promotion: promotion || 'q'});
   if(!moveObj) return;
   lastMove = {from,to};
   playChessSound(pickMoveSound(capturedPiece), captureSoundScale(movingPiece, capturedPiece), captureSoundWeapon(movingPiece, capturedPiece));
+
+  // FX-09 CASTLING FORMATION: enroque detectado por flags 'k' (kingside) o 'q' (queenside)
+  if(battleFxEnabled && moveObj.flags &&
+     (moveObj.flags.indexOf('k') !== -1 || moveObj.flags.indexOf('q') !== -1)){
+    const isKS      = moveObj.flags.indexOf('k') !== -1;
+    const rookFromEl = isKS ? preRookKS : preRookQS;
+    const rookToSq   = (isKS ? 'f' : 'd') + rank;
+    // moveObj.to es la casilla de destino del rey (g1/c1/g8/c8)
+    spawnCastlingEffect(boardEl, rookFromEl, moveObj.to, rookToSq, movingPiece.color);
+  }
+
+  // FX-08 PROMOTION FANFARE: moveObj.promotion existe cuando un peón se corona.
+  // Se dispara con delay para que renderBoard() ya haya pintado la nueva pieza.
+  if(battleFxEnabled && moveObj.promotion){
+    const promoTo    = to;
+    const promoColor = movingPiece.color;
+    const promoType  = moveObj.promotion;
+    const delayMs    = capturedPiece ? 920 : 680;
+    setTimeout(()=>{
+      const bEl = document.getElementById('board');
+      const tEl = bEl ? bEl.querySelector('.sq[data-sq="'+promoTo+'"]') : null;
+      if(bEl && tEl) spawnPromotionFanfare(bEl, tEl, promoColor, promoType);
+    }, delayMs);
+  }
 
   const canFly = !!(fromEl && toEl && pcEl && boardEl);
   if(canFly){
@@ -5572,25 +5623,69 @@ function flyPiece(boardEl, fromEl, toEl, pcEl, capturedPiece, isEnPassant, epSqu
   const echo1 = battleFxEnabled ? makeGhost('echo echo1') : null;
   const flyer = makeGhost('');
 
-  const timing = { duration: flyDur, easing: 'cubic-bezier(.18,.85,.24,1)', fill:'forwards' };
-  const kf = [{ transform:'translate(0,0)' }, { transform:`translate(${dx}px, ${dy}px)` }];
+  // FX-07 KNIGHT WARP ARC 2026-07-11: caballo vuela en curva bezier cuadrática
+  // en vez de línea recta. Punto de control perpendicular al segmento, siempre
+  // desviado hacia arriba en pantalla (menor y) para dar sensación de salto.
+  // Resto de piezas: vuelo lineal sin cambios.
+  const isKnight = !!(movingPiece && movingPiece.type === 'n');
+  let cpx = dx / 2, cpy = dy / 2; // punto de control = midpoint (default lineal)
+  if(isKnight && (dx || dy)){
+    const hyp = Math.hypot(dx, dy);
+    const arcH = hyp * 0.44; // altura del arco = 44% de la distancia total
+    // Rotación 90° antihorario: perpendicular izquierda = (-dy, dx)
+    let pX = -dy / hyp * arcH;
+    let pY =  dx / hyp * arcH;
+    // Garantizar que el arco va hacia arriba en pantalla (pY negativo)
+    if(pY > 0){ pX = -pX; pY = -pY; }
+    cpx = dx / 2 + pX;
+    cpy = dy / 2 + pY;
+  }
+  // bezAt(t): posición en t∈[0,1] sobre la curva bezier cuadrática
+  // P(t) = 2t(1-t)*CP + t²*(dx,dy)  [origen es (0,0) implícito]
+  const bezAt = (t) => [
+    2 * t * (1 - t) * cpx + t * t * dx,
+    2 * t * (1 - t) * cpy + t * t * dy
+  ];
+
+  const timing = { duration: flyDur, easing: isKnight ? 'ease-in-out' : 'cubic-bezier(.18,.85,.24,1)', fill:'forwards' };
+  // Knight: 5 keyframes sobre la curva bezier para un vuelo suave y arqueado.
+  // Otras piezas: 2 keyframes lineales como antes.
+  const kf = isKnight
+    ? [0, 0.25, 0.5, 0.75, 1].map(t => { const [bx,by] = bezAt(t); return {transform:`translate(${bx}px,${by}px)`, offset:t}; })
+    : [{ transform:'translate(0,0)' }, { transform:`translate(${dx}px, ${dy}px)` }];
   flyer.animate(kf, timing);
   if(echo1) echo1.animate(kf, {...timing, duration: flyDur+70, delay:55});
   if(echo2) echo2.animate(kf, {...timing, duration: flyDur+70, delay:110});
 
+  // FX-07 warp flash al punto más alto del arco (t=0.5): ring de impacto medio
+  if(isKnight && battleFxEnabled){
+    const [mx, my] = bezAt(0.5);
+    setTimeout(()=>{
+      const warp = document.createElement('div');
+      warp.className = 'battle-shock ' + colorClass;
+      warp.style.left   = ((fromRect.left - boardRect.left) + mx) + 'px';
+      warp.style.top    = ((fromRect.top  - boardRect.top)  + my) + 'px';
+      warp.style.width  = fromRect.width  + 'px';
+      warp.style.height = fromRect.height + 'px';
+      boardEl.appendChild(warp);
+      setTimeout(()=>{ if(warp.remove) warp.remove(); }, 460);
+    }, flyDur * 0.44);
+  }
+
   // Comet tail 2026-07-11: 5 fantasmas estáticos en puntos equidistantes a lo
-  // largo de la trayectoria. Cada uno se ilumina cuando la pieza pasa por su
-  // posición y se desvanece con blur — efecto "rastro de cometa".
-  // Solo con FX on y cuando el vuelo tiene dirección real (dx|dy != 0).
+  // largo de la trayectoria. Para el caballo siguen la curva bezier;
+  // para otras piezas, la línea recta (bezAt degrada a lineal cuando cpx/cpy=dx/2,dy/2).
+  // Cada uno se ilumina cuando la pieza pasa y se desvanece con blur.
   if(battleFxEnabled && (dx || dy)){
     const TRAIL = 5;
     for(let i = 1; i <= TRAIL; i++){
-      const t = i / (TRAIL + 1);                           // 1/6, 2/6, ... 5/6
+      const t = i / (TRAIL + 1);
+      const [btx, bty] = bezAt(t);
       const tg = document.createElement('span');
       tg.className = 'pc-fly ' + colorClass;
       tg.textContent = glyph;
-      tg.style.left = ((fromRect.left - boardRect.left) + dx * t) + 'px';
-      tg.style.top  = ((fromRect.top  - boardRect.top)  + dy * t) + 'px';
+      tg.style.left = ((fromRect.left - boardRect.left) + btx) + 'px';
+      tg.style.top  = ((fromRect.top  - boardRect.top)  + bty) + 'px';
       tg.style.width  = fromRect.width  + 'px';
       tg.style.height = fromRect.height + 'px';
       tg.style.fontSize = cs.fontSize;
@@ -5874,6 +5969,245 @@ function spawnSquareRipple(boardEl, toEl, colorClass, magnitude){
   });
 }
 
+// FX-08 PROMOTION FANFARE 2026-07-11
+// Coronación de peón: 30 partículas doradas en burst radial desde la casilla
+// de llegada + glifo de la pieza elegida flotando y desvaneciéndose + banner.
+// Solo con battleFxEnabled=true; sin side-effects en el estado del juego.
+function spawnPromotionFanfare(boardEl, toEl, color, promoType){
+  if(!battleFxEnabled || !toEl) return;
+  const boardRect = boardEl.getBoundingClientRect();
+  const r = toEl.getBoundingClientRect();
+  const cx = (r.left - boardRect.left) + r.width  / 2;
+  const cy = (r.top  - boardRect.top)  + r.height / 2;
+  const GLYPHS = { q: color==='w'?'♛':'♛', r: color==='w'?'♖':'♜', b: color==='w'?'♗':'♝', n: color==='w'?'♘':'♞' };
+  const NAMES  = { q:'REINA', r:'TORRE', b:'ALFIL', n:'CABALLO' };
+  const glyph  = GLYPHS[promoType] || '♛';
+  const name   = NAMES[promoType]  || 'REINA';
+
+  // 30 partículas doradas radiales
+  for(let i = 0; i < 30; i++){
+    const p = document.createElement('span');
+    p.className = 'battle-particle ' + color;
+    p.style.cssText = `left:${cx}px;top:${cy}px;transform:translate(-50%,-50%);background:#e8c040;`;
+    boardEl.appendChild(p);
+    const angle = (i / 30) * Math.PI * 2;
+    const dist  = 18 + Math.random() * 28;
+    const pdx = Math.cos(angle) * dist, pdy = Math.sin(angle) * dist;
+    const dur  = 320 + Math.random() * 200;
+    p.animate([
+      { transform:'translate(-50%,-50%) scale(1.2)', opacity:1 },
+      { transform:`translate(calc(-50% + ${pdx}px), calc(-50% + ${pdy}px)) scale(0.15)`, opacity:0 }
+    ], { duration:dur, easing:'cubic-bezier(.1,.7,.2,1)', fill:'forwards' });
+    setTimeout(()=>{ if(p.remove) p.remove(); }, dur + 40);
+  }
+
+  // Glifo flotante de la pieza coronada
+  const crown = document.createElement('div');
+  crown.style.cssText = `position:absolute;z-index:58;pointer-events:none;left:${cx}px;top:${cy}px;transform:translate(-50%,-50%);font-size:${Math.round(r.width * 0.82)}px;line-height:1;color:#e8c040;`;
+  crown.textContent = glyph;
+  boardEl.appendChild(crown);
+  crown.animate([
+    { opacity:0, transform:'translate(-50%,-50%) scale(0.3) rotate(-20deg)' },
+    { opacity:1, transform:`translate(-50%, calc(-50% - ${r.height*0.6}px)) scale(1.1) rotate(4deg)`, offset:0.3 },
+    { opacity:1, transform:`translate(-50%, calc(-50% - ${r.height*0.75}px)) scale(1)  rotate(0deg)`, offset:0.62 },
+    { opacity:0, transform:`translate(-50%, calc(-50% - ${r.height*1.1}px)) scale(0.8) rotate(8deg)` }
+  ], { duration:1100, easing:'ease-out', fill:'forwards' });
+  setTimeout(()=>{ if(crown.remove) crown.remove(); }, 1150);
+
+  // Anillos y banner
+  spawnImpactRings(boardEl, toEl, color, 3);
+  const banner = document.createElement('div');
+  banner.className = 'tactical-alert ' + color;
+  banner.textContent = glyph + ' CORONACION: ' + name;
+  boardEl.appendChild(banner);
+  setTimeout(()=>{ if(banner.remove) banner.remove(); }, 1280);
+}
+
+// FX-09 CASTLING FORMATION 2026-07-11
+// La torre vuela en paralelo al rey: phantom rook flyer + trayectoria SVG
+// sincronizada con la del rey + arco de escudo entre las posiciones finales.
+// rookFromEl se pasa PRE-move (DOM todavía tiene la torre en su casilla).
+// kingToSq y rookToSq son strings de casilla post-move ('g1', 'f1', etc.).
+function spawnCastlingEffect(boardEl, rookFromEl, kingToSq, rookToSq, colorClass){
+  if(!rookFromEl || !battleFxEnabled) return;
+  const boardRect = boardEl.getBoundingClientRect();
+  const rfr = rookFromEl.getBoundingClientRect();
+
+  // Calcula el centro de una casilla desde coordenadas de cuadrícula (sin DOM)
+  function sqCenter(sq){
+    const fi   = 'abcdefgh'.indexOf(sq[0]);
+    const rank = parseInt(sq[1], 10);
+    const c = humanColor === 'b' ? 7 - fi : fi;
+    const r = humanColor === 'b' ? rank - 1 : 8 - rank;
+    return {
+      x: (c + 0.5) * boardRect.width  / 8,
+      y: (r + 0.5) * boardRect.height / 8
+    };
+  }
+
+  const rookDest = sqCenter(rookToSq);
+  const rfCx = (rfr.left - boardRect.left) + rfr.width  / 2;
+  const rfCy = (rfr.top  - boardRect.top)  + rfr.height / 2;
+  const rdx = rookDest.x - rfCx;
+  const rdy = rookDest.y - rfCy;
+  const flyDurC = 360;
+  const svgNS = 'http://www.w3.org/2000/svg';
+
+  // Phantom rook flyer (mismo estilo que el flyer del rey en flyPiece)
+  const rookPcEl = rookFromEl.querySelector('.pc');
+  const rookGlyph = rookPcEl ? (rookPcEl.dataset.glyph || rookPcEl.textContent)
+                              : (colorClass === 'w' ? '♖' : '♜');
+  const rookFS = rookPcEl ? getComputedStyle(rookPcEl).fontSize : '';
+  const rflyer = document.createElement('span');
+  rflyer.className = 'pc-fly ' + colorClass;
+  rflyer.textContent = rookGlyph;
+  rflyer.style.left   = (rfr.left - boardRect.left) + 'px';
+  rflyer.style.top    = (rfr.top  - boardRect.top)  + 'px';
+  rflyer.style.width  = rfr.width  + 'px';
+  rflyer.style.height = rfr.height + 'px';
+  if(rookFS) rflyer.style.fontSize = rookFS;
+  boardEl.appendChild(rflyer);
+  if(rookPcEl) rookPcEl.style.opacity = '0';
+  rflyer.animate(
+    [{ transform:'translate(0,0)' }, { transform:`translate(${rdx}px,${rdy}px)` }],
+    { duration:flyDurC, easing:'cubic-bezier(.18,.85,.24,1)', fill:'forwards' }
+  );
+
+  // Trayectoria SVG para la torre (misma clase .traj-line → mismo estilo HUD)
+  const rtraj = document.createElementNS(svgNS, 'svg');
+  rtraj.setAttribute('class', 'traj-line ' + colorClass);
+  rtraj.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:40;';
+  rtraj.style.width  = boardRect.width  + 'px';
+  rtraj.style.height = boardRect.height + 'px';
+  const rlen = Math.hypot(rdx, rdy);
+  const rpath = document.createElementNS(svgNS, 'path');
+  rpath.setAttribute('d', `M${rfCx},${rfCy} L${rfCx+rdx},${rfCy+rdy}`);
+  rpath.style.strokeDasharray = String(rlen);
+  rpath.style.setProperty('--len', String(rlen));
+  rtraj.appendChild(rpath);
+  boardEl.appendChild(rtraj);
+
+  // Después del vuelo: arco de escudo + anillos en posiciones finales + banner ENROQUE
+  const epochC = boardEpoch;
+  setTimeout(()=>{
+    [rflyer, rtraj].forEach(el=>{ if(el && el.remove) el.remove(); });
+    if(epochC !== boardEpoch) return;
+
+    const kp = sqCenter(kingToSq);
+    const rp = sqCenter(rookToSq);
+    const midX = (kp.x + rp.x) / 2;
+    const midY = Math.min(kp.y, rp.y) - Math.abs(kp.x - rp.x) * 0.45; // arco hacia arriba
+
+    const arcSvg = document.createElementNS(svgNS, 'svg');
+    arcSvg.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:50;overflow:visible;width:100%;height:100%;';
+    const arcPath = document.createElementNS(svgNS, 'path');
+    const strokeColor = colorClass === 'w' ? '#39ff14' : '#ff7f00';
+    arcPath.setAttribute('d', `M${kp.x},${kp.y} Q${midX},${midY} ${rp.x},${rp.y}`);
+    arcPath.style.stroke = strokeColor;
+    arcPath.style.strokeWidth = '2.5';
+    arcPath.style.fill = 'none';
+    arcPath.style.strokeLinecap = 'round';
+    arcPath.style.strokeDasharray = '7 4'; // guiones — sensación de escudo defensivo
+    arcPath.style.filter = 'drop-shadow(0 0 5px ' + strokeColor + ')';
+    arcSvg.appendChild(arcPath);
+    boardEl.appendChild(arcSvg);
+    arcSvg.animate(
+      [{ opacity:0 }, { opacity:0.95, offset:0.08 }, { opacity:0.95, offset:0.65 }, { opacity:0 }],
+      { duration:750, easing:'ease-in-out', fill:'forwards' }
+    );
+    setTimeout(()=>{ if(arcSvg.remove) arcSvg.remove(); }, 800);
+
+    // Rings en posiciones finales del rey y la torre
+    const kEl = boardEl.querySelector('.sq[data-sq="'+kingToSq+'"]');
+    const rEl = boardEl.querySelector('.sq[data-sq="'+rookToSq+'"]');
+    if(kEl) spawnImpactRings(boardEl, kEl, colorClass, 2);
+    if(rEl) spawnImpactRings(boardEl, rEl, colorClass, 2);
+
+    const al = document.createElement('div');
+    al.className = 'tactical-alert ' + colorClass;
+    al.textContent = '⊞ ENROQUE';
+    boardEl.appendChild(al);
+    setTimeout(()=>{ if(al.remove) al.remove(); }, 1280);
+  }, flyDurC + 60);
+}
+
+// FX-10 CHECKMATE FINALE 2026-07-11
+// Cinemática de mate: overlay oscuro sobre el tablero + spotlight pulsante
+// en el rey caído + burst de partículas + banner JAQUE MATE de 3.6 segundos.
+// NO bloquea la UI: pointer-events:none en todo, auto-cleanup a los 3.6s.
+// Si el jugador pulsa "Nueva Partida" antes, boardEpoch sube y el overlay
+// queda huérfano (invisible) hasta que el timeout lo elimina — sin daño.
+function spawnCheckmateCinematic(boardEl, loserColor){
+  if(!battleFxEnabled || !boardEl) return;
+  const boardRect = boardEl.getBoundingClientRect();
+  const winnerColor = loserColor === 'w' ? 'b' : 'w';
+
+  // Encontrar la casilla del rey mate
+  const board = game.board();
+  let kingSq = null;
+  outer: for(let row = 0; row < 8; row++){
+    for(let col = 0; col < 8; col++){
+      const p = board[row][col];
+      if(p && p.type === 'k' && p.color === loserColor){
+        kingSq = 'abcdefgh'[col] + (8 - row);
+        break outer;
+      }
+    }
+  }
+
+  // Overlay oscuro sobre el tablero (pointer-events:none — UI exterior intacta)
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:54;pointer-events:none;';
+  boardEl.appendChild(overlay);
+  overlay.animate(
+    [{ background:'rgba(0,0,0,0)' }, { background:'rgba(0,0,0,0.68)' }],
+    { duration:650, delay:180, fill:'forwards' }
+  );
+
+  // Spotlight pulsante en el rey + burst de partículas
+  if(kingSq){
+    const kingEl = boardEl.querySelector('.sq[data-sq="'+kingSq+'"]');
+    if(kingEl){
+      const kr  = kingEl.getBoundingClientRect();
+      const kcx = (kr.left - boardRect.left) + kr.width  / 2;
+      const kcy = (kr.top  - boardRect.top)  + kr.height / 2;
+      const sColor = winnerColor === 'w' ? '#39ff14' : '#ff7f00';
+
+      const spot = document.createElement('div');
+      spot.style.cssText = `
+        position:absolute; pointer-events:none; z-index:56; border-radius:50%;
+        left:${kcx}px; top:${kcy}px;
+        width:${kr.width}px; height:${kr.height}px;
+        transform:translate(-50%,-50%);
+        border:3px solid ${sColor};
+        box-shadow:0 0 22px ${sColor};
+      `;
+      boardEl.appendChild(spot);
+      spot.animate([
+        { transform:'translate(-50%,-50%) scale(1)',    opacity:0.95 },
+        { transform:'translate(-50%,-50%) scale(1.18)', opacity:0.55 },
+        { transform:'translate(-50%,-50%) scale(1)',    opacity:0.95 }
+      ], { duration:820, iterations:4, easing:'ease-in-out' });
+
+      spawnBattleParticles(boardEl, kingEl, winnerColor, 1.0, null);
+      spawnImpactRings(boardEl, kingEl, winnerColor, 4);
+
+      setTimeout(()=>{ if(spot.remove) spot.remove(); }, 3600);
+    }
+  }
+
+  // Banner JAQUE MATE
+  const banner = document.createElement('div');
+  banner.className = 'finale-banner ' + winnerColor;
+  banner.textContent = '♚ JAQUE MATE';
+  boardEl.appendChild(banner);
+
+  setTimeout(()=>{
+    if(overlay.remove) overlay.remove();
+    if(banner.remove)  banner.remove();
+  }, 3650);
+}
+
 // DISPARO ENTRANTE — lo que viaja HACIA el objetivo justo antes del
 // impacto, según WEAPON_BY_ATTACKER. Nace a una distancia acotada
 // (22% del tablero) detrás del objetivo en línea con impactAngle, para
@@ -6052,7 +6386,11 @@ function checkGameOver(){
   const bar = document.getElementById('status-bar');
   if(game.in_checkmate()){
     bar.textContent = (game.turn()==='w'?'Negras':'Blancas') + ' dan JAQUE MATE.';
-    bar.className='check'; return true;
+    bar.className='check';
+    // FX-10 CHECKMATE FINALE: game.turn() = loser (el que no puede mover)
+    const finaleBoard = document.getElementById('board');
+    if(finaleBoard) spawnCheckmateCinematic(finaleBoard, game.turn());
+    return true;
   }
   // in_draw() ya evalúa 50 jugadas, ahogado, material insuficiente Y triple repetición
   // (con cortocircuito: la repetición, la más cara, solo se calcula si nada más aplicó).
