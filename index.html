@@ -1,3 +1,4 @@
+
 <!--
   ============================================================
   HECHO — sesión 2026-07-11 (cuarta pasada: guards 2, 3 y 4 completos)
@@ -397,6 +398,7 @@ button:disabled{ opacity:0.35; cursor:default; }
 .pc.b{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1.5) rgba(255,127,0,0.7); }
 .sq .dot{ color:var(--green); font-size:calc(var(--u)*4.5); }
 .sq.selected{ outline:calc(var(--u)*0.75) solid var(--orange); outline-offset:-2px; }
+.sq.dragging-src .pc{ opacity:0; } /* GUARD 5: oculta la pieza original mientras su fantasma se arrastra */
 .sq.legal::after{
   content:""; position:absolute; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5);
   background:var(--orange); opacity:0.85;
@@ -5344,6 +5346,7 @@ function renderBoard(){
       }
 
       if(selectedSq === squareName) sq.classList.add('selected');
+      if(dragSq === squareName) sq.classList.add('dragging-src'); // GUARD 5: oculta pieza original durante drag
       if(legalTargets.find(m=>m.to===squareName)){
         sq.classList.add('legal');
         if(piece) sq.classList.add('capture');
@@ -5484,6 +5487,7 @@ function _pdSqFromPoint(x, y){
 function _pdClean(){
   if(_pd && _pd.ghost) _pd.ghost.remove();
   _pd = null;
+  dragSq = null; // GUARD 5: restaura visibilidad de la pieza original
 }
 
 function _pdExecMove(fromSq, toSq){
@@ -5508,6 +5512,9 @@ function _pdExecMove(fromSq, toSq){
 
 function onBoardPointerDown(e){
   if(_pdGuard()) return;
+  // GUARD 5: si ya hay un drag activo con OTRO dedo/pointer, ignorar este
+  // segundo pointerdown por completo — evita que multi-touch corrompa _pd.
+  if(_pd && _pd.active && _pd.pointerId !== e.pointerId) return;
   const span = e.target.closest('.pc');
   if(!span) return;
   const sq = e.target.closest('.sq[data-sq]');
@@ -5515,20 +5522,27 @@ function onBoardPointerDown(e){
   const piece = game.get(sq.dataset.sq);
   if(!piece || piece.color !== humanColor) return;
   _pdClean();
-  _pd = { sq: sq.dataset.sq, x0: e.clientX, y0: e.clientY, ghost: null, active: false };
-  // Capturar pointer para recibir eventos fuera del board
-  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
+  _pd = { sq: sq.dataset.sq, x0: e.clientX, y0: e.clientY, ghost: null, active: false, pointerId: e.pointerId, target: e.currentTarget };
+  // GUARD 5: NO capturamos el pointer aquí. Si lo hacemos en pointerdown,
+  // Chrome retargetea TODOS los mouse/click events subsiguientes al board
+  // (no a la casilla), rompiendo la selección por click de un tap normal.
+  // La captura se difiere a onBoardPointerMove, una vez cruzado el umbral
+  // de 8px que confirma que es un drag real y no un click.
 }
 
 function onBoardPointerMove(e){
   if(!_pd) return;
+  if(_pd.pointerId !== e.pointerId) return; // GUARD 5: ignorar punteros ajenos
   const dx = e.clientX - _pd.x0, dy = e.clientY - _pd.y0;
   if(!_pd.active){
     if(Math.hypot(dx, dy) < 8) return; // umbral: todavía podría ser click
     // Cruzamos el umbral → activar modo drag
     _pd.active = true;
+    // GUARD 5: recién aquí capturamos el pointer, ya confirmado que es drag real
+    try{ _pd.target.setPointerCapture(_pd.pointerId); }catch(_){}
     // Resaltar casillas legales (igual que click-select)
     selectedSq = _pd.sq;
+    dragSq = _pd.sq; // GUARD 5: oculta la pieza original vía CSS (.dragging-src)
     legalTargets = game.moves({square: _pd.sq, verbose: true});
     renderBoard();
     // Crear fantasma visual que sigue al cursor/dedo
@@ -5547,6 +5561,7 @@ function onBoardPointerMove(e){
 
 function onBoardPointerUp(e){
   if(!_pd) return;
+  if(_pd.pointerId !== e.pointerId) return; // GUARD 5: ignorar punteros ajenos
   if(!_pd.active){ _pdClean(); return; } // fue tap → click handler toma el control
   // Suprimir el click sintético que el navegador dispara tras pointerup
   e.preventDefault();
@@ -5575,6 +5590,11 @@ function initDragTouch(){
   // Drop fuera del tablero (liberó el mouse/dedo fuera del board)
   window.addEventListener('pointerup', (e)=>{ if(_pd && _pd.active) onBoardPointerUp(e); });
   window.addEventListener('blur',      ()=>{ _pdClean(); selectedSq=null; legalTargets=[]; renderBoard(); });
+  // GUARD 5: blur no siempre dispara en iOS Safari al cambiar de app/tab;
+  // visibilitychange es la señal mas confiable cross-platform para eso.
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ _pdClean(); selectedSq=null; legalTargets=[]; renderBoard(); }
+  });
 }
 
 /* ── Overlay simple: 4 botones (Q/R/B/N) con el glifo real de la pieza,
@@ -7210,6 +7230,7 @@ function setHumanColor(c){
     return;
   }
   humanColor = c;
+  _pdClean(); // GUARD 5: si había un drag en curso, evita ghost/estado huérfano
   boardEpoch++; // invalida cualquier setTimeout de motor programado antes de este cambio
   document.getElementById('color-w').classList.toggle('active', c==='w');
   document.getElementById('color-b').classList.toggle('active', c==='b');
@@ -7223,6 +7244,7 @@ function setHumanColor(c){
 
 function setLevel(i){
   if(!LEVELS[i]) return; // indice invalido: ignora, no corrompe currentLevel
+  if(_pd){ _pdClean(); selectedSq=null; legalTargets=[]; renderBoard(); } // GUARD 5: multi-touch, drag en curso
   currentLevel = i;
   const btns = document.querySelectorAll('.lvl-btn');
   btns.forEach((b,idx)=>b.classList.toggle('active', idx===i));
@@ -7488,6 +7510,7 @@ function undoMove(){
   // onSquareClick), un deshacer no debe dejarlo huerfano sobre el tablero.
   const stalePromo = document.getElementById('promo-overlay');
   if(stalePromo) stalePromo.remove();
+  _pdClean(); // GUARD 5: si había un drag en curso (multi-touch), evita ghost/estado huérfano
   boardEpoch++; // invalida cualquier jugada de motor programada antes de este deshacer
   game.undo();
   if(game.history().length>0) game.undo();
@@ -7515,6 +7538,7 @@ function resetGame(){
   }
   const stalePromo = document.getElementById('promo-overlay');
   if(stalePromo) stalePromo.remove();
+  _pdClean(); // GUARD 5: si había un drag en curso (multi-touch), evita ghost/estado huérfano
   boardEpoch++; // invalida cualquier jugada de motor programada antes de este reinicio
   game.reset();
   lastRecognizedEco = null; // permite re-loguear la misma apertura en la nueva partida
