@@ -1157,12 +1157,10 @@ button:disabled{ opacity:0.35; cursor:default; }
 #periscope-board .psq.light{ background:#1a2e1a; }
 #periscope-board .psq.dark { background:#0a1208; }
 #periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); font-size:calc(var(--u)*3); }
-/* rotate: como propiedad INDIVIDUAL (no shorthand transform) — no interfiere con
-   las animaciones de shake que usan transform:translate/rotate en sus keyframes.
-   Si usáramos transform:rotate(180deg) aquí, board-shake-hard-kf lo pisaría en
-   0%/100% con rotate(0deg) y el tablero se des-voltearía durante cada sacudida. */
-#board.flipped{ rotate:180deg; }
-#board.flipped .pc, #board.flipped .dot, #board.flipped .coord{ display:inline-block; rotate:180deg; }
+/* .flipped NO usa CSS transform: el flip se hace re-renderizando el tablero
+   en orden inverso desde JS (igual que renderPeriscope). CSS transform en #board
+   conflictuaría con board-shake-*-kf; contra-rotación en .pc conflictuaría con
+   fx-shatter/implode/etc. Sin CSS transform = cero conflictos, siempre correcto. */
 
 /* ---------- Selector de promoción (Q/R/B/N) ---------- */
 .promo-overlay{
@@ -5138,11 +5136,15 @@ function applyCheckFx(boardEl){
 
 function renderBoard(){
   const boardEl = document.getElementById('board');
-  boardEl.classList.toggle('flipped', humanColor === 'b');
   boardEl.innerHTML = '';
   const board = game.board();
-  for(let r=0; r<8; r++){
-    for(let c=0; c<8; c++){
+  // Flip desde JS, no con CSS transform: re-renderizar en orden inverso cuando
+  // jugamos de negras. Igual que renderPeriscope(). Cero conflicto con shake/FX.
+  const flipped = humanColor === 'b';
+  const rowOrder = flipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+  const colOrder = flipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+  rowOrder.forEach((r, ri) => {
+    colOrder.forEach((c, ci) => {
       const file = FILES[c];
       const rank = 8-r;
       const squareName = file+rank;
@@ -5175,12 +5177,13 @@ function renderBoard(){
         sq.classList.add('last');
       }
 
-      if(c===0){
+      // Coordenadas: izquierda = primera columna del orden de render; abajo = última fila
+      if(ci===0){
         const rc = document.createElement('span');
         rc.className='coord rank'; rc.textContent=rank;
         sq.appendChild(rc);
       }
-      if(r===7){
+      if(ri===7){
         const fc = document.createElement('span');
         fc.className='coord file'; fc.textContent=file;
         sq.appendChild(fc);
@@ -5188,8 +5191,8 @@ function renderBoard(){
 
       sq.addEventListener('click', ()=>onSquareClick(squareName));
       boardEl.appendChild(sq);
-    }
-  }
+    });
+  });
   applyCheckFx(boardEl);
   renderPeriscope();
 }
