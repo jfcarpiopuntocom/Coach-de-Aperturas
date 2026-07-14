@@ -1086,13 +1086,26 @@ button:disabled{ opacity:0.35; cursor:default; }
 
 #moves-log{
   width:100%; background:var(--bg-panel); border:1px solid var(--green-dim);
-  padding:calc(var(--u)*2); font-size:calc(var(--u)*4); max-height:calc(var(--u)*40);
-  overflow-y:auto; line-height:1.85; color:var(--green);
+  padding:calc(var(--u)*2); font-size:calc(var(--u)*4);
+  /* LÍQUIDO DE VERDAD: antes esto era un escalón fijo (calc(--u*40) en
+     desktop, calc(--u*22) recién a partir de la media query de 600px de
+     alto) — entre esos dos puntos el alto quedaba pegado en un valor que
+     no correspondía ni a la ventana grande ni a la chica, y al redimensionar
+     la ventana lentamente se veía "saltar" en vez de acompañar el arrastre.
+     clamp() con dvh interpola CONTINUAMENTE con el alto real del viewport
+     (dvh, no vh, para que las barras de navegador móviles que aparecen/
+     desaparecen no lo hagan saltar tampoco) — nunca menos de 90px (piso
+     legible mínimo) ni más de 260px (tope, para no devorar toda la columna
+     en pantallas muy altas), y en el medio sigue el alto disponible en
+     cada resize sin pasos discretos. */
+  max-height:clamp(90px, 22dvh, 260px);
+  overflow-y:auto; overflow-x:hidden; line-height:1.85; color:var(--green);
+  overflow-wrap:break-word;
 }
 #moves-log .mv-num{ color:#888888; margin-right:calc(var(--u)*0.5); }
 #moves-log .mv-you{ color:var(--green); }
 #moves-log .mv-ai{ color:#E86040; }
-#moves-log .mv-row{ display:inline-block; margin-right:calc(var(--u)*2.5); margin-bottom:calc(var(--u)*0.5); white-space:nowrap; }
+#moves-log .mv-row{ display:inline-block; margin-right:calc(var(--u)*2.5); margin-bottom:calc(var(--u)*0.5); white-space:nowrap; max-width:100%; }
 
 /* ---------- Última jugada de cada bando — el dato que de verdad importa ---------- */
 .last-move-row{ display:flex; gap:calc(var(--u)*2); }
@@ -1163,53 +1176,85 @@ button:disabled{ opacity:0.35; cursor:default; }
 .wp-toggle:hover{ color:#39FF14; border-color:#39FF14; }
 .wp-toggle.wp-active{ background:var(--green); color:#000; }
 
-/* ---------- 1b. PERISCOPIO — micro-vista desde el punto de vista del rival ----------
+/* ---------- 1b. PERISCOPIO — panel flotante, siempre por encima de todo ----------
+   Antes vivía apretado dentro de col-right (tarjeta en línea), lo que traía
+   una cadena de bugs de layout (container queries de dos pasadas, pisos de
+   ancho que no podían encogerse, recortes por overflow:hidden — ver historial
+   arriba). Ahora es un panel position:fixed, totalmente fuera del flujo de
+   col-right: ningún grid/flex/overflow ajeno puede volver a recortarlo ni
+   chocar con él — "layer encima de todo lo demás", pedido explícitamente.
+   Se abre/cierra tocando la palabra PERISCOPIO (el disparador en col-right,
+   o el mismo título dentro del panel) — togglePeriscope() en JS persiste el
+   estado en localStorage, igual que FX/Sonidos.
    SIEMPRE el tablero de 8x8 COMPLETO (las 64 casillas, ver renderPeriscope):
-   lo único "chico" es el tamaño físico en pantalla, nunca la cobertura del
-   tablero. Va en línea, al lado del texto, sin agregar scroll. */
-.periscope-card{
-  background:#020402; border:1px solid var(--green-dim); padding:calc(var(--u)*1.5) calc(var(--u)*2);
-  position:relative; overflow:hidden; display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
-  gap:calc(var(--u)*2.5);
+   lo único que cambia es el tamaño físico en pantalla. Ancho resuelto con
+   vw/px simples, en una sola pasada de layout — el mismo criterio del fix
+   documentado arriba contra el bug "sale chico y después expande"; nunca
+   container queries acá. */
+.periscope-trigger{
+  display:flex; align-items:center; gap:calc(var(--u)*1.5); width:100%;
+  background:#020402; border:1px solid var(--green-dim); cursor:pointer;
+  padding:calc(var(--u)*1.5) calc(var(--u)*2); font-family:var(--font-term);
+  font-size:calc(var(--u)*4.5); color:var(--green); letter-spacing:0.5px;
+  transition:border-color .2s, color .2s, box-shadow .2s;
 }
-.periscope-label{
+.periscope-trigger:hover{ border-color:var(--green); }
+.periscope-trigger.active{
+  color:#39FF14; border-color:#39FF14;
+  box-shadow:0 0 calc(var(--u)*2.5) rgba(57,255,20,0.35);
+}
+.periscope-trigger-dot{
+  width:calc(var(--u)*1.6); height:calc(var(--u)*1.6); border-radius:50%; flex-shrink:0;
+  background:var(--green-dim); box-shadow:0 0 calc(var(--u)*1.5) rgba(57,255,20,0.3);
+  transition:background .2s, box-shadow .2s, transform .2s;
+}
+.periscope-trigger.active .periscope-trigger-dot{
+  background:#39FF14; box-shadow:0 0 calc(var(--u)*2.5) rgba(57,255,20,0.8); transform:scale(1.15);
+}
+
+/* Panel real: position:fixed y z-index muy por encima de cualquier otra capa
+   de la app (modal de ayuda:70, selector de promoción:60) — así nunca queda
+   tapado NI tapa nada sin querer. No es modal: sin backdrop oscuro, el
+   tablero principal sigue jugable con el periscopio abierto. Cerrado por
+   defecto: opacity/transform en 0 y pointer-events:none (cero huella, jamás
+   bloquea un click); abierto, transiciona con "liquidez" real (cubic-bezier
+   suave) en vez de aparecer de golpe. */
+.periscope-overlay{
+  position:fixed; z-index:500; right:calc(var(--u)*3); bottom:calc(var(--u)*3);
+  opacity:0; transform:translateY(calc(var(--u)*4)) scale(0.94); pointer-events:none;
+  transition:opacity .28s cubic-bezier(.2,.8,.2,1), transform .28s cubic-bezier(.2,.8,.2,1);
+}
+.periscope-overlay.open{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+.periscope-panel{
+  position:relative; overflow:hidden; background:#020402; border:1px solid var(--green);
+  padding:calc(var(--u)*2) calc(var(--u)*2.5); display:flex; flex-direction:column;
+  align-items:center; gap:calc(var(--u)*2); width:min(80vw, 300px);
+  box-shadow:0 calc(var(--u)*2) calc(var(--u)*8) rgba(0,0,0,0.65), 0 0 calc(var(--u)*4) rgba(57,255,20,0.18);
+}
+.periscope-panel::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(57,255,20,0.05) 0px, rgba(57,255,20,0.05) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+.periscope-panel .periscope-label{
+  cursor:pointer; user-select:none; text-align:center; width:100%;
   display:block; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
-  color:var(--green); letter-spacing:0.5px; line-height:1.6; flex:1 1 auto; min-width:calc(var(--u)*20);
+  color:var(--green); letter-spacing:0.5px;
 }
+.periscope-panel .periscope-label:hover{ color:#39FF14; }
 #periscope-board{
   /* mini tablero 8x8 fijo, mostrando la posición desde el punto de vista
      del rival (fila 1→8, col h→a en renderPeriscope) — SIN rotar el
      contenido visualmente: eso lo dejaba patas arriba en vez de mostrar
      una perspectiva correcta.
-     El label sigue sin poder robarle espacio al board (flex-wrap en la
-     tarjeta hace que el label baje de línea primero), PERO el board ya
-     no tiene un piso de ancho igual a su tamaño ideal: ese piso era lo
-     que lo dejaba recortado por el overflow:hidden de la tarjeta en
-     columnas angostas (multitarea, ventana partida entre varias apps).
-     width usa min(): nunca más grande que el ideal por altura (28*--u)
-     NI más grande que el 100% del ancho ya-definido de .periscope-card
-     (un % simple en un ítem flex se resuelve en la MISMA pasada de layout
-     que el propio ancho del contenedor — a diferencia de un container
-     query, que exige medir el contenedor y RECIÉN DESPUÉS, en una pasada
-     aparte, resolver lo que depende de esa medida; ese hueco entre
-     pasadas es justo lo que se veía como "sale chico y después expande").
-     aspect-ratio mantiene el cuadrado sin necesitar un height fijo aparte.
-     flex-shrink:1 es la red de seguridad final. */
-  flex:0 0 auto; flex-shrink:0; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
-  /* Ancho fijo basado en --u (variable :root, resuelta en la primera pasada desde vh —
-     sin depender de que el contenedor padre haya calculado su ancho). Esto elimina el
-     parpadeo "sale chico y expande": ya no hay indirección flex/container-query.
-     28*u cabe siempre en col-right (mínimo 210px de columna, 28*3.5px=98px). */
-  width:calc(var(--u)*28);
-  min-width:calc(var(--u)*28);
-  aspect-ratio:1/1;
-  border:1px solid var(--green-dim);
-  filter:brightness(0.9) saturate(0.7);
-}
-.periscope-card::after{
-  content:''; position:absolute; inset:0; pointer-events:none;
-  background:repeating-linear-gradient(0deg, rgba(57,255,20,0.05) 0px, rgba(57,255,20,0.05) 1px, transparent 1px, transparent 3px);
-  mix-blend-mode:overlay;
+     Ancho: min(vw, px) resuelto en una sola pasada de layout (mismo
+     criterio que el fix ya documentado contra el bug "sale chico y
+     después expande" de las container queries) — nunca depende de medir
+     el contenedor primero. aspect-ratio mantiene el cuadrado sin
+     necesitar un height fijo aparte. */
+  width:min(70vw, 260px); aspect-ratio:1/1; display:grid;
+  grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
+  border:1px solid var(--green-dim); filter:brightness(0.9) saturate(0.7);
 }
 .psq{ display:flex; align-items:center; justify-content:center; font-size:calc(var(--u)*4.5); }
 /* psq base usa los mismos colores del tablero, pero dentro del periscopio
@@ -1220,7 +1265,7 @@ button:disabled{ opacity:0.35; cursor:default; }
    las piezas no revienten la celda (board 28u / 8 celdas = 3.5u por celda). */
 #periscope-board .psq.light{ background:#1a2e1a; }
 #periscope-board .psq.dark { background:#0a1208; }
-#periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); font-size:calc(var(--u)*3); }
+#periscope-board .psq{ border:0.5px solid rgba(57,255,20,0.12); font-size:min(6vw, 22px); }
 /* .flipped NO usa CSS transform: el flip se hace re-renderizando el tablero
    en orden inverso desde JS (igual que renderPeriscope). CSS transform en #board
    conflictuaría con board-shake-*-kf; contra-rotación en .pc conflictuaría con
@@ -1421,7 +1466,7 @@ button:active{ transform:translateY(1px); }
 /* RECURSO WEB #3: filtro SVG real (feTurbulence+feDisplacementMap) — se
    activa un instante al reconocer una apertura nueva, no en cada jugada. */
 #opening-name.glitch-flash{ filter:url(#glitch-text-filter); }
-.predict-card, .ai-card, .tip-card, .periscope-card, #moves-log, .lm-box{ box-shadow:inset 0 0 calc(var(--u)*3.5) rgba(57,255,20,0.05); }
+.predict-card, .ai-card, .tip-card, .periscope-trigger, #moves-log, .lm-box{ box-shadow:inset 0 0 calc(var(--u)*3.5) rgba(57,255,20,0.05); }
 .lm-box.lm-ai, .eco-badge-ai{ box-shadow:inset 0 0 calc(var(--u)*3.5) rgba(255,127,0,0.06); }
 .chip{ transition:box-shadow .15s, border-color .15s; }
 .chip:hover{ border-color:var(--green); box-shadow:0 0 calc(var(--u)*2) rgba(57,255,20,0.3); }
@@ -1481,8 +1526,10 @@ button:active{ transform:translateY(1px); }
   #opening-name{ font-size:calc(var(--u)*4.5); }
   .game-controls button{ padding:calc(var(--u)*0.4) calc(var(--u)*1.5); font-size:calc(var(--u)*3.5); }
   .col-left, .col-right{ gap:calc(var(--u)*2); }
-  .periscope-card, .predict-card, .ai-card, .tip-card{ padding:calc(var(--u)*1.5); }
-  #moves-log{ max-height:calc(var(--u)*22); }
+  .periscope-trigger, .predict-card, .ai-card, .tip-card{ padding:calc(var(--u)*1.5); }
+  /* CIRUGÍA: se quitó el max-height fijo que vivía acá — #moves-log ahora
+     usa clamp(90px, 22dvh, 260px) en su regla base, que ya se adapta solo
+     sin necesitar este escalón adicional (ver comentario junto a #moves-log). */
 }
 
 /* Caso extremo: telefonos anchos en horizontal (ej. ~930x430) caen en
@@ -1611,11 +1658,14 @@ button:active{ transform:translateY(1px); }
 
   <!-- DERECHA (desktop) — AL OTRO LADO DEL TABLERO: periscopio + consejo + registro + defensas vistas. -->
   <div class="col-right">
-    <!-- PERISCOPIO — el tablero COMPLETO (8x8), visto desde el lado del rival. A UN LADO, no debajo. -->
-    <section class="periscope-card">
-      <span class="periscope-label" id="periscope-label">PERISCOPIO</span>
-      <div id="periscope-board"></div>
-    </section>
+    <!-- PERISCOPIO — disparador. El panel real (tablero COMPLETO 8x8, visto
+         desde el lado del rival) vive fuera del flujo, flotando por encima de
+         todo — ver .periscope-overlay al final del <body>. Tocar la palabra
+         PERISCOPIO (acá o en el panel) lo abre/cierra; togglePeriscope()
+         persiste el estado en localStorage. -->
+    <button type="button" class="periscope-trigger" id="periscope-trigger" onclick="togglePeriscope()" aria-pressed="false">
+      <span class="periscope-trigger-dot"></span>PERISCOPIO
+    </button>
 
     <section class="tip-card">
       <span class="tip-label">Consejo de la variante</span>
@@ -1692,6 +1742,21 @@ button:active{ transform:translateY(1px); }
       <span id="coach-accuracy-badge" style="font-size:12px;opacity:.85;">Precisión: — (juega para calcularla)</span>
     </div>
     <button class="help-close" onclick="closeHelpModal()">CERRAR</button>
+  </div>
+</div>
+
+<!-- PERISCOPIO — panel flotante (tablero COMPLETO 8x8, visto desde el lado
+     del rival). Vive fuera de .col-right a propósito: position:fixed +
+     z-index:500 lo pone por encima de cualquier otra cosa en la página
+     (incluidos los modales de arriba), así nunca choca ni queda tapado.
+     Cerrado por defecto (sin clase .open): opacity/pointer-events en 0,
+     cero huella. togglePeriscope() en JS agrega/quita .open y persiste el
+     estado en localStorage. Tocar la palabra PERISCOPIO (acá o en el
+     disparador de col-right) lo abre/cierra. -->
+<div class="periscope-overlay" id="periscope-overlay">
+  <div class="periscope-panel">
+    <span class="periscope-label" id="periscope-label" onclick="togglePeriscope()">PERISCOPIO</span>
+    <div id="periscope-board"></div>
   </div>
 </div>
 
@@ -3562,6 +3627,18 @@ updateSoundToggleLabel();
 const game = new Chess();
 let engineMode = 'loading'; // loading | stockfish | local
 let engine = null;
+
+// REDUNDANCIA: helper defensivo para escribir en la barra de estado sin
+// asumir que #status-bar siempre existe en el DOM. No reemplaza todos los
+// `document.getElementById('status-bar').textContent = ...` existentes
+// (serían ~15 sitios), pero cualquier código nuevo o tocado en cirugías
+// futuras debería usar esto en vez de acceder directo al elemento.
+function safeSetStatus(text, cls){
+  const bar = document.getElementById('status-bar');
+  if(!bar) return;
+  if(text !== undefined) bar.textContent = text;
+  if(cls !== undefined) bar.className = cls;
+}
 let currentLevel = 0;
 let selectedSq = null;
 let legalTargets = [];
@@ -5806,7 +5883,7 @@ const TEMPERAMENT = {
    Dama = carácter especial no-ASCII (♕ blanca / ♛ negra)
    ============================================================ */
 const PIECE_GLYPHS = {
-  w:{ k:'♔', q:'♕', r:'♖', b:'♗', n:'♘', p:'♙' },
+  w:{ k:'♔', q:'♕', r:'♖', b:'♝', n:'♘', p:'♙' },
   b:{ k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' }
 };
 function pieceGlyph(type, color){
@@ -7833,6 +7910,19 @@ async function loadEngine(){
       if(pendingResolve){
         const resolve = pendingResolve; pendingResolve = null;
         resolve(null);
+      } else {
+        // CIRUGÍA: si el Worker muere sin una promesa pendiente (por ejemplo
+        // en el instante exacto entre que llega 'bestmove' y que engineTurn
+        // termina de poner thinking=false), nada más liberaba 'thinking'.
+        // Eso dejaba undo/reset/reroll bloqueados para siempre con el
+        // mensaje "Espera a que la IA termine de pensar…". Se libera acá
+        // como red de seguridad explícita.
+        thinking = false;
+        const bar = document.getElementById('status-bar');
+        if(bar && bar.className === 'thinking'){
+          bar.textContent = 'Motor local listo. ' + humanTurnMsg();
+          bar.className = '';
+        }
       }
     };
     engine.postMessage('uci');
@@ -7855,6 +7945,14 @@ async function loadEngine(){
     }
   }
 }
+
+// REDUNDANCIA: el Worker de Stockfish, una vez creado, vivía para siempre
+// sin ningún "kill switch" — incluso con la pestaña en background por
+// horas. No es un bug (el navegador igual libera el Worker al cerrar la
+// pestaña), pero es higiene barata: lo terminamos explícitamente al salir.
+window.addEventListener('beforeunload', ()=>{
+  try{ if(engine && typeof engine.terminate === 'function') engine.terminate(); }catch(_){}
+});
 
 let pendingResolve = null;
 let multipvLines = [];
@@ -7952,6 +8050,16 @@ function setLevel(i){
 
 function askEngineExternal(){
   return new Promise((resolve)=>{
+    // CIRUGÍA: si por algún camino ya hubiera una promesa pendiente al
+    // entrar acá (no debería pasar hoy porque 'thinking' lo previene, pero
+    // es un invariante implícito, no reforzado), pisarla sin resolverla
+    // la dejaba huérfana para siempre. Se resuelve con null antes de
+    // reasignar, para no acumular promesas colgadas.
+    if(pendingResolve){
+      const orphan = pendingResolve;
+      pendingResolve = null;
+      orphan(null);
+    }
     multipvLines = [];
     pendingResolve = resolve;
     _engineThinkStartedAt = Date.now(); // RECURSO #17: para medir si el análisis fue "largo"
@@ -8194,8 +8302,18 @@ function undoMove(){
   if(stalePromo) stalePromo.remove();
   _pdClean(); // GUARD 5: si había un drag en curso (multi-touch), evita ghost/estado huérfano
   boardEpoch++; // invalida cualquier jugada de motor programada antes de este deshacer
+  // CIRUGÍA: cancela cualquier watchdog de askEngineExternal en vuelo. El
+  // epoch-guard ya evita que la jugada calculada se aplique, pero sin esto
+  // el timer de 6s seguía vivo y disparaba un setEngineMode('local') fuera
+  // de tiempo cuando ya no correspondía a esta partida.
+  if(engineWatchdog){ clearTimeout(engineWatchdog); engineWatchdog = null; }
   game.undo();
   if(game.history().length>0) game.undo();
+  // CIRUGÍA (bug reportado): deshacer hasta el turno humano no debe dejar
+  // el sparkline/precisión de la posición ya deshecha visibles ni mezclados
+  // con lo que venga después. Los recalculamos desde cero en el próximo
+  // análisis del motor.
+  if(window.resetCoachEvalState) window.resetCoachEvalState();
   selectedSq=null; legalTargets=[]; lastMove=null;
   candidateMoves=[]; candidateIdx=0; wikiCurrentOpening=null; wikiExtractCache=null; wasInCheck=false;
   document.getElementById('btn-reroll').disabled = true;
@@ -8222,8 +8340,17 @@ function resetGame(){
   if(stalePromo) stalePromo.remove();
   _pdClean(); // GUARD 5: si había un drag en curso (multi-touch), evita ghost/estado huérfano
   boardEpoch++; // invalida cualquier jugada de motor programada antes de este reinicio
+  // CIRUGÍA: cancela cualquier watchdog de askEngineExternal en vuelo, igual
+  // que en undoMove — evita un setEngineMode('local') fuera de tiempo si el
+  // usuario reinicia justo antes de que expire el timer de 6s.
+  if(engineWatchdog){ clearTimeout(engineWatchdog); engineWatchdog = null; }
   game.reset();
   lastRecognizedEco = null; // permite re-loguear la misma apertura en la nueva partida
+  // CIRUGÍA (bug reportado): "Nueva Partida" no limpiaba el sparkline de
+  // evaluación ni el % de precisión, así que la partida nueva arrancaba
+  // mostrando datos de la partida anterior (y podía pisar entradas por
+  // índice de ply en vez de por partida). Se resetean acá explícitamente.
+  if(window.resetCoachEvalState) window.resetCoachEvalState();
   selectedSq=null; legalTargets=[]; lastMove=null; candidateMoves=[]; candidateIdx=0; wikiCurrentOpening=null; wikiExtractCache=null; wasInCheck=false;
   document.getElementById('btn-reroll').disabled = true;
   renderBoard(); logMoves(); updateOpeningPanel();
@@ -8409,6 +8536,23 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
   window.__coachLastEngineScore = null; // {cp, mate, sideToMove, ply}
   window.__coachBestMoveUci = null;     // última mejor jugada sugerida por el motor
 
+  // CIRUGÍA (bug reportado): __coachEvalLog y __coachHumanMoveGrades no se
+  // limpiaban en resetGame()/undoMove(), así que "Nueva Partida" arrastraba
+  // el sparkline y el % de precisión de la partida anterior, mezclado con
+  // los ply de la nueva partida (que vuelven a empezar en 1). resetGame()
+  // y undoMove() llaman a esta función global para dejar todo en cero y
+  // ocultar la barra de evaluación vieja en vez de dejarla pegada en pantalla.
+  window.resetCoachEvalState = function(){
+    window.__coachEvalLog = [];
+    window.__coachHumanMoveGrades = [];
+    window.__coachLastEngineScore = null;
+    window.__coachBestMoveUci = null;
+    var wrap = document.getElementById('coach-eval-bar');
+    if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
+    var accEl = document.getElementById('coach-accuracy');
+    if(accEl) accEl.textContent = '';
+  };
+
   var _origHandleEngineMessage = (typeof handleEngineMessage === 'function') ? handleEngineMessage : null;
   if(_origHandleEngineMessage){
     handleEngineMessage = function(e, timeoutId){
@@ -8552,7 +8696,7 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
     var lastLabel;
     if(last.mate !== undefined && lastCp >= 99000){
       lastLabel = 'Mate a favor de blancas';
-    } else if(lastCp <= -99000){
+    } else if(last.mate !== undefined && lastCp <= -99000){
       lastLabel = 'Mate a favor de negras';
     } else {
       var abs = Math.abs(lastCp/100).toFixed(1);
