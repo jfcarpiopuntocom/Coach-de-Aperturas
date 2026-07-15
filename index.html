@@ -3625,30 +3625,6 @@ function toggleSound(){
 }
 updateSoundToggleLabel();
 
-// PERISCOPIO — el trigger/label en el HTML llaman a togglePeriscope(), pero
-// esa función nunca llegó a escribirse (solo existía renderPeriscope(), que
-// dibuja las 64 casillas; abrir/cerrar el panel no tenía código detrás).
-// Mismo patrón que FX/Sonidos arriba: cerrado por defecto, se recuerda entre
-// sesiones. syncPeriscopeUI() no toca `game` directamente salvo por el
-// render, y ese solo se dispara si está abierto — la llamada inicial vive en
-// DOMContentLoaded (más abajo) para no leer `game` antes de que exista.
-let periscopeOpen = false;
-try{ periscopeOpen = localStorage.getItem('periscopeOpen') === '1'; }catch(e){ /* sin persistencia, sigue cerrado por defecto */ }
-function syncPeriscopeUI(){
-  const trigger = document.getElementById('periscope-trigger');
-  const overlay = document.getElementById('periscope-overlay');
-  if(trigger){ trigger.classList.toggle('active', periscopeOpen); trigger.setAttribute('aria-pressed', String(periscopeOpen)); }
-  if(overlay) overlay.classList.toggle('open', periscopeOpen);
-  // Por si se abre antes de la primera jugada, o el layout cambió mientras
-  // estaba cerrado (renderPeriscope no corre solo, hay que pedírselo).
-  if(periscopeOpen && typeof game !== 'undefined') renderPeriscope();
-}
-function togglePeriscope(){
-  periscopeOpen = !periscopeOpen;
-  try{ localStorage.setItem('periscopeOpen', periscopeOpen ? '1' : '0'); }catch(e){ /* sin persistencia, no rompe nada */ }
-  syncPeriscopeUI();
-}
-
 /* ============================================================
    ESTADO DEL JUEGO
    ============================================================ */
@@ -4369,8 +4345,21 @@ function sizeBoardSquare(){
   document.documentElement.style.setProperty('--board-square-px', side + 'px');
 }
 document.addEventListener('DOMContentLoaded', ()=>{
+  // Restaurar preferencia guardada del periscopio (abierto/cerrado) sin
+  // disparar el toggle dos veces: se aplica el estado directamente en vez
+  // de llamar togglePeriscope().
+  try{
+    if(localStorage.getItem('periscopeOpen') === '1'){
+      const overlay = document.getElementById('periscope-overlay');
+      const trigger = document.getElementById('periscope-trigger');
+      if(overlay){
+        overlay.classList.add('open');
+        if(trigger){ trigger.classList.add('active'); trigger.setAttribute('aria-pressed','true'); }
+        renderPeriscope();
+      }
+    }
+  }catch(e){}
   sizeBoardSquare();
-  syncPeriscopeUI(); // restaura abierto/cerrado desde localStorage; acá `game` ya existe
   observeViewportResize(sizeBoardSquare); // RECURSO #13: reacciona a rotación/barra de direcciones/etc.
   // Mostrar/ocultar tendencia-mini, coach-eval-bar o coach-move-quality
   // también cambia cuánto alto le queda al tablero: en vez de acordarse
@@ -6247,6 +6236,24 @@ function renderBoard(){
    el tablero. Lo único que cambia con el tamaño de pantalla es el tamaño
    físico del render (ver #periscope-board en CSS), nunca cuántas casillas
    se dibujan. */
+/* togglePeriscope() — abre/cierra el panel flotante del periscopio.
+   Agrega/quita .open en #periscope-overlay, sincroniza estado visual del
+   disparador (.active + aria-pressed) y persiste la preferencia en
+   localStorage. Al abrir, dispara renderPeriscope() para que el tablero
+   completo quede siempre actualizado. */
+function togglePeriscope(){
+  const overlay = document.getElementById('periscope-overlay');
+  const trigger = document.getElementById('periscope-trigger');
+  if(!overlay) return;
+  const isOpen = overlay.classList.toggle('open');
+  if(trigger){
+    trigger.classList.toggle('active', isOpen);
+    trigger.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
+  }
+  try{ localStorage.setItem('periscopeOpen', isOpen ? '1' : '0'); }catch(e){}
+  if(isOpen) renderPeriscope();
+}
+
 function renderPeriscope(){
   const el = document.getElementById('periscope-board');
   if(!el) return;
