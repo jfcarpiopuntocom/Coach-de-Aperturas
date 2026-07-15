@@ -313,9 +313,13 @@ body::after{
 .col-left, .col-right{ display:flex; flex-direction:column; gap:calc(var(--u)*4); min-width:0; }
 .col-center{ display:flex; flex-direction:column; align-items:center; justify-content:safe center; gap:calc(var(--u)*3); min-width:0; }
 .col-center > section{ width:100%; }
-/* board-stack: tablero + opening-card al mismo ancho, centrados en la columna */
+/* board-stack: tablero + opening-card al mismo ancho, centrados en la columna.
+   El ancho real lo fija JS (sizeBoardSquare, ver <script>) midiendo el
+   espacio disponible de VERDAD en vez de adivinarlo con vh — ver el
+   comentario largo junto a esa función para el porqué. min(100%,64vh,540px)
+   queda solo como fallback para el primer paint antes de que JS corra. */
 .board-stack{
-  width:min(100%, 64vh, 540px);
+  width:var(--board-square-px, min(100%, 64vh, 540px));
   align-self:center;
   display:flex; flex-direction:column; gap:calc(var(--u)*3);
 }
@@ -3724,27 +3728,55 @@ function flashOpeningNameGlitch(){
    ============================================================
    Toggle apagado por defecto (nadie quiere que la voz hable sin pedirlo).
    Si el navegador no soporta speechSynthesis, todo esto es no-op silencioso. */
+const VOICE_SUPPORTED = ('speechSynthesis' in window) && (typeof window.SpeechSynthesisUtterance === 'function');
 let voiceAnnounceEnabled = false;
+let _voiceKeepAliveTimer = null;
+// Chrome (desktop y Android) tiene un bug conocido: si speechSynthesis queda
+// inactivo unos segundos, el motor se "atasca" en pausa y deja de hablar sin
+// avisar. El keep-alive de pausa/resume evita que se quede mudo a mitad de
+// sesión. Ver: https://bugs.chromium.org/p/chromium/issues/detail?id=679437
+function _startVoiceKeepAlive(){
+  if(_voiceKeepAliveTimer || !VOICE_SUPPORTED) return;
+  _voiceKeepAliveTimer = setInterval(function(){
+    try{
+      if(speechSynthesis.speaking || speechSynthesis.pending){
+        speechSynthesis.pause();
+        speechSynthesis.resume();
+      }
+    }catch(_){}
+  }, 10000);
+}
+function _stopVoiceKeepAlive(){
+  if(_voiceKeepAliveTimer){ clearInterval(_voiceKeepAliveTimer); _voiceKeepAliveTimer = null; }
+}
 function toggleVoiceAnnounce(){
+  if(!VOICE_SUPPORTED) return false; // el botón ya queda deshabilitado en el setup inicial
   voiceAnnounceEnabled = !voiceAnnounceEnabled;
-  try{
-    if(voiceAnnounceEnabled && 'speechSynthesis' in window){
+  if(voiceAnnounceEnabled){
+    _startVoiceKeepAlive();
+    try{
+      speechSynthesis.resume(); // por si quedó pausado de una sesión anterior en la misma pestaña
       const u = new SpeechSynthesisUtterance('Anuncio de voz activado.');
       u.lang = 'es-ES'; u.rate = 1.05;
+      u.onerror = function(){ showEasterEggToast('La voz no pudo hablar en este navegador.'); };
       speechSynthesis.speak(u);
-    }
-  }catch(_){}
+    }catch(_){ showEasterEggToast('La voz no pudo hablar en este navegador.'); }
+  } else {
+    _stopVoiceKeepAlive();
+    try{ speechSynthesis.cancel(); }catch(_){}
+  }
   return voiceAnnounceEnabled;
 }
 function announceOpeningByVoice(name){
-  if(!voiceAnnounceEnabled) return;
+  if(!voiceAnnounceEnabled || !VOICE_SUPPORTED) return;
   try{
-    if(!('speechSynthesis' in window)) return;
+    speechSynthesis.resume(); // deshace el bug de "pausa fantasma" antes de encolar
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(name);
     u.lang = 'es-ES'; u.rate = 1.0; u.pitch = 0.95;
+    u.onerror = function(){ console.warn('[coach] la voz falló al anunciar la apertura'); };
     speechSynthesis.speak(u);
-  }catch(_){ /* degrada silenciosamente */ }
+  }catch(_){ /* degrada silenciosamente durante la partida, ya se avisó al activar */ }
 }
 
 /* ============================================================
@@ -4234,6 +4266,87 @@ function initCrtShader(){
   window.__resumeCrtShader = ()=>{ if(!raf) raf = requestAnimationFrame(frame); };
 }
 document.addEventListener('DOMContentLoaded', initCrtShader);
+
+/* ============================================================
+   TAMAÑO DEL TABLERO — cuadrado medido de verdad, no heurística vh.
+   Antes el ancho de #board salía de min(100%, 64vh, 540px): el 64vh
+   asume que TODA la altura del viewport está libre para el tablero,
+   ignorando header, lore-bar, botones de nivel, opening-card, etc.
+   En pantallas donde ese chrome ocupa una porción grande de la altura
+   (monitor en vertical, ventana angosta y alta) el 64vh sobreestima
+   el alto real disponible: aspect-ratio:1/1 sigue forzando un cuadrado
+   matemáticamente, pero el cuadrado calculado no corresponde al
+   espacio real de la pantalla, así que las diagonales de alfil/dama
+   (que asumen celdas 1:1 reales en pantalla, ver comentario junto a
+   drawCheckLine y el resto de líneas trazadas sobre #board) terminan
+   viéndose torcidas.
+   Fix: medimos el ancho Y el alto REALMENTE disponibles para el
+   tablero (no el viewport completo, el espacio que de verdad le
+   queda) y usamos el PROMEDIO de ambos como lado del cuadrado —
+   conserva el ancho que ya andaba bien sin ignorar el alto real. */
+let _lastBoardSquareSide = null;
+function sizeBoardSquare(){
+  const stage = document.getElementById('stage');
+  const stack = document.querySelector('.board-stack');
+  const boardEl = document.getElementById('board');
+  if(!stage || !stack || !boardEl) return;
+
+  // Ancho disponible: el de la columna que contiene el stage. No depende
+  // de la altura del tablero, así que medirlo en cada pasada es seguro
+  // (no puede crear un loop de resize consigo mismo).
+  const col = stage.parentElement; // .col-center
+  if(!col) return;
+  const colRect = col.getBoundingClientRect();
+  const colStyle = getComputedStyle(col);
+  const availW = colRect.width
+    - (parseFloat(colStyle.paddingLeft) || 0) - (parseFloat(colStyle.paddingRight) || 0);
+
+  // Alto disponible: desde el borde superior de board-stack (fijo: lo
+  // determinan los botones de nivel + tendencia-mini, que van ARRIBA y
+  // no dependen del tamaño del tablero) hasta el borde inferior del
+  // viewport visual, menos lo que board-stack usa en hijos que NO son
+  // #board (opening-card, coach-move-quality) y sus gaps.
+  const stackRect = stack.getBoundingClientRect();
+  const viewportH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const stackStyle = getComputedStyle(stack);
+  const gap = parseFloat(stackStyle.rowGap || stackStyle.gap) || 0;
+  let siblingsH = 0, siblingCount = 0;
+  Array.from(stack.children).forEach(child=>{
+    if(child === boardEl) return;
+    if(getComputedStyle(child).display === 'none') return;
+    siblingsH += child.getBoundingClientRect().height;
+    siblingCount++;
+  });
+  siblingsH += gap * siblingCount;
+  const BOTTOM_BREATHING_ROOM = 8; // px — que no quede pegado al borde
+  const availH = (viewportH - stackRect.top) - siblingsH - BOTTOM_BREATHING_ROOM;
+
+  if(availW <= 0 || availH <= 0) return; // layout aún no listo, se reintenta en el próximo resize
+
+  // Lado = promedio de ambos (pedido explícito: ni solo ancho ni solo
+  // alto), con techo de diseño de 540px (el tope que ya tenía antes)
+  // y piso de 160px para no colapsar a algo ilegible en casos extremos.
+  const side = Math.min(540, Math.max(160, Math.round((availW + availH) / 2)));
+
+  if(_lastBoardSquareSide !== null && Math.abs(side - _lastBoardSquareSide) < 1) return; // ya estable, no reescribas
+  _lastBoardSquareSide = side;
+  document.documentElement.style.setProperty('--board-square-px', side + 'px');
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  sizeBoardSquare();
+  observeViewportResize(sizeBoardSquare); // RECURSO #13: reacciona a rotación/barra de direcciones/etc.
+  // Mostrar/ocultar tendencia-mini, coach-eval-bar o coach-move-quality
+  // también cambia cuánto alto le queda al tablero: en vez de acordarse
+  // de llamar sizeBoardSquare() a mano en cada callsite que las togglea,
+  // observamos #stage directamente. sizeBoardSquare() ya tiene guard de
+  // estabilidad (_lastBoardSquareSide) así que esto no crea loops.
+  const stageEl = document.getElementById('stage');
+  if(stageEl && 'ResizeObserver' in window){
+    const ro = new ResizeObserver(()=> sizeBoardSquare());
+    ro.observe(stageEl);
+  }
+});
+
 let humanColor = 'w';            // 'w' o 'b' — de qué lado juega la persona
 let boardEpoch = 0;               // se incrementa en cada reset/deshacer/cambio de color; invalida timers de motor obsoletos
 let wasInCheck = false;            // para disparar fx-checkhit solo al ENTRAR en jaque, no en cada render mientras dure
@@ -8490,30 +8603,90 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
   //     (?), pedida explícitamente por el usuario para no arriesgar
   //     el layout principal. Aplica sobre document.documentElement
   //     completo (no reestructura el DOM).
+  //
+  //     BUG CONOCIDO en el que caía la versión anterior: usaba solo
+  //     el nombre estándar (requestFullscreen), sin prefijos vendor.
+  //     Además, en iOS Safari (todas las apps: Safari, Chrome-iOS,
+  //     Firefox-iOS usan el mismo motor) la Fullscreen API NO EXISTE
+  //     para elementos normales — solo <video> tiene su propio
+  //     webkitEnterFullscreen. Ahí el botón intentaba, fallaba en
+  //     silencio o mostraba un texto sin explicar por qué. Ahora se
+  //     detecta el soporte real al cargar la página y, si no existe,
+  //     el botón queda deshabilitado con un texto honesto en vez de
+  //     fingir que la función está disponible.
   // ============================================================
+  function _fsRequestFn(el){
+    return el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || null;
+  }
+  function _fsExitFn(){
+    return document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen || null;
+  }
+  function _fsElement(){
+    return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null;
+  }
+  var FULLSCREEN_SUPPORTED = !!_fsRequestFn(document.documentElement);
   window.toggleCoachFullscreen = function(btn){
+    if(!FULLSCREEN_SUPPORTED){
+      if(btn) btn.textContent = 'Pantalla completa: no disponible en este navegador';
+      return;
+    }
     try{
-      if(!document.fullscreenElement){
-        (document.documentElement.requestFullscreen || function(){}).call(document.documentElement)
-          .then(function(){
+      if(!_fsElement()){
+        var reqFn = _fsRequestFn(document.documentElement);
+        var result = reqFn.call(document.documentElement);
+        // Safari/webkit viejos devuelven undefined en vez de una Promise.
+        if(result && typeof result.then === 'function'){
+          result.then(function(){
             if(btn){ btn.setAttribute('aria-pressed','true'); btn.textContent = 'Pantalla completa: ON'; }
           }).catch(function(){
             if(btn) btn.textContent = 'Pantalla completa: no disponible';
           });
+        } else if(btn){
+          btn.setAttribute('aria-pressed','true'); btn.textContent = 'Pantalla completa: ON';
+        }
       } else {
-        document.exitFullscreen && document.exitFullscreen();
+        var exitFn = _fsExitFn();
+        exitFn && exitFn.call(document);
       }
     }catch(_){
       if(btn) btn.textContent = 'Pantalla completa: no disponible';
     }
   };
-  document.addEventListener('fullscreenchange', function(){
+  ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(function(evt){
+    document.addEventListener(evt, function(){
+      var btn = $('fullscreen-toggle-btn');
+      if(!btn) return;
+      var on = !!_fsElement();
+      btn.setAttribute('aria-pressed', on);
+      btn.textContent = on ? 'Pantalla completa: ON' : 'Pantalla completa: OFF';
+    });
+  });
+  // Estado inicial honesto del botón: si el navegador (típicamente iOS
+  // Safari/WebView) no soporta la Fullscreen API en absoluto, se lo decimos
+  // al usuario de entrada en vez de dejar que descubra que "no sirve".
+  (function initFullscreenButtonState(){
     var btn = $('fullscreen-toggle-btn');
     if(!btn) return;
-    var on = !!document.fullscreenElement;
-    btn.setAttribute('aria-pressed', on);
-    btn.textContent = on ? 'Pantalla completa: ON' : 'Pantalla completa: OFF';
-  });
+    if(!FULLSCREEN_SUPPORTED){
+      btn.textContent = 'Pantalla completa: no disponible en este navegador';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+    }
+  })();
+  // Mismo criterio de honestidad para el botón de voz: si el navegador no
+  // implementa Web Speech API (algunos WebViews Android embebidos, navegadores
+  // muy antiguos), el botón se deshabilita en vez de prometer algo que no cumple.
+  (function initVoiceButtonState(){
+    var btn = $('voice-toggle-btn');
+    if(!btn) return;
+    if(typeof VOICE_SUPPORTED !== 'undefined' && !VOICE_SUPPORTED){
+      btn.textContent = 'Voz: no disponible en este navegador';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+    }
+  })();
 
   // ============================================================
   // 3) Clasificación de jugadas + 4) Precisión (%) del jugador
