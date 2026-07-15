@@ -6031,7 +6031,7 @@ const TEMPERAMENT = {
    Dama = carácter especial no-ASCII (♕ blanca / ♛ negra)
    ============================================================ */
 const PIECE_GLYPHS = {
-  w:{ k:'♔', q:'♕', r:'♖', b:'♝', n:'♘', p:'♙' },
+  w:{ k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' },
   b:{ k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' }
 };
 function pieceGlyph(type, color){
@@ -7107,7 +7107,7 @@ function spawnCastlingEffect(boardEl, rookFromEl, kingToSq, rookToSq, colorClass
   // Phantom rook flyer (mismo estilo que el flyer del rey en flyPiece)
   const rookPcEl = rookFromEl.querySelector('.pc');
   const rookGlyph = rookPcEl ? (rookPcEl.dataset.glyph || rookPcEl.textContent)
-                              : (colorClass === 'w' ? '♖' : '♜');
+                              : '♜';
   const rookFS = rookPcEl ? getComputedStyle(rookPcEl).fontSize : '';
   const rflyer = document.createElement('span');
   rflyer.className = 'pc-fly ' + colorClass;
