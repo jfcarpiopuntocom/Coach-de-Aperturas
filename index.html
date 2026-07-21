@@ -418,6 +418,16 @@ button:disabled{ opacity:0.35; cursor:default; }
    la flecha, para que el patrón se vea incluso si la flecha se solapa con
    piezas. Opacidad baja para no competir visualmente con .selected/.legal. */
 .sq.coach-best-from, .sq.coach-best-to{ background:rgba(61,220,132,0.22); box-shadow:inset 0 0 0 calc(var(--u)*0.75) rgba(61,220,132,0.55); }
+/* Peor jugada candidata (la última línea de MultiPV, la que peor evaluó
+   el motor): solo la casilla de destino, sin flecha ni origen — a
+   propósito, pedido de JFC: "yo tengo que adivinar qué pieza es, si más
+   de una pudiera moverse a esa casilla". Emoji en la esquina, no tapa la
+   pieza si la casilla ya tiene una (para no ocultar una captura). */
+.sq.coach-worst-to::after{
+  content:"💀"; position:absolute; top:2px; right:2px; left:auto; bottom:auto;
+  width:auto; height:auto; background:none; opacity:1;
+  font-size:calc(var(--u)*4); line-height:1; filter:drop-shadow(0 0 calc(var(--u)*0.5) #000);
+}
 
 /* ============================================================
    JAQUE — el rey en jaque queda con un contorno fijo (mismo verde
@@ -6280,6 +6290,13 @@ function renderBoard(){
         if(squareName===__bmFrom) sq.classList.add('coach-best-from');
         if(squareName===__bmTo) sq.classList.add('coach-best-to');
       }
+      // Calavera: SOLO la casilla destino de la peor jugada candidata,
+      // sin flecha ni casilla de origen — a propósito, para que haya que
+      // adivinar qué pieza es la que se puede mover ahí.
+      if(window.__coachShowBestMoveArrow && window.__coachWorstMoveUci && window.__coachWorstMoveUci.length>=4){
+        var __wmTo = window.__coachWorstMoveUci.slice(2,4);
+        if(squareName===__wmTo) sq.classList.add('coach-worst-to');
+      }
 
       // Coordenadas: izquierda = primera columna del orden de render; abajo = última fila
       if(ci===0){
@@ -8886,6 +8903,7 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
     window.__coachHumanMoveGrades = [];
     window.__coachLastEngineScore = null;
     window.__coachBestMoveUci = null;
+    window.__coachWorstMoveUci = null;
     var wrap = document.getElementById('coach-eval-bar');
     if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
     var accEl = document.getElementById('coach-accuracy');
@@ -8967,6 +8985,17 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
     // contra el eval previo de la serie (jugada -1 = 2 plies atrás,
     // ya que evaluamos cada 2 plies mientras piensa la IA).
     classifyLastHumanMove();
+    // Peor candidata: multipvLines (global del juego original, ver
+    // handleEngineMessage) queda con una entrada por línea de MultiPV,
+    // ordenadas mejor→peor. La última no vacía es la peor evaluada.
+    try{
+      window.__coachWorstMoveUci = null;
+      if(typeof multipvLines !== 'undefined' && multipvLines.length){
+        for(var __wi = multipvLines.length - 1; __wi >= 0; __wi--){
+          if(multipvLines[__wi]){ window.__coachWorstMoveUci = multipvLines[__wi]; break; }
+        }
+      }
+    }catch(_){}
     renderCoachEvalBar();
     renderCoachBestMoveArrow();
   }
@@ -9111,21 +9140,28 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
     // renderBoard). Acá solo limpiamos residuos si el toggle está OFF o
     // no hay jugada — el loop principal ya no las va a volver a marcar.
     if(!window.__coachShowBestMoveArrow || !window.__coachBestMoveUci){
-      boardEl.querySelectorAll('.coach-best-from,.coach-best-to').forEach(function(el){
-        el.classList.remove('coach-best-from','coach-best-to');
+      boardEl.querySelectorAll('.coach-best-from,.coach-best-to,.coach-worst-to').forEach(function(el){
+        el.classList.remove('coach-best-from','coach-best-to','coach-worst-to');
       });
       return;
     }
     var uci = window.__coachBestMoveUci;
     if(!uci || uci.length < 4) return;
     var from = uci.slice(0,2), to = uci.slice(2,4);
-    boardEl.querySelectorAll('.coach-best-from,.coach-best-to').forEach(function(el){
-      el.classList.remove('coach-best-from','coach-best-to');
+    boardEl.querySelectorAll('.coach-best-from,.coach-best-to,.coach-worst-to').forEach(function(el){
+      el.classList.remove('coach-best-from','coach-best-to','coach-worst-to');
     });
     var fromEl = boardEl.querySelector('.sq[data-sq="'+from+'"]');
     var toEl = boardEl.querySelector('.sq[data-sq="'+to+'"]');
     if(fromEl) fromEl.classList.add('coach-best-from');
     if(toEl) toEl.classList.add('coach-best-to');
+    // Calavera: solo casilla destino de la peor candidata, sin flecha.
+    var wUci = window.__coachWorstMoveUci;
+    if(wUci && wUci.length >= 4){
+      var wTo = wUci.slice(2,4);
+      var wEl = boardEl.querySelector('.sq[data-sq="'+wTo+'"]');
+      if(wEl) wEl.classList.add('coach-worst-to');
+    }
     var a = coachSquareCenter(from), b = coachSquareCenter(to);
     if(!a || !b) return;
     var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
