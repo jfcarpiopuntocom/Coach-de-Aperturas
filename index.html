@@ -1775,6 +1775,7 @@ button:active{ transform:translateY(1px); }
   <span class="lore-title">COACH DE APERTURAS</span>
   <button class="lore-toggle" id="battlefx-toggle-btn" onclick="toggleBattleFx()">⚡ FX: ON</button>
   <button class="lore-toggle" id="sound-toggle-btn" onclick="toggleSound()">🔊 Sonidos: ON</button>
+  <button class="lore-toggle" id="radio-toggle-btn" onclick="toggleSpaceRadio(this)" title="Radio espacial: prog rock / post-rock / space rock / symphonic prog en vivo (Radio Browser API, gratis)">🎵 Radio: ON</button>
   <span class="lore-credits">MIT Open License</span>
   <button id="help-btn" class="help-btn" onclick="openHelpModal()" aria-label="Acerca de este tablero espacial pedagógico" title="Acerca de este tablero espacial pedagógico">?</button>
 </div>
@@ -1827,6 +1828,12 @@ button:active{ transform:translateY(1px); }
      modal. Mismo handler (toggleCoachFullscreen) que el del modal; ambos
      se mantienen sincronizados vía el listener fullscreenchange. -->
 <button id="fs-float-btn" class="fs-float-btn" onclick="toggleCoachFullscreen(this)" title="Pantalla completa (Z)" aria-pressed="false">Z</button>
+
+<!-- Radio espacial: stream en vivo de Radio Browser (radio-browser.info),
+     directorio de emisoras gratis y abierto, sin key. Sin controles
+     nativos a propósito — el único control es el botón 🎵 del footer
+     (toggleSpaceRadio en el bundle "coach" al final del documento). -->
+<audio id="space-radio" preload="none"></audio>
 
 <script>
 /* chess.js v0.10.3 — embebido localmente, sin dependencia de CDN externo */
@@ -8891,7 +8898,17 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
     handleEngineMessage = function(e, timeoutId){
       try{
         var line = (typeof e.data === 'string') ? e.data : '';
-        if(line.indexOf('info') === 0 && line.indexOf(' score ') !== -1){
+        // BUG REPORTADO (JFC): "Flecha mejor jugada: ON" y no aparecía la
+        // flecha, o aparecía sobre una casilla rara. Causa: el motor corre
+        // con MultiPV (varias líneas candidatas por profundidad: multipv 1,
+        // 2, 3...), y esto guardaba el pv/score de la ÚLTIMA línea 'info'
+        // recibida sin mirar el número de multipv — casi siempre la peor
+        // candidata (multipv más alto), no la mejor. Filtro: solo procesar
+        // líneas SIN "multipv" (motores sin MultiPV) o con "multipv 1"
+        // (la línea principal/mejor).
+        var multipvM = line.match(/multipv (\d+)/);
+        var isMainLine = !multipvM || multipvM[1] === '1';
+        if(isMainLine && line.indexOf('info') === 0 && line.indexOf(' score ') !== -1){
           var cpM = line.match(/score cp (-?\d+)/);
           var mateM = line.match(/score mate (-?\d+)/);
           if((cpM || mateM) && typeof game !== 'undefined'){
@@ -9137,6 +9154,122 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
       return r;
     };
   }
+
+  // ============================================================
+  // 6) RADIO ESPACIAL — ambientación: prog rock / post-rock / space rock /
+  //    symphonic prog en vivo, vía Radio Browser (radio-browser.info),
+  //    un directorio de emisoras COMUNITARIO Y GRATIS, sin API key ni
+  //    cuenta — cualquiera de sus espejos (de1/de2/nl1/at1.api.radio-
+  //    browser.info) sirve el mismo índice. Cero costo, cero backend
+  //    propio: el <audio> pide el stream directo de la emisora elegida.
+  //    Pedido de JFC: "on por default, apagable, secuencia o random".
+  //    Acá: los GÉNEROS rotan en secuencia (uno nuevo cada vez que se
+  //    prende), la EMISORA dentro de ese género sale al azar (variedad
+  //    sin tener que armar una playlist propia).
+  // ============================================================
+  var RADIO_TAGS = ['prog rock', 'post rock', 'space rock', 'symphonic rock', 'psychedelic rock'];
+  var RADIO_MIRRORS = ['https://de1.api.radio-browser.info', 'https://de2.api.radio-browser.info', 'https://nl1.api.radio-browser.info'];
+  window.__radioOn = false;
+  window.__radioTagIdx = -1;
+  window.__radioLoading = false;
+  window.__radioNowPlaying = '';
+
+  function radioAudioEl(){ return document.getElementById('space-radio'); }
+
+  function updateRadioButton(){
+    var btn = document.getElementById('radio-toggle-btn');
+    if(!btn) return;
+    btn.setAttribute('aria-pressed', window.__radioOn);
+    if(window.__radioLoading){
+      btn.textContent = '🎵 Radio: buscando…';
+    } else {
+      btn.textContent = '🎵 Radio: ' + (window.__radioOn ? 'ON' : 'OFF');
+    }
+    btn.title = window.__radioNowPlaying
+      ? ('Radio espacial: ' + window.__radioNowPlaying)
+      : 'Radio espacial: prog rock / post-rock / space rock / symphonic prog en vivo (Radio Browser API, gratis)';
+  }
+
+  // Prueba los espejos en orden hasta que uno responda — la API pública
+  // a veces tiene algún espejo caído, esto evita que eso tumbe la radio.
+  async function radioFetchStations(tag){
+    var lastErr = null;
+    for(var i=0; i<RADIO_MIRRORS.length; i++){
+      try{
+        var res = await fetch(RADIO_MIRRORS[i] + '/json/stations/bytag/' + encodeURIComponent(tag) +
+          '?limit=20&hidebroken=true&order=clickcount&reverse=true');
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.json();
+      }catch(err){ lastErr = err; }
+    }
+    throw lastErr || new Error('sin espejos disponibles');
+  }
+
+  async function spaceRadioPlayNext(){
+    var audio = radioAudioEl();
+    if(!audio) return;
+    window.__radioLoading = true;
+    updateRadioButton();
+    window.__radioTagIdx = (window.__radioTagIdx + 1) % RADIO_TAGS.length;
+    var tag = RADIO_TAGS[window.__radioTagIdx];
+    try{
+      var stations = await radioFetchStations(tag);
+      var valid = (stations || []).filter(function(s){ return s && (s.url_resolved || s.url); });
+      if(!valid.length) throw new Error('sin estaciones para "' + tag + '"');
+      var pick = valid[Math.floor(Math.random() * valid.length)];
+      audio.src = pick.url_resolved || pick.url;
+      await audio.play();
+      window.__radioNowPlaying = (pick.name || 'Emisora') + ' — ' + tag;
+    }catch(err){
+      console.warn('radio espacial: fallo con "' + tag + '", probando el próximo género', err);
+      window.__radioLoading = false;
+      updateRadioButton();
+      // Reintenta con el próximo género de la secuencia, sin loop infinito
+      // apretado — solo si la radio sigue encendida (el usuario pudo
+      // apagarla mientras esto fallaba).
+      if(window.__radioOn) setTimeout(spaceRadioPlayNext, 1200);
+      return;
+    }
+    window.__radioLoading = false;
+    updateRadioButton();
+  }
+
+  window.toggleSpaceRadio = function(btn){
+    window.__radioOn = !window.__radioOn;
+    try{ localStorage.setItem('spaceRadioOn', window.__radioOn ? '1' : '0'); }catch(_){}
+    var audio = radioAudioEl();
+    if(window.__radioOn){
+      if(audio && audio.src){ audio.play().catch(function(){}); }
+      else { spaceRadioPlayNext(); }
+    } else if(audio){
+      audio.pause();
+    }
+    updateRadioButton();
+  };
+
+  (function initSpaceRadio(){
+    var audio = radioAudioEl();
+    if(!audio) return;
+    // Si la emisora elegida se cae en vivo (stream cortado), saltar
+    // automáticamente al próximo género en vez de quedar en silencio.
+    audio.addEventListener('error', function(){
+      if(window.__radioOn) setTimeout(spaceRadioPlayNext, 1200);
+    });
+    var stored = null;
+    try{ stored = localStorage.getItem('spaceRadioOn'); }catch(_){}
+    window.__radioOn = stored === null ? true : stored === '1'; // default ON, pedido explícito
+    updateRadioButton();
+    if(window.__radioOn) spaceRadioPlayNext().catch(function(){});
+    // Los navegadores bloquean el autoplay con audio hasta el primer gesto
+    // del usuario — si sigue pausada y debería estar sonando, el primer
+    // click/tecla en cualquier parte de la página la retoma.
+    function resumeOnFirstGesture(){
+      var a = radioAudioEl();
+      if(window.__radioOn && a && a.paused && a.src) a.play().catch(function(){});
+    }
+    document.addEventListener('click', resumeOnFirstGesture, {once:true});
+    document.addEventListener('keydown', resumeOnFirstGesture, {once:true});
+  })();
 })();
 </script>
 </body>
