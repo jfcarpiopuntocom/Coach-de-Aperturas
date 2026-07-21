@@ -424,9 +424,10 @@ button:disabled{ opacity:0.35; cursor:default; }
    de una pudiera moverse a esa casilla". Emoji en la esquina, no tapa la
    pieza si la casilla ya tiene una (para no ocultar una captura). */
 .sq.coach-worst-to::after{
-  content:"💀"; position:absolute; top:2px; right:2px; left:auto; bottom:auto;
+  content:"💀"; position:absolute;
+  top:50%; left:50%; transform:translate(-50%,-50%);
   width:auto; height:auto; background:none; opacity:1;
-  font-size:calc(var(--u)*4); line-height:1; filter:drop-shadow(0 0 calc(var(--u)*0.5) #000);
+  font-size:calc(var(--u)*5.5); line-height:1; filter:drop-shadow(0 0 calc(var(--u)*0.5) #000);
 }
 
 /* ============================================================
