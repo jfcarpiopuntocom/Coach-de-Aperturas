@@ -409,7 +409,15 @@ button:disabled{ opacity:0.35; cursor:default; }
 .sq.legal.capture::after{
   width:80%; height:80%; background:transparent; border:calc(var(--u)*1) solid var(--orange);
 }
-.sq.last{ box-shadow:inset 0 0 0 calc(var(--u)*1) var(--green-dim); }
+/* Última jugada: color según quién la jugó (verde=blancas, naranja=negras),
+   más visible que un simple contorno tenue — el usuario debe reconocer de
+   un vistazo de quién fue el turno anterior sin leer el readout de texto. */
+.sq.last{ box-shadow:inset 0 0 0 calc(var(--u)*1.25) var(--green); background:rgba(57,255,20,0.16); }
+.sq.last.last-b{ box-shadow:inset 0 0 0 calc(var(--u)*1.25) var(--orange); background:rgba(255,127,0,0.16); }
+/* Mejor jugada sugerida (engine): pintado sutil de origen/destino además de
+   la flecha, para que el patrón se vea incluso si la flecha se solapa con
+   piezas. Opacidad baja para no competir visualmente con .selected/.legal. */
+.sq.coach-best-from, .sq.coach-best-to{ background:rgba(61,220,132,0.22); box-shadow:inset 0 0 0 calc(var(--u)*0.75) rgba(61,220,132,0.55); }
 
 /* ============================================================
    JAQUE — el rey en jaque queda con un contorno fijo (mismo verde
@@ -1166,20 +1174,6 @@ button:disabled{ opacity:0.35; cursor:default; }
   font-size:calc(var(--u)*4); color:var(--green); letter-spacing:1px;
 }
 
-/* ---------- % de victorias histórico, opcional y discreto ----------
-   El botón w% se queda inline junto al título (cómodo de tocar ahí),
-   pero YA NO abre un detalle inline pegado al título — heredaba el
-   font-size gigante de #opening-name y quedaba amontonado, ilegible.
-   El contenido real se escribe en la tarjeta aparte #wp-card (col-right,
-   ver .wp-card más abajo), fuera del flujo del nombre de la apertura. */
-.wp-toggle{
-  display:inline-block; cursor:pointer; font-family:var(--font-term); font-size:calc(var(--u)*4.5);
-  color:var(--green); border:1px dashed #39FF14; padding:0 calc(var(--u)*1);
-  margin-left:calc(var(--u)*1.5); vertical-align:middle; user-select:none;
-}
-.wp-toggle:hover{ color:#39FF14; border-color:#39FF14; }
-.wp-toggle.wp-active{ background:var(--green); color:#000; }
-
 /* ---------- 1b. PERISCOPIO — panel flotante, siempre por encima de todo ----------
    Antes vivía apretado dentro de col-right (tarjeta en línea), lo que traía
    una cadena de bugs de layout (container queries de dos pasadas, pisos de
@@ -1223,6 +1217,33 @@ button:disabled{ opacity:0.35; cursor:default; }
    defecto: opacity/transform en 0 y pointer-events:none (cero huella, jamás
    bloquea un click); abierto, transiciona con "liquidez" real (cubic-bezier
    suave) en vez de aparecer de golpe. */
+/* Botón flotante de pantalla completa — siempre visible, en cualquier
+   pantalla, sin depender del modal de ayuda. z-index por encima del
+   periscopio y del resto del layout para que nunca quede tapado.
+   Mobile-first: 44px = mínimo touch target de la regla de performance. */
+.fs-float-btn{
+  position:fixed; z-index:600; right:calc(var(--u)*3); top:calc(var(--u)*3);
+  width:44px; height:44px; min-width:44px; min-height:44px;
+  display:flex; align-items:center; justify-content:center;
+  background:#020402; border:1px solid var(--green); color:var(--green);
+  font-size:calc(var(--u)*5); line-height:1; cursor:pointer; border-radius:50%;
+  box-shadow:0 calc(var(--u)*1) calc(var(--u)*4) rgba(0,0,0,0.5);
+  opacity:0.55; transition:opacity .2s;
+}
+.fs-float-btn:hover, .fs-float-btn:focus-visible{ opacity:1; color:#39FF14; border-color:#39FF14; }
+.fs-float-btn[aria-pressed="true"]{ opacity:0.85; color:var(--orange); border-color:var(--orange); }
+@media (prefers-reduced-motion: reduce){ .fs-float-btn{ transition:none; } }
+/* Aviso de F11 nativo — ver checkNativeFullscreenHint(). Solo aparece
+   cuando el viewport heurísticamente parece ocupar toda la pantalla física
+   sin pasar por la Fullscreen API. */
+.fs-native-hint{
+  position:fixed; z-index:600; left:50%; top:calc(var(--u)*3); transform:translateX(-50%);
+  background:#020402; border:1px solid var(--orange); color:#FFFFFF;
+  font-family:var(--font-term); font-size:.82rem; padding:calc(var(--u)*1.5) calc(var(--u)*3);
+  border-radius:calc(var(--u)*1); box-shadow:0 calc(var(--u)*1) calc(var(--u)*4) rgba(0,0,0,0.6);
+  pointer-events:none; max-width:90vw; text-align:center;
+}
+
 .periscope-overlay{
   position:fixed; z-index:500; right:calc(var(--u)*3); bottom:calc(var(--u)*3);
   opacity:0; transform:translateY(calc(var(--u)*4)) scale(0.94); pointer-events:none;
@@ -1396,16 +1417,6 @@ button:disabled{ opacity:0.35; cursor:default; }
   color:var(--orange); margin-bottom:calc(var(--u)*2); letter-spacing:1px;
 }
 
-/* ---------- 3b. % DE VICTORIAS (detalle del botón w%) ---------- */
-.wp-card{
-  background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--green);
-  padding:calc(var(--u)*2); font-size:calc(var(--u)*4); line-height:1.5;
-}
-.wp-card .wp-card-label{
-  display:block; font-family:var(--font-term); font-size:calc(var(--u)*4);
-  color:var(--green); margin-bottom:calc(var(--u)*2); letter-spacing:1px;
-}
-#wp-card-body .wp-note{ display:block; color:var(--green-dim); font-size:calc(var(--u)*3); margin-top:calc(var(--u)*1); }
 
 /* ---------- 4. CONTEXTO (historia / partidas / perfil), oculto por defecto ---------- */
 .context-toggle{
@@ -1676,15 +1687,6 @@ button:active{ transform:translateY(1px); }
       <div id="tactic-tip">Elige una apertura jugando en el tablero y aquí aparecerá el consejo táctico clave de esa línea.</div>
     </section>
 
-    <!-- Detalle de %-victorias: el botón w% queda al lado del nombre de
-         la apertura (ahí es cómodo hacer clic), pero el CONTENIDO se
-         muestra aquí, en su propia tarjeta — antes se insertaba pegado
-         al título gigante de la apertura y quedaba amontonado/ilegible. -->
-    <section class="wp-card" id="wp-card">
-      <span class="wp-card-label">% de victorias (estimado)</span>
-      <div id="wp-card-body">Toca el botón <b>w%</b> junto al nombre de la apertura para ver la estimación.</div>
-    </section>
-
     <div class="last-move-row">
       <div class="lm-box lm-you">
         <span class="lm-tag">TÚ</span>
@@ -1763,6 +1765,14 @@ button:active{ transform:translateY(1px); }
     <div id="periscope-board"></div>
   </div>
 </div>
+
+<!-- Botón flotante de pantalla completa: antes SOLO vivía dentro del modal
+     de ayuda (?), así que una vez en fullscreen y con el modal cerrado no
+     había forma visible de volver — había que adivinar Esc o F11. Este
+     botón queda siempre visible, en cualquier pantalla, sin depender del
+     modal. Mismo handler (toggleCoachFullscreen) que el del modal; ambos
+     se mantienen sincronizados vía el listener fullscreenchange. -->
+<button id="fs-float-btn" class="fs-float-btn" onclick="toggleCoachFullscreen(this)" title="Pantalla completa" aria-pressed="false">⛶</button>
 
 <script>
 /* chess.js v0.10.3 — embebido localmente, sin dependencia de CDN externo */
@@ -5975,7 +5985,7 @@ function updatePredictions(hist){
   if(live.length){
     countEl.textContent = live.length + (live.length===1?' '+term+' posible':' '+termPl+' posibles');
     let html = live.slice(0,MAX).map(function(c){
-      return '<span class="chip"><span class="chip-next">+'+c.next+' = </span><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+winPctToggleHtml(c.o)+'</span>';
+      return '<span class="chip"><span class="chip-next">+'+c.next+' = </span><span class="chip-eco">'+c.o.eco+'</span>'+c.o.name+'</span>';
     }).join('');
     if(live.length>MAX) html += '<span class="chip">+'+(live.length-MAX)+' m&aacute;s&hellip;</span>';
     listEl.innerHTML = html;
@@ -6202,6 +6212,12 @@ function renderBoard(){
       }
       if(lastMove && (lastMove.from===squareName || lastMove.to===squareName)){
         sq.classList.add('last');
+        if(lastMove.color==='b') sq.classList.add('last-b');
+      }
+      if(window.__coachShowBestMoveArrow && window.__coachBestMoveUci && window.__coachBestMoveUci.length>=4){
+        var __bmFrom = window.__coachBestMoveUci.slice(0,2), __bmTo = window.__coachBestMoveUci.slice(2,4);
+        if(squareName===__bmFrom) sq.classList.add('coach-best-from');
+        if(squareName===__bmTo) sq.classList.add('coach-best-to');
       }
 
       // Coordenadas: izquierda = primera columna del orden de render; abajo = última fila
@@ -6530,7 +6546,7 @@ function makeMoveWithFx(from, to, after, promotion){
 
   const moveObj = game.move({from, to, promotion: promotion || 'q'});
   if(!moveObj) return;
-  lastMove = {from,to};
+  lastMove = {from,to,color:moveObj.color};
   playChessSound(pickMoveSound(capturedPiece), captureSoundScale(movingPiece, capturedPiece), captureSoundWeapon(movingPiece, capturedPiece));
 
   // FX-09 CASTLING FORMATION: enroque detectado por flags 'k' (kingside) o 'q' (queenside)
@@ -7479,39 +7495,6 @@ function checkGameOver(){
   return false;
 }
 
-/* ============================================================
-   % DE VICTORIAS HISTÓRICO — aproximado y opcional.
-   No hay una base de datos real conectada; esto es una
-   estimación por estilo/ECO pensada solo como referencia
-   curiosa, oculta por defecto detrás de un click. A propósito
-   NO se muestra como un llamado a "jugar lo más ganador":
-   el ajedrez tiene lugar de sobra para la creatividad.
-   ============================================================ */
-function approxWinPct(o){
-  const base = {gambit:55, aggressive:53, solid:51, positional:52, hypermodern:53}[o.tag] || 52;
-  let h = 0;
-  const s = o.eco+o.name;
-  for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
-  // draws por estilo: gambits menos tablas, posicional más tablas
-  const drawBase = {gambit:21, aggressive:25, solid:33, positional:34, hypermodern:28}[o.tag] || 28;
-  const jitter = (h % 9) - 4; // -4..+4, determinístico por apertura
-  const w = Math.max(38, Math.min(63, base + jitter));
-  const dj = ((h >> 4) % 7) - 3;
-  const d = Math.max(14, Math.min(42, drawBase + dj));
-  const b = 100 - w - d;
-  return {w, d, b};
-}
-function winPctToggleHtml(o){
-  const {w,d} = approxWinPct(o);
-  // Cifra única y comprensible para principiantes: victorias del bando que
-  // suele buscar esta línea + la mitad de las tablas (regla estándar de
-  // puntuación en ajedrez), redondeado. Sin desglosar W/D/B por bando.
-  const winRate = Math.round(w + d/2);
-  // Solo el botón se inserta junto al nombre de la apertura — el contenido
-  // se escribe aparte en #wp-card-body (ver toggleWinPct) para no amontonar
-  // texto chico dentro del título gigante de la apertura.
-  return '<span class="wp-toggle" data-winrate="'+winRate+'" onclick="toggleWinPct(this)" title="Estimación de qué tan seguido termina ganando esta línea — mira el panel de la derecha.">w%</span>';
-}
 /* Tendencia táctica de sesión: acumula los tags de las aperturas reconocidas
    y genera un texto descriptivo del estilo dominante del jugador. */
 function updateTendencia(){
@@ -7544,26 +7527,6 @@ function updateTendencia(){
   }
   txt += '<br><small style="color:#999;font-size:calc(var(--u)*3.5)">'+topT.watch+'</small>';
   el.innerHTML = txt;
-}
-
-// El botón w% ya no abre un popup pegado al título: escribe el detalle en
-// la tarjeta aparte #wp-card (columna derecha). Toggle real: si tocás el
-// mismo botón que ya está mostrando su dato, la tarjeta vuelve al estado
-// por defecto; si tocás otro w%, ese pasa a ser el activo (nunca dos
-// botones "encendidos" a la vez, mismo criterio que antes).
-function toggleWinPct(el){
-  const body = document.getElementById('wp-card-body');
-  if(!body) return;
-  const wasActive = el.classList.contains('wp-active');
-  document.querySelectorAll('.wp-toggle.wp-active').forEach(b=>b.classList.remove('wp-active'));
-  if(wasActive){
-    body.innerHTML = 'Toca el botón <b>w%</b> junto al nombre de la apertura para ver la estimación.';
-    return;
-  }
-  el.classList.add('wp-active');
-  const winRate = el.getAttribute('data-winrate');
-  body.innerHTML = '<span class="wp-w">Con esta línea suelen ganarse ≈ '+winRate+'% de las partidas</span>'+
-                    '<span class="wp-note">(estimado por estilo de apertura, no de una base de datos real — cuanto más la practiques, más importa tu juego que esta cifra)</span>';
 }
 
 /* Consejos genéricos de fase de juego, para cuando la partida ya
@@ -7709,14 +7672,6 @@ function updateOpeningPanel(){
   updateOpeningKicker();
   updatePredictions(hist);
 
-  // Los botones w% se regeneran desde cero en cada renderizado del nombre
-  // de apertura (más abajo), así que ninguno conserva la clase wp-active
-  // de un renderizado anterior. Para no dejar la tarjeta mostrando un dato
-  // ya desconectado de cualquier botón visible, vuelve a su estado inicial
-  // acá; si el usuario quiere verlo de nuevo, vuelve a tocar el w% actual.
-  const wpBody0 = document.getElementById('wp-card-body');
-  if(wpBody0) wpBody0.innerHTML = 'Toca el botón <b>w%</b> junto al nombre de la apertura para ver la estimación.';
-
   // Espejo perfecto con el caso blancas: cuando el humano juega negras y
   // blancas (IA) ya movio pero el humano TODAVIA no ha jugado NI UNA sola
   // vez en la partida, esta caja es "Tu Defensa" pero el humano aun no
@@ -7844,7 +7799,7 @@ function updateOpeningPanel(){
     } else if(nearest && nearestLim>=1){
       badge.innerHTML = '';
       nameEl.classList.add('approx');
-      nameEl.innerHTML = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.'+winPctToggleHtml(nearest);
+      nameEl.innerHTML = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.';
       movesEl.style.display='none';
       histEl.textContent='Comparte las primeras '+nearestLim+(nearestLim===1?' jugada':' jugadas')+' con '+nearest.name+', pero luego diverge. Si transpone de nuevo a una línea conocida, lo detecto al instante.';
       gamesEl.textContent='—';
@@ -7865,7 +7820,7 @@ function updateOpeningPanel(){
   if(bestIsStale){
     badge.innerHTML = '';
     nameEl.classList.add('approx');
-    nameEl.innerHTML = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.'+winPctToggleHtml(nearest);
+    nameEl.innerHTML = 'Se aproxima a '+nearest.name+', aunque diverge desde aquí.';
     movesEl.style.display='none';
     histEl.textContent='Comparte las primeras '+nearestLim+(nearestLim===1?' jugada':' jugadas')+' con '+nearest.name+', pero luego diverge. Si transpone de nuevo a una línea conocida, lo detecto al instante.';
     gamesEl.textContent='—';
@@ -7886,7 +7841,7 @@ function updateOpeningPanel(){
   if(humanHasMoved && !bestCoversHumanMove){
     badge.innerHTML='';
     nameEl.classList.remove('approx');
-    nameEl.innerHTML = (humanColor==='w' ? 'Tu apertura — explorando variantes.' : 'Tu Defensa — explorando variantes.') + winPctToggleHtml(best);
+    nameEl.innerHTML = (humanColor==='w' ? 'Tu apertura — explorando variantes.' : 'Tu Defensa — explorando variantes.');
     movesEl.style.display='none';
     histEl.textContent='No hay una defensa catalogada con nombre propio contra esta jugada de la IA. Tu respuesta es variante personal; si transpone a una línea conocida, la detecto al instante.';
     gamesEl.textContent='—';
@@ -7898,7 +7853,7 @@ function updateOpeningPanel(){
 
   badge.innerHTML = '';
   nameEl.classList.remove('approx');
-  nameEl.innerHTML = best.name + winPctToggleHtml(best);
+  nameEl.innerHTML = best.name;
   movesEl.style.display='inline-block';
   movesEl.textContent = best.moves;
   histEl.innerHTML = '<div class="hist-fact">'+best.history+'</div>';
@@ -7962,7 +7917,7 @@ function updateAiDefensePanel(hist, best){
   }
 
   badge.innerHTML = '';
-  nameEl.innerHTML = best.name + winPctToggleHtml(best);
+  nameEl.innerHTML = best.name;
   tipEl.textContent = 'La IA está jugando esta línea como '+aiColorWord+'.';
 
   const key = best.eco+'|'+best.name;
@@ -8422,7 +8377,7 @@ function playEngineMove(moveObj){
     checkGameOver();
     return;
   }
-  lastMove = {from:applied.from, to:applied.to};
+  lastMove = {from:applied.from, to:applied.to, color:applied.color};
   thinking = false;
   playChessSound(pickMoveSound(capturedPiece), captureSoundScale(movingPieceBefore, capturedPiece), captureSoundWeapon(movingPieceBefore, capturedPiece));
   document.getElementById('btn-reroll').disabled = (candidateMoves.length<=1);
@@ -8682,7 +8637,7 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
   var FULLSCREEN_SUPPORTED = !!_fsRequestFn(document.documentElement);
   window.toggleCoachFullscreen = function(btn){
     if(!FULLSCREEN_SUPPORTED){
-      if(btn) btn.textContent = 'Pantalla completa: no disponible en este navegador';
+      if(btn && btn.id==='fullscreen-toggle-btn') btn.textContent = 'Pantalla completa: no disponible en este navegador';
       return;
     }
     try{
@@ -8692,28 +8647,40 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
         // Safari/webkit viejos devuelven undefined en vez de una Promise.
         if(result && typeof result.then === 'function'){
           result.then(function(){
-            if(btn){ btn.setAttribute('aria-pressed','true'); btn.textContent = 'Pantalla completa: ON'; }
+            syncFullscreenButtons(true);
           }).catch(function(){
-            if(btn) btn.textContent = 'Pantalla completa: no disponible';
+            if(btn && btn.id==='fullscreen-toggle-btn') btn.textContent = 'Pantalla completa: no disponible';
           });
-        } else if(btn){
-          btn.setAttribute('aria-pressed','true'); btn.textContent = 'Pantalla completa: ON';
+        } else {
+          syncFullscreenButtons(true);
         }
       } else {
         var exitFn = _fsExitFn();
         exitFn && exitFn.call(document);
       }
     }catch(_){
-      if(btn) btn.textContent = 'Pantalla completa: no disponible';
+      if(btn && btn.id==='fullscreen-toggle-btn') btn.textContent = 'Pantalla completa: no disponible';
     }
   };
+  // Sincroniza AMBOS botones (el del modal ? y el flotante siempre visible)
+  // con el mismo estado — antes solo el del modal se actualizaba, así que
+  // tras cerrar el modal no había ningún control visible reflejando el
+  // estado real ni permitiendo volver atrás.
+  function syncFullscreenButtons(on){
+    var btn = $('fullscreen-toggle-btn');
+    if(btn){
+      btn.setAttribute('aria-pressed', on);
+      btn.textContent = 'Pantalla completa: ' + (on ? 'ON' : 'OFF');
+    }
+    var fbtn = $('fs-float-btn');
+    if(fbtn){
+      fbtn.setAttribute('aria-pressed', on);
+      fbtn.title = on ? 'Salir de pantalla completa' : 'Pantalla completa';
+    }
+  }
   ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(function(evt){
     document.addEventListener(evt, function(){
-      var btn = $('fullscreen-toggle-btn');
-      if(!btn) return;
-      var on = !!_fsElement();
-      btn.setAttribute('aria-pressed', on);
-      btn.textContent = on ? 'Pantalla completa: ON' : 'Pantalla completa: OFF';
+      syncFullscreenButtons(!!_fsElement());
     });
   });
   // Estado inicial honesto del botón: si el navegador (típicamente iOS
@@ -8721,14 +8688,47 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
   // al usuario de entrada en vez de dejar que descubra que "no sirve".
   (function initFullscreenButtonState(){
     var btn = $('fullscreen-toggle-btn');
-    if(!btn) return;
+    var fbtn = $('fs-float-btn');
     if(!FULLSCREEN_SUPPORTED){
-      btn.textContent = 'Pantalla completa: no disponible en este navegador';
-      btn.disabled = true;
-      btn.style.opacity = '0.5';
-      btn.style.cursor = 'not-allowed';
+      if(btn){
+        btn.textContent = 'Pantalla completa: no disponible en este navegador';
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+      }
+      // Sin Fullscreen API (iOS Safari, algunos WebViews) el botón flotante
+      // no puede hacer nada — se oculta en vez de prometer una función que
+      // no existe en ese navegador.
+      if(fbtn) fbtn.style.display = 'none';
     }
   })();
+  // F11 es el fullscreen NATIVO del navegador (kiosk mode), no pasa por la
+  // Fullscreen API — document.fullscreenElement queda null y ningún evento
+  // fullscreenchange se dispara, así que no hay forma de detectarlo con
+  // certeza ni de cerrarlo por JS (solo F11/Esc del propio navegador lo
+  // hacen). Esta es la causa real del bug reportado: "F11 y no hay botón
+  // para volver". Heurística honesta: si el viewport ocupa toda la pantalla
+  // física Y no estamos en Fullscreen API, probablemente sea F11 nativo —
+  // mostramos un aviso flotante recordando que F11 se apaga con F11/Esc,
+  // en vez de fingir que nuestro botón puede cerrarlo.
+  function checkNativeFullscreenHint(){
+    var hint = $('fs-native-hint');
+    var looksNative = FULLSCREEN_SUPPORTED && !_fsElement() &&
+      Math.abs(window.innerHeight - screen.height) < 2 && Math.abs(window.innerWidth - screen.width) < 2;
+    if(looksNative){
+      if(!hint){
+        hint = document.createElement('div');
+        hint.id = 'fs-native-hint';
+        hint.className = 'fs-native-hint';
+        hint.textContent = 'Pantalla completa (F11) activa — presioná F11 de nuevo para volver';
+        document.body.appendChild(hint);
+      }
+    } else if(hint){
+      hint.remove();
+    }
+  }
+  window.addEventListener('resize', checkNativeFullscreenHint);
+  checkNativeFullscreenHint();
   // Mismo criterio de honestidad para el botón de voz: si el navegador no
   // implementa Web Speech API (algunos WebViews Android embebidos, navegadores
   // muy antiguos), el botón se deshabilita en vez de prometer algo que no cumple.
@@ -8948,7 +8948,10 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
       btn.setAttribute('aria-pressed', window.__coachShowBestMoveArrow);
       btn.textContent = 'Flecha mejor jugada: ' + (window.__coachShowBestMoveArrow ? 'ON' : 'OFF');
     }
-    renderCoachBestMoveArrow();
+    // renderBoard (no solo la flecha) para que el pintado sutil de
+    // casillas .coach-best-from/.coach-best-to del loop principal se
+    // aplique de inmediato al prender/apagar el toggle.
+    if(typeof renderBoard === 'function') renderBoard(); else renderCoachBestMoveArrow();
   };
   function coachSquareCenter(sq){
     var el = document.querySelector('#board .sq[data-sq="'+sq+'"]');
@@ -8963,10 +8966,26 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
     if(!boardEl) return;
     var old = document.getElementById('coach-best-arrow-svg');
     if(old) old.remove();
-    if(!window.__coachShowBestMoveArrow || !window.__coachBestMoveUci) return;
+    // El pintado sutil de casillas origen/destino se aplica en el mismo
+    // render loop principal (ver .coach-best-from/.coach-best-to en
+    // renderBoard). Acá solo limpiamos residuos si el toggle está OFF o
+    // no hay jugada — el loop principal ya no las va a volver a marcar.
+    if(!window.__coachShowBestMoveArrow || !window.__coachBestMoveUci){
+      boardEl.querySelectorAll('.coach-best-from,.coach-best-to').forEach(function(el){
+        el.classList.remove('coach-best-from','coach-best-to');
+      });
+      return;
+    }
     var uci = window.__coachBestMoveUci;
     if(!uci || uci.length < 4) return;
     var from = uci.slice(0,2), to = uci.slice(2,4);
+    boardEl.querySelectorAll('.coach-best-from,.coach-best-to').forEach(function(el){
+      el.classList.remove('coach-best-from','coach-best-to');
+    });
+    var fromEl = boardEl.querySelector('.sq[data-sq="'+from+'"]');
+    var toEl = boardEl.querySelector('.sq[data-sq="'+to+'"]');
+    if(fromEl) fromEl.classList.add('coach-best-from');
+    if(toEl) toEl.classList.add('coach-best-to');
     var a = coachSquareCenter(from), b = coachSquareCenter(to);
     if(!a || !b) return;
     var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
