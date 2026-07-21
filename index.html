@@ -1692,10 +1692,6 @@ button:active{ transform:translateY(1px); }
         <button id="btn-reroll" onclick="rerollMove()" disabled>OTRA RESPUESTA</button>
         <button onclick="undoMove()">DESHACER</button>
         <button class="warn" onclick="resetGame()">REINICIAR</button>
-        <!-- Antes vivía escondido en el modal (?) junto con FEN/PGN/voz/avisos
-             — un toggle que se usa MIENTRAS jugás debía estar al lado del
-             tablero, no a dos clicks de distancia. -->
-        <button type="button" id="bestmove-toggle-btn" onclick="toggleBestMoveArrow(this)" aria-pressed="false" title="Muestra la mejor jugada sugerida por el motor">★ Mejor jugada</button>
       </div>
     </section>
   </div>
@@ -1797,6 +1793,10 @@ button:active{ transform:translateY(1px); }
       <button type="button" onclick="shareCurrentPosition()">Compartir posición</button>
       <button type="button" id="voice-toggle-btn" onclick="const on=toggleVoiceAnnounce(); this.setAttribute('aria-pressed', on); this.textContent = on ? 'Voz: ON' : 'Voz: OFF';" aria-pressed="false">Voz: OFF</button>
       <button type="button" id="notif-toggle-btn" onclick="toggleAnalysisNotifications().then(on=>{ this.setAttribute('aria-pressed', on); this.textContent = on ? 'Avisos: ON' : 'Avisos: OFF'; })" aria-pressed="false">Avisos: OFF</button>
+      <!-- Es una config (cambia CÓMO se juega, no una acción instantánea como
+           deshacer/reiniciar), así que pertenece acá con el resto de ajustes,
+           no junto a los botones de acción del tablero. -->
+      <button type="button" id="bestmove-toggle-btn" onclick="toggleBestMoveArrow(this)" aria-pressed="false">Flecha mejor jugada: OFF</button>
     </div>
     <div class="help-extras" style="margin-top:8px;">
       <span id="coach-accuracy-badge" style="font-size:12px;opacity:.85;">Precisión: — (juega para calcularla)</span>
@@ -9063,15 +9063,13 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
       '<div style="font-size:10px;opacity:.7;text-align:right;">' + lastLabel + '</div>';
   }
 
-  // ---- 5) Flecha de mejor jugada — botón junto al tablero (game-controls),
-  //     ya no vive en el modal ?. Igual que color-btn/lvl-btn: el estado se
-  //     ve con .active, no cambiando el texto del botón cada vez. ----
+  // ---- 5) Flecha de mejor jugada (config, vive en el modal ?) ----
   window.__coachShowBestMoveArrow = false;
   window.toggleBestMoveArrow = function(btn){
     window.__coachShowBestMoveArrow = !window.__coachShowBestMoveArrow;
     if(btn){
       btn.setAttribute('aria-pressed', window.__coachShowBestMoveArrow);
-      btn.classList.toggle('active', window.__coachShowBestMoveArrow);
+      btn.textContent = 'Flecha mejor jugada: ' + (window.__coachShowBestMoveArrow ? 'ON' : 'OFF');
     }
     // renderBoard (no solo la flecha) para que el pintado sutil de
     // casillas .coach-best-from/.coach-best-to del loop principal se
