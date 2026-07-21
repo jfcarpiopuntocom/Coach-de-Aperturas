@@ -1407,6 +1407,41 @@ button:disabled{ opacity:0.35; cursor:default; }
 }
 .chip .chip-next{ color:var(--orange); margin-right:calc(var(--u)*0.5); font-weight:bold; }
 
+/* ---------- 2b. FICHAS CAPTURADAS + MATERIAL ---------- */
+/* Fila de altura fija (nunca 0) para que el tablero no salte de tamaño
+   cuando pasa de "sin capturas" a "con capturas" — min-height reserva el
+   espacio siempre, esté vacía o no. */
+.captures-row{
+  display:flex; align-items:center; flex-wrap:wrap; gap:1px;
+  min-height:calc(var(--u)*5); padding:0 calc(var(--u)*1);
+}
+.captures-row .cap-pc{ font-size:calc(var(--u)*4); line-height:1; }
+.captures-row .cap-pc.w{ color:var(--green); text-shadow:0 0 calc(var(--u)*1) rgba(57,255,20,0.6); }
+.captures-row .cap-pc.b{ color:var(--orange); text-shadow:0 0 calc(var(--u)*1) rgba(255,127,0,0.6); }
+.captures-row .cap-mat{
+  margin-left:calc(var(--u)*1.5); font-family:var(--font-term); font-size:calc(var(--u)*3.5);
+  color:#FFFFFF; font-weight:bold;
+}
+
+/* ---------- 2c. CONTADOR DE CALIDAD DE JUGADAS (partida actual) ---------- */
+.quality-card{
+  background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--green);
+  padding:calc(var(--u)*2); font-size:calc(var(--u)*4); line-height:1.5;
+}
+.quality-card .quality-label{
+  display:block; font-family:var(--font-term); font-size:calc(var(--u)*4);
+  color:var(--green); margin-bottom:calc(var(--u)*2); letter-spacing:1px;
+}
+.quality-tally{ display:flex; flex-wrap:wrap; gap:calc(var(--u)*1.5); }
+.quality-tally .qt-empty{ color:#CCCCCC; font-size:calc(var(--u)*3.8); }
+.quality-tally .qt-chip{
+  display:inline-flex; align-items:center; gap:calc(var(--u)*1);
+  border:1px solid currentColor; border-radius:calc(var(--u)*1);
+  padding:calc(var(--u)*0.75) calc(var(--u)*1.5); font-size:calc(var(--u)*3.8);
+  font-family:var(--font-term); font-weight:bold;
+}
+.quality-tally .qt-chip .qt-n{ font-size:calc(var(--u)*5); }
+
 /* ---------- 3. CONSEJO DE VARIANTE ---------- */
 .tip-card{
   background:var(--bg-panel); border-left:calc(var(--u)*1) solid var(--orange);
@@ -1616,7 +1651,14 @@ button:active{ transform:translateY(1px); }
            — el "invertida T" que luce sloppy. -->
       <div class="board-stack">
       <div id="coach-eval-bar" style="display:none;margin-bottom:4px;"></div>
+      <!-- Fichas capturadas: arriba = lo que le comieron al humano (piezas
+           de su color que ya no están); abajo = lo que el humano comió.
+           Se recalculan enteras desde game.history() en cada renderCaptures()
+           — nunca se acumulan a mano, así undo/reroll/reinicio nunca las
+           desincroniza (ver renderCaptures más abajo). -->
+      <div id="captures-top" class="captures-row"></div>
       <div id="board"></div>
+      <div id="captures-bottom" class="captures-row"></div>
       <div id="coach-move-quality" style="display:none;font-size:11px;opacity:.85;margin-top:2px;"></div>
 
       <!-- INMEDIATAMENTE bajo el tablero, sin nada en medio: es EL tema
@@ -1681,6 +1723,15 @@ button:active{ transform:translateY(1px); }
     <button type="button" class="periscope-trigger" id="periscope-trigger" onclick="togglePeriscope()" aria-pressed="false">
       <span class="periscope-trigger-dot"></span>PERISCOPIO
     </button>
+
+    <!-- Contador de calidad de jugadas — PARTIDA ACTUAL, se vacía en
+         REINICIAR (y en DESHACER, que ya recalcula todo desde cero). Lee
+         window.__coachHumanMoveGrades, el mismo array que ya alimenta la
+         barra de precisión — no crea una fuente de datos nueva. -->
+    <section class="quality-card" id="quality-card">
+      <span class="quality-label">Jugadas de esta partida</span>
+      <div id="quality-tally" class="quality-tally">Aún no hay jugadas evaluadas.</div>
+    </section>
 
     <section class="tip-card">
       <span class="tip-label">Consejo de la variante</span>
@@ -6238,6 +6289,46 @@ function renderBoard(){
   });
   applyCheckFx(boardEl);
   renderPeriscope();
+  renderCaptures();
+}
+
+/* Fichas capturadas + ventaja de material. Se recalcula ENTERA desde
+   game.history({verbose:true}) en cada render — no hay arrays incrementales
+   que mantener sincronizados a mano, así que undo/reroll/reinicio nunca
+   la desincroniza (misma filosofía que ya usa updatePredictions con hist).
+   Fila de arriba ("captures-top") = piezas que el rival le comió al humano;
+   fila de abajo ("captures-bottom") = piezas que el humano le comió al
+   rival. Así queda igual sin importar de qué lado juegue el humano ni si
+   voltea el tablero. */
+const CAP_VALUE = {p:1, n:3, b:3, r:5, q:9, k:0};
+function renderCaptures(){
+  const topEl = document.getElementById('captures-top');
+  const botEl = document.getElementById('captures-bottom');
+  if(!topEl || !botEl) return;
+  const hist = game.history({verbose:true});
+  const aiColor = humanColor === 'w' ? 'b' : 'w';
+  const humanCaptured = []; // tipos de piezas del rival que el humano comió
+  const aiCaptured = [];    // tipos de piezas del humano que el rival comió
+  hist.forEach(m => {
+    if(!m.captured) return;
+    if(m.color === humanColor) humanCaptured.push(m.captured);
+    else aiCaptured.push(m.captured);
+  });
+  const sortDesc = (a,b) => CAP_VALUE[b] - CAP_VALUE[a];
+  humanCaptured.sort(sortDesc);
+  aiCaptured.sort(sortDesc);
+  const humanMat = humanCaptured.reduce((s,t)=>s+CAP_VALUE[t], 0);
+  const aiMat = aiCaptured.reduce((s,t)=>s+CAP_VALUE[t], 0);
+  const diff = humanMat - aiMat;
+  function rowHtml(list, glyphColor, showDiff){
+    let html = list.map(t => '<span class="cap-pc '+glyphColor+'">'+pieceGlyph(t, glyphColor)+'</span>').join('');
+    if(showDiff && diff !== 0) html += '<span class="cap-mat">'+(diff>0?'+':'')+diff+'</span>';
+    return html;
+  }
+  // Arriba: lo que el rival le comió al humano (piezas del color humano) — sin badge de material acá.
+  topEl.innerHTML = rowHtml(aiCaptured, humanColor, false);
+  // Abajo: lo que el humano le comió al rival (piezas del color IA), con el +N si el humano va arriba en material.
+  botEl.innerHTML = rowHtml(humanCaptured, aiColor, true);
 }
 
 /* Vista del rival: la MISMA posición pero desde su lado del tablero, no
@@ -8779,6 +8870,7 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
     if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
     var accEl = document.getElementById('coach-accuracy');
     if(accEl) accEl.textContent = '';
+    if(window.renderQualityTally) window.renderQualityTally();
   };
 
   var _origHandleEngineMessage = (typeof handleEngineMessage === 'function') ? handleEngineMessage : null;
@@ -8878,7 +8970,25 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
     window.__coachHumanMoveGrades.push(rec);
     renderCoachMoveQuality(rec);
     renderCoachAccuracy();
+    renderQualityTally();
   }
+
+  // Contador de calidad por partida (Excelente/Buena/Imprecisión/Error/
+  // Blunder), pedido explícito: "como en lichess.org". Misma fuente de
+  // datos que la barra de precisión (window.__coachHumanMoveGrades), así
+  // que se vacía solo cuando esa se vacía — ver resetCoachEvalState.
+  window.renderQualityTally = function renderQualityTally(){
+    var el = $('quality-tally');
+    if(!el) return;
+    var grades = window.__coachHumanMoveGrades;
+    if(!grades.length){ el.innerHTML = '<span class="qt-empty">Aún no hay jugadas evaluadas.</span>'; return; }
+    var colorMap = {exc:'#3ddc84', buena:'#8fd13f', imp:'#e0c341', err:'#e0883f', blun:'#e04f4f'};
+    var counts = {exc:0, buena:0, imp:0, err:0, blun:0};
+    grades.forEach(function(g){ if(counts[g.cls] !== undefined) counts[g.cls]++; });
+    el.innerHTML = COACH_LABELS.map(function(g){
+      return '<span class="qt-chip" style="color:'+colorMap[g.cls]+'"><span class="qt-n">'+counts[g.cls]+'</span>'+g.label+'</span>';
+    }).join('');
+  };
 
   function renderCoachMoveQuality(rec){
     var el = $('coach-move-quality');
