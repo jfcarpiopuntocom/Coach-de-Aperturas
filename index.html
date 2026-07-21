@@ -1785,7 +1785,7 @@ button:active{ transform:translateY(1px); }
   <span class="lore-title">COACH DE APERTURAS</span>
   <button class="lore-toggle" id="battlefx-toggle-btn" onclick="toggleBattleFx()">⚡ FX: ON</button>
   <button class="lore-toggle" id="sound-toggle-btn" onclick="toggleSound()">🔊 Sonidos: ON</button>
-  <button class="lore-toggle" id="radio-toggle-btn" onclick="toggleSpaceRadio(this)" title="Radio espacial: prog rock / post-rock / space rock / symphonic prog en vivo (Radio Browser API, gratis)">🎵 Radio: ON</button>
+  <button class="lore-toggle" id="radio-toggle-btn" onclick="toggleSpaceRadio(this)" ondblclick="skipSpaceRadio(this)" title="Radio espacial: prog rock / post-rock / space rock / symphonic prog en vivo. Click: on/off. Doble click: saltar a otro género sin apagar.">🎵 Radio: ON</button>
   <span class="lore-credits">MIT Open License</span>
   <button id="help-btn" class="help-btn" onclick="openHelpModal()" aria-label="Acerca de este tablero espacial pedagógico" title="Acerca de este tablero espacial pedagógico">?</button>
 </div>
@@ -1797,6 +1797,7 @@ button:active{ transform:translateY(1px); }
     <p>¡Despertaste tras 100 años de crionización — un tablero encendido en el puente es lo único que quedó funcional en la nave, fijada con autopiloto de vuelta a la Tierra. Esta app es tu oficial de a bordo: te pone al día con las aperturas y defensas para que al llegar a la Tierra empieces a ganar tus partidas!</p>
     <p>Estética inspirada en las space operas de Asimov y Heinlein y la película War Games (1983).</p>
     <p class="help-signature">v1.0 · Made in Sudamérica. · <a href="https://www.paypal.com/paypalme/jfcarpio" target="_blank" rel="noopener">apoya el proyecto</a></p>
+    <p>🎵 <b>Radio espacial</b> (botón abajo a la izquierda, junto a FX/Sonidos): un click la prende o apaga. <b>Doble click</b> salta a otro género (prog rock / post-rock / space rock / symphonic prog / psychedelic rock) sin apagarla.</p>
     <h3>Extras</h3>
     <div class="help-extras">
       <button type="button" onclick="copyCurrentFen()">Copiar FEN</button>
@@ -6316,7 +6317,14 @@ function renderBoard(){
   });
   applyCheckFx(boardEl);
   renderPeriscope();
-  renderCaptures();
+  // GUARD (v1.0 preflight): renderCaptures() es la última línea de
+  // renderBoard() — si algo ahí tirara una excepción (p.ej. pieceGlyph
+  // con un tipo inesperado), sin este try/catch se perdería silenciosamente
+  // el resto del pipeline que corre DESPUÉS de renderBoard() en el wrapper
+  // del coach (la flecha/calavera de mejor jugada), ya que ese wrapper
+  // llama a _origRenderBoard.apply(...) sin su propio try/catch. Aislar
+  // el fallo acá evita que un bug cosmético tumbe features no relacionadas.
+  try{ renderCaptures(); }catch(err){ console.warn('renderCaptures: fallo no crítico', err); }
 }
 
 /* Fichas capturadas + ventaja de material. Se recalcula ENTERA desde
@@ -9185,8 +9193,15 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
   if(typeof renderBoard === 'function'){
     var _origRenderBoard = renderBoard;
     renderBoard = function(){
-      var r = _origRenderBoard.apply(this, arguments);
+      // GUARD (v1.0 preflight): si el render original tirase, sin este
+      // try/catch se perdería el tablero Y quedarían timers de la IA
+      // (engineTurn, etc.) esperando un renderBoard() que nunca terminó
+      // limpio. Se relanza el error después de igual intentar los hooks
+      // del coach, para no ocultar el bug real ni dejar el tablero mudo.
+      var r, renderErr = null;
+      try{ r = _origRenderBoard.apply(this, arguments); }catch(err){ renderErr = err; }
       try{ renderCoachBestMoveArrow(); }catch(_){}
+      if(renderErr) throw renderErr;
       return r;
     };
   }
@@ -9209,6 +9224,9 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
   window.__radioTagIdx = -1;
   window.__radioLoading = false;
   window.__radioNowPlaying = '';
+  var _radioFailStreak = 0;       // fallos consecutivos (todos los géneros), para no reintentar al infinito
+  var _radioFailStreakMax = RADIO_TAGS.length * 2; // dos vueltas completas por los géneros
+  var _radioPlayToken = 0;        // GUARD: invalida llamadas viejas si toggle/skip se disparan superpuestos
 
   function radioAudioEl(){ return document.getElementById('space-radio'); }
 
@@ -9244,33 +9262,67 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
   async function spaceRadioPlayNext(){
     var audio = radioAudioEl();
     if(!audio) return;
+    // GUARD (v1.0 preflight): toggle y skip pueden disparar esta función
+    // superpuesta (doble click rápido, o toggle justo cuando un skip
+    // seguía esperando el fetch). Sin este token, la respuesta más lenta
+    // podía pisar el src que puso la más rápida después. Cada llamada saca
+    // un token propio y solo aplica su resultado si sigue siendo el más
+    // reciente al terminar.
+    var myToken = ++_radioPlayToken;
     window.__radioLoading = true;
     updateRadioButton();
     window.__radioTagIdx = (window.__radioTagIdx + 1) % RADIO_TAGS.length;
     var tag = RADIO_TAGS[window.__radioTagIdx];
     try{
       var stations = await radioFetchStations(tag);
+      if(myToken !== _radioPlayToken) return; // una llamada más nueva ya tomó el control
       var valid = (stations || []).filter(function(s){ return s && (s.url_resolved || s.url); });
       if(!valid.length) throw new Error('sin estaciones para "' + tag + '"');
       var pick = valid[Math.floor(Math.random() * valid.length)];
       audio.src = pick.url_resolved || pick.url;
       await audio.play();
+      if(myToken !== _radioPlayToken) return;
       window.__radioNowPlaying = (pick.name || 'Emisora') + ' — ' + tag;
+      _radioFailStreak = 0; // una emisora sonó bien: resetea el contador de fallos
     }catch(err){
       console.warn('radio espacial: fallo con "' + tag + '", probando el próximo género', err);
+      if(myToken !== _radioPlayToken){ return; } // llamada obsoleta, no toca estado ni reintenta
       window.__radioLoading = false;
       updateRadioButton();
+      _radioFailStreak++;
+      // GUARD: sin este tope, una red caída o la API bloqueada por CSP
+      // dejaría esto reintentando para siempre cada 1.2s. Tras dos vueltas
+      // completas por todos los géneros sin éxito, se apaga sola y avisa
+      // — nada de esto es fatal, pero JFC pidió redundancia "por las dudas".
+      if(_radioFailStreak >= _radioFailStreakMax){
+        window.__radioOn = false;
+        try{ localStorage.setItem('spaceRadioOn', '0'); }catch(_){}
+        window.__radioNowPlaying = '';
+        var btn = document.getElementById('radio-toggle-btn');
+        if(btn) btn.title = 'Radio espacial: no se pudo conectar a ninguna emisora (red o API caída). Probá de nuevo más tarde.';
+        updateRadioButton();
+        return;
+      }
       // Reintenta con el próximo género de la secuencia, sin loop infinito
       // apretado — solo si la radio sigue encendida (el usuario pudo
       // apagarla mientras esto fallaba).
-      if(window.__radioOn) setTimeout(spaceRadioPlayNext, 1200);
+      if(window.__radioOn) setTimeout(function(){ if(window.__radioOn) spaceRadioPlayNext(); }, 1200);
       return;
     }
+    if(myToken !== _radioPlayToken) return;
     window.__radioLoading = false;
     updateRadioButton();
   }
 
-  window.toggleSpaceRadio = function(btn){
+  // Click simple = on/off. Doble click = saltar de género sin apagar.
+  // Ambos gestos llegan al mismo botón, así que un doble click dispara
+  // DOS 'click' + un 'dblclick' del navegador — sin este delay, los dos
+  // clicks del doble click prenderían y apagarían la radio de carambola
+  // antes de que el dblclick llegue a saltar de género. Se retrasa el
+  // efecto del click simple 250ms para poder cancelarlo si en ese lapso
+  // llega el dblclick (ver skipSpaceRadio).
+  var _radioClickTimer = null;
+  function doToggleSpaceRadio(){
     window.__radioOn = !window.__radioOn;
     try{ localStorage.setItem('spaceRadioOn', window.__radioOn ? '1' : '0'); }catch(_){}
     var audio = radioAudioEl();
@@ -9281,6 +9333,27 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
       audio.pause();
     }
     updateRadioButton();
+  }
+  window.toggleSpaceRadio = function(btn){
+    if(_radioClickTimer){ clearTimeout(_radioClickTimer); _radioClickTimer = null; return; }
+    _radioClickTimer = setTimeout(function(){
+      _radioClickTimer = null;
+      try{ doToggleSpaceRadio(); }catch(err){ console.warn('radio espacial: fallo al alternar on/off', err); }
+    }, 260);
+  };
+  window.skipSpaceRadio = function(btn){
+    if(_radioClickTimer){ clearTimeout(_radioClickTimer); _radioClickTimer = null; }
+    try{
+      // Doble click con la radio apagada: la prende Y busca género en el
+      // mismo gesto, en vez de exigir dos gestos separados.
+      if(!window.__radioOn){
+        window.__radioOn = true;
+        try{ localStorage.setItem('spaceRadioOn', '1'); }catch(_){}
+      }
+      spaceRadioPlayNext();
+    }catch(err){
+      console.warn('radio espacial: fallo al saltar de género', err);
+    }
   };
 
   (function initSpaceRadio(){
