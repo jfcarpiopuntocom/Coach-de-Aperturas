@@ -1226,7 +1226,8 @@ button:disabled{ opacity:0.35; cursor:default; }
   width:44px; height:44px; min-width:44px; min-height:44px;
   display:flex; align-items:center; justify-content:center;
   background:#020402; border:1px solid var(--green); color:var(--green);
-  font-size:calc(var(--u)*5); line-height:1; cursor:pointer; border-radius:50%;
+  font-size:calc(var(--u)*5); font-weight:bold; font-family:var(--font-term);
+  line-height:1; cursor:pointer; border-radius:50%;
   box-shadow:0 calc(var(--u)*1) calc(var(--u)*4) rgba(0,0,0,0.5);
   opacity:0.55; transition:opacity .2s;
 }
@@ -1691,6 +1692,10 @@ button:active{ transform:translateY(1px); }
         <button id="btn-reroll" onclick="rerollMove()" disabled>OTRA RESPUESTA</button>
         <button onclick="undoMove()">DESHACER</button>
         <button class="warn" onclick="resetGame()">REINICIAR</button>
+        <!-- Antes vivía escondido en el modal (?) junto con FEN/PGN/voz/avisos
+             — un toggle que se usa MIENTRAS jugás debía estar al lado del
+             tablero, no a dos clicks de distancia. -->
+        <button type="button" id="bestmove-toggle-btn" onclick="toggleBestMoveArrow(this)" aria-pressed="false" title="Muestra la mejor jugada sugerida por el motor">★ Mejor jugada</button>
       </div>
     </section>
   </div>
@@ -1792,8 +1797,6 @@ button:active{ transform:translateY(1px); }
       <button type="button" onclick="shareCurrentPosition()">Compartir posición</button>
       <button type="button" id="voice-toggle-btn" onclick="const on=toggleVoiceAnnounce(); this.setAttribute('aria-pressed', on); this.textContent = on ? 'Voz: ON' : 'Voz: OFF';" aria-pressed="false">Voz: OFF</button>
       <button type="button" id="notif-toggle-btn" onclick="toggleAnalysisNotifications().then(on=>{ this.setAttribute('aria-pressed', on); this.textContent = on ? 'Avisos: ON' : 'Avisos: OFF'; })" aria-pressed="false">Avisos: OFF</button>
-      <button type="button" id="fullscreen-toggle-btn" onclick="toggleCoachFullscreen(this)" aria-pressed="false">Pantalla completa: OFF</button>
-      <button type="button" id="bestmove-toggle-btn" onclick="toggleBestMoveArrow(this)" aria-pressed="false">Flecha mejor jugada: OFF</button>
     </div>
     <div class="help-extras" style="margin-top:8px;">
       <span id="coach-accuracy-badge" style="font-size:12px;opacity:.85;">Precisión: — (juega para calcularla)</span>
@@ -1823,7 +1826,7 @@ button:active{ transform:translateY(1px); }
      botón queda siempre visible, en cualquier pantalla, sin depender del
      modal. Mismo handler (toggleCoachFullscreen) que el del modal; ambos
      se mantienen sincronizados vía el listener fullscreenchange. -->
-<button id="fs-float-btn" class="fs-float-btn" onclick="toggleCoachFullscreen(this)" title="Pantalla completa" aria-pressed="false">⛶</button>
+<button id="fs-float-btn" class="fs-float-btn" onclick="toggleCoachFullscreen(this)" title="Pantalla completa (Z)" aria-pressed="false">Z</button>
 
 <script>
 /* chess.js v0.10.3 — embebido localmente, sin dependencia de CDN externo */
@@ -8820,6 +8823,16 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
   }
   window.addEventListener('resize', checkNativeFullscreenHint);
   checkNativeFullscreenHint();
+  // Atajo Z para pantalla completa (mismo criterio que lichess: Z alterna
+  // "zoom" del tablero). Ignorar si el foco está en un input/textarea/campo
+  // editable, para no robarle la tecla a quien está escribiendo.
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'z' && e.key !== 'Z') return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    var tag = document.activeElement && document.activeElement.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable)) return;
+    toggleCoachFullscreen($('fs-float-btn'));
+  });
   // Mismo criterio de honestidad para el botón de voz: si el navegador no
   // implementa Web Speech API (algunos WebViews Android embebidos, navegadores
   // muy antiguos), el botón se deshabilita en vez de prometer algo que no cumple.
@@ -9050,13 +9063,15 @@ initDragTouch(); // Pointer Events para drag táctil (iOS/Android)
       '<div style="font-size:10px;opacity:.7;text-align:right;">' + lastLabel + '</div>';
   }
 
-  // ---- 5) Flecha de mejor jugada (opt-in, checkbox en el modal ?) ----
+  // ---- 5) Flecha de mejor jugada — botón junto al tablero (game-controls),
+  //     ya no vive en el modal ?. Igual que color-btn/lvl-btn: el estado se
+  //     ve con .active, no cambiando el texto del botón cada vez. ----
   window.__coachShowBestMoveArrow = false;
   window.toggleBestMoveArrow = function(btn){
     window.__coachShowBestMoveArrow = !window.__coachShowBestMoveArrow;
     if(btn){
       btn.setAttribute('aria-pressed', window.__coachShowBestMoveArrow);
-      btn.textContent = 'Flecha mejor jugada: ' + (window.__coachShowBestMoveArrow ? 'ON' : 'OFF');
+      btn.classList.toggle('active', window.__coachShowBestMoveArrow);
     }
     // renderBoard (no solo la flecha) para que el pintado sutil de
     // casillas .coach-best-from/.coach-best-to del loop principal se
